@@ -1,0 +1,93 @@
+# The one compound filter in the specification, executed.
+#
+# `softphone.directory.ContactAddresses` declares
+# `(contact_id == param.contact_id and state == Active)` — the only view here whose filter is more
+# than one clause, and therefore the only one that exercises the half of `tests/suite.mjs`'s
+# `rowsFor()` that strips a parameter clause and then decides what is left is the behaviour's own.
+# No authored scenario reads it, so that path is argued in a comment and never run.
+#
+# Two contacts with one live address each, and one address removed, so every clause of the filter
+# has something to do: the parameter has to leave the other contact's address out, and `state ==
+# Active` has to leave the removed one out. If the parameter is not applied the count is two; if
+# the state clause is not applied it is two as well, and either way this file says so.
+type: ess-scenario/1
+domain: softphone.directory
+scenario: adversary-a-compound-filter-view-is-read-by-its-parameter
+summary: ContactAddresses answers one contact's live address, not the store's.
+
+arrange:
+  - instance: bob
+    entity: softphone.directory.Contact
+  - instance: carol
+    entity: softphone.directory.Contact
+  - instance: work
+    entity: softphone.directory.ContactAddress
+  - instance: mobile
+    entity: softphone.directory.ContactAddress
+  - instance: elsewhere
+    entity: softphone.directory.ContactAddress
+
+timeline:
+  - at: 2026-09-07T11:00:00Z
+    command: softphone.directory.AddContact
+    actor: softphone.directory.Human
+    input: { display_name: Bob Fenwick }
+    outcome: added
+    capture: {instance: bob, event: softphone.directory.ContactAdded, field: contact_id}
+
+  - at: 2026-09-07T11:00:01Z
+    command: softphone.directory.AddContact
+    actor: softphone.directory.Human
+    input: { display_name: Carol Ide }
+    outcome: added
+    capture: {instance: carol, event: softphone.directory.ContactAdded, field: contact_id}
+
+  - at: 2026-09-07T11:00:02Z
+    command: softphone.directory.AddAddress
+    actor: softphone.directory.Human
+    input:
+      contact_id: {$instance: bob}
+      address: 'sip:bob@example.test'
+      label: Work
+    outcome: added
+    capture: {instance: work, event: softphone.directory.ContactAddressAdded, field: address_id}
+
+  - at: 2026-09-07T11:00:03Z
+    command: softphone.directory.AddAddress
+    actor: softphone.directory.Human
+    input:
+      contact_id: {$instance: bob}
+      address: 'sip:bob.mobile@example.test'
+      label: Mobile
+    outcome: added
+    capture: {instance: mobile, event: softphone.directory.ContactAddressAdded, field: address_id}
+
+  - at: 2026-09-07T11:00:04Z
+    command: softphone.directory.AddAddress
+    actor: softphone.directory.Human
+    input:
+      contact_id: {$instance: carol}
+      address: 'sip:carol@example.test'
+      label: Work
+    outcome: added
+    capture: {instance: elsewhere, event: softphone.directory.ContactAddressAdded, field: address_id}
+
+  - at: 2026-09-07T11:00:05Z
+    command: softphone.directory.RemoveAddress
+    actor: softphone.directory.Human
+    input: { address_id: {$instance: mobile} }
+    outcome: removed
+
+assert:
+  - view: softphone.directory.ContactAddresses
+    params: {contact_id: {$instance: bob}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.directory.ContactAddresses
+    params: {contact_id: {$instance: bob}}
+    contains: {address: 'sip:bob@example.test', label: Work, state: Active}
+  - view: softphone.directory.ContactAddresses
+    params: {contact_id: {$instance: bob}}
+    excludes: {address_id: {$instance: mobile}}
+  - view: softphone.directory.ContactAddresses
+    params: {contact_id: {$instance: bob}}
+    excludes: {address_id: {$instance: elsewhere}}

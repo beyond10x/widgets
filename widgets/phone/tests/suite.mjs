@@ -46,12 +46,51 @@ function value(node, captured) {
   throw new Error(`an input node this runner cannot read: ${JSON.stringify(node)}`);
 }
 
+/**
+ * A value in one spelling, so two of them can be compared for what they are.
+ *
+ * A struct is an unordered map of fields and the two sides of a comparison do not agree on the
+ * order: the compiled suite writes a `BTreeMap`, which is key-sorted, and the wire writes the
+ * order the type declares its fields in. `JSON.stringify` preserves insertion order, so comparing
+ * the two renderings makes every true claim about a struct-valued field fail — a `profile` that
+ * matches field for field is reported as a mismatch because `channels` came before `sample_format`.
+ *
+ * The specification's own semantics are structural: the reference runner compares `Node`s, and
+ * `Node::Map` is a `BTreeMap`, so key order is not part of a value
+ * (`ess-conformance/src/runner.rs:1660`). This recovers that by sorting keys all the way down. A
+ * list keeps its order, because in a list the order *is* part of the value.
+ *
+ * Used for the diagnostics as well as the comparison, so when a claim genuinely fails both sides
+ * are printed in the same order and the difference is the thing that stands out.
+ */
+function canonical(node) {
+  if (Array.isArray(node)) return node.map(canonical);
+  if (node !== null && typeof node === "object") {
+    return Object.fromEntries(
+      Object.keys(node)
+        .sort()
+        .map((key) => [key, canonical(node[key])]),
+    );
+  }
+  return node;
+}
+
+/** Whether two values are the same value. `undefined` is absence, and absence is not `null`. */
+function same(want, got) {
+  return JSON.stringify(canonical(want)) === JSON.stringify(canonical(got));
+}
+
+/** How a value reads in a diagnostic, in the one spelling both sides are compared in. */
+function shown(node) {
+  return node === undefined ? "nothing" : JSON.stringify(canonical(node));
+}
+
 /** Every field the step names has to be there, with that value. Extra fields are the event's. */
 function matches(expected, actual) {
   for (const [field, want] of Object.entries(expected ?? {})) {
     const got = actual?.[field];
-    if (JSON.stringify(want) !== JSON.stringify(got)) {
-      return `\`${field}\`: expected ${JSON.stringify(want)}, got ${JSON.stringify(got)}`;
+    if (!same(want, got)) {
+      return `\`${field}\`: expected ${shown(want)}, got ${shown(got)}`;
     }
   }
   return null;
@@ -62,8 +101,8 @@ function matchesRow(expected, row, captured) {
   for (const [field, node] of Object.entries(expected ?? {})) {
     const want = value(node, captured);
     const got = row?.[field];
-    if (JSON.stringify(want) !== JSON.stringify(got)) {
-      return `\`${field}\`: expected ${JSON.stringify(want)}, got ${JSON.stringify(got)}`;
+    if (!same(want, got)) {
+      return `\`${field}\`: expected ${shown(want)}, got ${shown(got)}`;
     }
   }
   return null;
@@ -80,6 +119,23 @@ function matchesRow(expected, row, captured) {
  * behaviour's own filter, already applied on the way out. A remainder still naming a parameter is a
  * filter this runner cannot evaluate — and handing back the unfiltered rows there would be an
  * assertion about the whole store wearing the query's name, which is worse than a refusal.
+ *
+ * # Which of the refusals below a scenario can actually reach
+ *
+ * Three of them are checks and five are guards, and the difference is worth writing down rather
+ * than leaving for whoever next assumes a `throw` is covered:
+ *
+ * | refusal | reachable? |
+ * | --- | --- |
+ * | the clause is missing from the filter | **yes** — collapsing the remainder turns 5 scenarios red |
+ * | the parameter selects the rows | **yes** — not applying it turns 2 red, one of them the compound-filter case |
+ * | the view is unmet | only by an unmet obligation; driven with a mutated query, not from a document |
+ * | the catalogue declares no such view | no — `ess conform author` refuses an undeclared view first |
+ * | the response carries no such view | no — the wire projects every view the model declares |
+ * | `rows` is not an array | no — the wire has exactly two shapes, and the other is `unmet` |
+ * | the parameter is not a projected field | no — `ess-domain` refuses a filter over a field the row lacks |
+ * | the remainder still names a parameter | no — a scenario cannot under-bind: the compiler requires |
+ * | | every declared parameter, so removing this guard leaves the suite green |
  */
 function rowsFor(view, params, projection, captured) {
   const declared = declaredViews.get(view);
@@ -90,9 +146,21 @@ function rowsFor(view, params, projection, captured) {
   if (!held) {
     throw new Error(`the response carries no rows for \`${view}\``);
   }
+  // An unmet query projects `{"unmet":{capability,source}}` and no `rows` at all. Read as an empty
+  // view it would satisfy `excludes` and give `counts` a number that means nothing — a missing
+  // implementation reported as a held claim, which is the one failure a passing run cannot show.
+  if (held.unmet) {
+    throw new Error(
+      `\`${view}\` is unmet: \`${held.unmet.capability}\` from ${held.unmet.source} — ` +
+        `no rows were projected, so nothing can be asserted about them`,
+    );
+  }
+  if (!Array.isArray(held.rows)) {
+    throw new Error(`\`${view}\` projected no \`rows\` array: ${JSON.stringify(held)}`);
+  }
   const projects = new Set((declared.fields ?? []).map((field) => field.name));
   let remainder = declared.filter ?? "";
-  let rows = held.rows ?? [];
+  let rows = held.rows;
   for (const [param, node] of Object.entries(params ?? {})) {
     const clause = `${param} == param.${param}`;
     if (!remainder.includes(clause)) {
@@ -105,7 +173,7 @@ function rowsFor(view, params, projection, captured) {
     }
     remainder = remainder.replace(clause, "");
     const want = value(node, captured);
-    rows = rows.filter((row) => JSON.stringify(row[param]) === JSON.stringify(want));
+    rows = rows.filter((row) => same(want, row[param]));
   }
   if (remainder.includes("param.")) {
     throw new Error(
@@ -193,10 +261,13 @@ async function run(name, scenario, tally) {
       // The claim that stands on its own where there is no error to name: `HangUp`'s wrong-state
       // branch is `refuses: false`, so the only thing left to require of it is silence.
       //
-      // Worth having only where `published` can be non-empty. After a refusal it cannot be, so each
-      // of the three scenarios that assert refusals also puts one of these on a command that *did*
-      // publish — rejecting a call must not answer it — which is the case where the comparison
-      // below decides something rather than iterating an empty list.
+      // Worth having only where `published` can be non-empty, and after a refusal it cannot be —
+      // the wire writes an empty literal on every `WrongState` arm. So a `no_events:` written on a
+      // refused act iterates nothing and decides nothing; it is there for the record. The ones that
+      // decide something sit on acts that *did* publish — rejecting a call must not answer it,
+      // establishing a session must not terminate it, closing a bridge must not confirm it — and
+      // those are the cases that exercise the comparison below. Both forms are in the suite; do not
+      // read the first as coverage.
       case "expect_no_event": {
         const published = last?.outcome?.published ?? [];
         if (published.some((e) => e.event === step.event)) {

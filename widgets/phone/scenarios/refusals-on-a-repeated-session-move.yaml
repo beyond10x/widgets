@@ -31,6 +31,24 @@ timeline:
         reference: 'sip:erin@example.test'
         trust: Untrusted
     outcome: opened
+    # The struct-valued half of an event payload, which nothing here asserted before: the session
+    # is published carrying the profile and the participant it was opened with, whole. Worth stating
+    # because a struct is where a comparison by rendering goes wrong — the suite writes these keys
+    # sorted and the wire writes them in declaration order, and the two are the same value.
+    events:
+      - event: softphone.media.SessionOpened
+        payload:
+          session_ref: 'sess-4c19'
+          binding: Sip
+          profile:
+            sample_format: PcmS16Le
+            sample_rate_hz: 8000
+            channels: 1
+            packet_time_ms: 20
+            frame_bytes: 320
+          participant:
+            reference: 'sip:erin@example.test'
+            trust: Untrusted
     capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
 
   - at: 2026-09-05T08:00:01Z

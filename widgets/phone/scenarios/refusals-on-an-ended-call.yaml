@@ -22,6 +22,8 @@ arrange:
     entity: softphone.control.PhoneEndpoint
   - instance: call
     entity: softphone.control.Call
+  - instance: second
+    entity: softphone.control.Call
 
 timeline:
   - at: 2026-09-04T20:00:00Z
@@ -125,29 +127,55 @@ timeline:
     outcome: wrong-state
     no_events: [softphone.control.CallHungUp]
 
-# `Ended` is terminal, and the call rests there rather than vanishing from it — which is what
-# `a-refusal-leaves-the-call-where-it-was.yaml` states of `CallById`. The other half is that it is
-# gone from the view that says which calls are up: seven refusals did not resurrect it.
-  # A second call, and it is here to make the assertions below say something. `CallById` is a view
-  # with a parameter, and "it holds exactly one row" is trivially true of a store holding one call
-  # however the query behaves — the claim only becomes a claim once there is another row for it to
-  # have to leave out. It is `Requested`, so it is not in `ActiveCalls` either.
+  # A second call, and it is here to make the assertions below decide something. Both of them are
+  # vacuous against a store holding one ended call: "`CallById` holds exactly one row" is true
+  # however the query behaves when there is only one call, and "`ActiveCalls` excludes it" is true
+  # of an empty view. So this call is driven all the way to `Active`, which gives the by-id view a
+  # row it has to leave out and the active view a row it has to keep.
   - at: 2026-09-04T20:00:18Z
     command: softphone.control.OfferCall
     actor: softphone.control.Kernel
     input: { endpoint_id: {$instance: phone}, remote: 'sip:second@example.test' }
     outcome: offered
+    capture: {instance: second, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-04T20:00:19Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: second} }
+    outcome: ringing
+
+  - at: 2026-09-04T20:00:21Z
+    command: softphone.control.Answer
+    actor: softphone.control.Human
+    input: { call_id: {$instance: second} }
+    outcome: answered
+
+  - at: 2026-09-04T20:00:22Z
+    command: softphone.control.MediaConnected
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: second} }
+    outcome: established
 
 # `Ended` is terminal, and the call rests there rather than vanishing from it — the claim
-# `a-refusal-leaves-the-call-where-it-was.yaml` makes of `CallById`. Two more here: the by-id view
-# answers with that one call and not with the store, and the view that says which calls are up does
-# not hold it. Seven refusals neither resurrected it nor took it away.
+# `a-refusal-leaves-the-call-where-it-was.yaml` makes of `CallById`. Three more here, none of which
+# an empty store or a single row would satisfy: the by-id view answers with the ended call and not
+# with the other one, the ended call still carries what it was offered with, and the view that says
+# which calls are up holds the live call and not the dead one. Seven refusals neither resurrected
+# it nor took it away.
 assert:
   - view: softphone.control.CallById
     params: {call_id: {$instance: call}}
     counts: {at_least: 1, at_most: 1}
   - view: softphone.control.CallById
     params: {call_id: {$instance: call}}
-    contains: {state: Ended, remote: 'sip:mallory@example.test'}
+    contains:
+      state: Ended
+      remote: 'sip:mallory@example.test'
+      direction: Inbound
+      muted: false
+      held: false
+  - view: softphone.control.ActiveCalls
+    contains: {call_id: {$instance: second}}
   - view: softphone.control.ActiveCalls
     excludes: {call_id: {$instance: call}}

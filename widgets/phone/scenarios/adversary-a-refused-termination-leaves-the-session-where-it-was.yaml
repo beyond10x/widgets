@@ -1,0 +1,71 @@
+# The neutral layer's terminal arm, which `refusals-on-a-repeated-session-move.yaml` issues as its
+# last step and then never looks at.
+#
+# `media_impl.rs` restores the session in the wrong-state arm of `terminate` exactly as it does in
+# `establish`, and the difference between the two is what a scenario can see. A refused second
+# activation is followed by a legitimate termination, so dropping the session there breaks the next
+# step. A refused second termination is the end of the timeline: drop the session and nothing
+# afterwards asks a question, which is the shape pass 1's blocker was about.
+type: ess-scenario/1
+domain: softphone.media
+scenario: adversary-a-refused-termination-leaves-the-session-where-it-was
+summary: A refused second TerminateSession leaves the terminated session in the store.
+
+arrange:
+  - instance: session
+    entity: softphone.media.MediaSession
+
+timeline:
+  - at: 2026-09-07T09:00:00Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'sess-ad03'
+      binding: Sip
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:grace@example.test'
+        trust: Untrusted
+    outcome: opened
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  - at: 2026-09-07T09:00:01Z
+    command: softphone.media.ActivateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session} }
+    outcome: activated
+
+  - at: 2026-09-07T09:00:02Z
+    command: softphone.media.TerminateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session}, reason: RemoteHangup }
+    outcome: terminated
+    events:
+      - event: softphone.media.SessionTerminated
+        payload: { reason: RemoteHangup }
+
+  - at: 2026-09-07T09:00:03Z
+    command: softphone.media.TerminateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session}, reason: Completed }
+    outcome: wrong-state
+    error:
+      name: softphone.media.MediaSessionStateConflict
+      fields: { state: Terminated }
+    no_events: [softphone.media.SessionTerminated]
+
+# `Terminated` is terminal, and a terminated session rests there rather than vanishing from it. The
+# `termination` the legitimate move recorded is `RemoteHangup`; the refused one asked for
+# `Completed`, and a refusal that wrote its reason on the way past would say so here.
+assert:
+  - view: softphone.media.MediaSessionById
+    params: {session_id: {$instance: session}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.media.MediaSessionById
+    params: {session_id: {$instance: session}}
+    contains: {state: Terminated, termination: RemoteHangup, session_ref: 'sess-ad03'}
