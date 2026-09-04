@@ -201,15 +201,30 @@ tasks:
   phone:
     desc: Serve the phone itself — the generated page, over the realized module.
     deps: [impl]
-    # The page tries three paths and the last is `softphone_web.wasm` beside it, so the realized
-    # module is copied to that name. Its own comment says a host's realization answers this page;
-    # the candidate list is simply not parameterised by which crate built it.
+    # The module goes where the page looks **first**.
+    #
+    # The generated page tries three paths in order: the release target directory, the debug one,
+    # then `softphone_web.wasm` beside itself. That order is right for the layout the emitter
+    # expects — the page served from the generated workspace root, where `cargo build` really has
+    # left a module at the first path. This task assembles a directory instead, because the module
+    # it serves is the *realized* one from `crates/softphone-shell` rather than the generated
+    # system that refuses every command. Putting it at the third path worked and cost two 404s on
+    # every load, which reads as a broken page to anybody watching the log.
+    #
+    # The name is the page's, not ours: it loads `softphone_web.wasm` whoever built it, and the
+    # bridge's own `rlib` doc says a host's realization answers this page through the same exports.
+    #
+    # `PORT` is a variable because a hard-coded one is a trap: this session left a server of its own
+    # on 8741 and the next `task phone` could not bind. `task phone PORT=8750` is the way out.
+    vars:
+      PORT: '{{.PORT | default "8741"}}'
+      MODULE: target/wasm32-unknown-unknown/release
     cmds:
-      - rm -rf {{.OUT}}/phone && mkdir -p {{.OUT}}/phone
+      - rm -rf {{.OUT}}/phone && mkdir -p {{.OUT}}/phone/{{.MODULE}}
       - cp .build/synth/web/index.html .build/synth/web/bridge.js {{.OUT}}/phone/
-      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm {{.OUT}}/phone/softphone_web.wasm
-      - cmd: echo "http://127.0.0.1:8741/index.html"
-      - cd {{.OUT}}/phone && python3 -m http.server 8741 --bind 127.0.0.1
+      - cp {{.MODULE}}/softphone_shell.wasm {{.OUT}}/phone/{{.MODULE}}/softphone_web.wasm
+      - cmd: echo "http://127.0.0.1:{{.PORT}}/index.html"
+      - cd {{.OUT}}/phone && python3 -m http.server {{.PORT}} --bind 127.0.0.1
 
   # ── the gates ───────────────────────────────────────────────────────────────
   check:
