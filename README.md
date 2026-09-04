@@ -1,5 +1,9 @@
 # Widgets
 
+**▶ [Play the scenarios](https://beyond10x.github.io/widgets/phone/player/)** ·
+[documentation](https://beyond10x.github.io/widgets/phone/) ·
+[obligations](https://beyond10x.github.io/widgets/phone/plan/obligations.html)
+
 Small, self-contained applications specified end to end before they are built. Each one is a
 directory under [`widgets/`](widgets), holds its own [ESS](https://github.com/beyond10x/ess)
 specification and its own [AEP](https://github.com/beyond10x/aep) planning store, and is deployable
@@ -68,9 +72,15 @@ Both are on the [obligations page](widgets/phone/docs/obligations.md), with all 
 | [Topology](widgets/phone/docs/topology.md) | what each component needs from a browser to run at all |
 | [Obligations](widgets/phone/docs/obligations.md) | what a specification does not decide |
 
-Everything under `docs/` is generated from the specification and carries a `do not edit` header.
-`task docs` regenerates it; `task drift` fails if what is committed is not what the specification
-determines.
+Everything under `widgets/phone/docs/` is generated from the specification and carries a
+`do not edit` header. `task docs` regenerates it; `task drift` fails if what is committed is not what
+the specification determines.
+
+The same model is published as a browsable site at
+**[beyond10x.github.io/widgets/phone/](https://beyond10x.github.io/widgets/phone/)** — the domain
+pages with their lifecycle diagrams, the interaction graph, the topology, the type crossings, all 68
+obligations, and the [scenario player](https://beyond10x.github.io/widgets/phone/player/). `task
+pages` assembles it and `task pages-drift` refuses a stale one.
 
 ## Working on it
 
