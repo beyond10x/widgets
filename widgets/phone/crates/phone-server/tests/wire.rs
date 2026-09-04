@@ -292,3 +292,66 @@ fn the_page_speaks_one_offer_one_destination_and_nothing_else() {
         "one offer and one answer: there is no message that adds a candidate afterwards"
     );
 }
+
+/// `EndCause::Refused` reaches the page from the far leg and from nowhere else.
+///
+/// `wire::EndCause` documents `Refused` as "the far end refused the attempt", so a bridge *this
+/// server* declined must not borrow the word — a page cannot otherwise tell a PBX rejecting a call
+/// from this server declining a codec pair the far end never saw. Enumerated over every
+/// `OpenFailed` variant rather than over the one the adversary reported, because the class is "a
+/// failure this server originates" and there are five of them.
+#[test]
+fn a_refusal_of_ours_is_never_reported_as_the_far_ends() {
+    use phone_server::browser::{BridgeRefused, Refusal};
+    use phone_server::session::OpenFailed;
+    use phone_server::wire::{BridgeCause, TerminationReason};
+
+    let ours = [
+        OpenFailed::Browser(BridgeRefused {
+            cause: BridgeCause::Refused,
+            reason: TerminationReason::ProtocolError,
+            source: Refusal::NotSdp,
+        }),
+        OpenFailed::Browser(BridgeRefused {
+            cause: BridgeCause::Refused,
+            reason: TerminationReason::ProtocolError,
+            source: Refusal::NoRateConversion {
+                browser: "Opus",
+                browser_rate: 48_000,
+                sip_rate: 8_000,
+            },
+        }),
+        OpenFailed::NoMediaPort(std::io::Error::other("no port")),
+        OpenFailed::NoIdentity,
+        OpenFailed::NotDialable("not a uri".to_owned()),
+    ];
+
+    for failure in &ours {
+        let ToBrowser::FailCall { cause, .. } = failure.fail_call(&"c1".to_owned()) else {
+            panic!("a failed open tells the page about the call");
+        };
+        assert_ne!(
+            cause,
+            EndCause::Refused,
+            "`{failure}` is this server's own refusal and it reaches the page as the far end's"
+        );
+    }
+
+    // And the one variant that may carry it, does: a far leg that really was refused is the only
+    // source of the word, which is what makes it worth anything to a page.
+    let far = OpenFailed::FarLeg(phone_server::sip::LegFailed {
+        cause: EndCause::Refused,
+        source: sipx_call::Error::Rejected {
+            status: 486,
+            reason: "Busy Here".to_owned(),
+        },
+    });
+    let ToBrowser::FailCall { cause, .. } = far.fail_call(&"c1".to_owned()) else {
+        panic!("a failed open tells the page about the call");
+    };
+    assert_eq!(
+        cause,
+        EndCause::Refused,
+        "a 486 from the far end is the far end refusing the attempt"
+    );
+}

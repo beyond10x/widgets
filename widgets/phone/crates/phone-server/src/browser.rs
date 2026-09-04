@@ -246,6 +246,12 @@ pub fn refusal_of(error: ProfileError) -> BridgeRefused {
 /// session would be started — before ICE, before DTLS, before any key exists, and before the SIP
 /// call is placed.
 ///
+/// That sentence was true of this server and false of the system until correction round 2:
+/// `session::Phone::open` sent `softphone.bridge.ConfirmBridge` — the answer, and the command that
+/// moves the page's bridge to `Live` — before it asked this question, so the *page* started ICE and
+/// DTLS against a port already on its way out. `open` now asks above the `say`, and the claim holds
+/// for both ends.
+///
 /// # Errors
 ///
 /// [`Refusal::NoRateConversion`], which names the pair and the way through.

@@ -14,7 +14,7 @@
 use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use sipx_media::dtls::openssl::Identity;
 use sipx_sdp::ice::Credentials;
@@ -100,10 +100,19 @@ impl OpenFailed {
     pub fn fail_call(&self, call_id: &Id) -> ToBrowser {
         let cause = match self {
             // The far leg reported its own class; this is that class and not a second reading.
+            // **`Refused` reaches the page from here and from nowhere else**, which is the
+            // invariant `a_refusal_of_ours_is_never_reported_as_the_far_ends` pins: `wire::EndCause`
+            // documents `Refused` as "the far end refused the attempt", so a bridge this server
+            // declined must not borrow it. A page cannot otherwise tell a PBX rejecting a call
+            // from this server declining a codec pair the far end never saw.
             Self::FarLeg(leg) => leg.cause,
-            // This server would not have the offer — a profile boundary, or a codec pair it cannot
-            // bridge. `Refused` is the word for a refusal, whoever made it.
-            Self::Browser(_) => EndCause::Refused,
+            // A profile boundary, or a codec pair this server cannot carry. `Media` and not
+            // `Refused`: what could not be established is the audio, and none of the six words
+            // means "the near side declined" — `Local` is the closest and it reads as a person
+            // hanging up, which is a different thing to show someone. Nothing is lost by sharing
+            // the word with the two below, because the `FailBridge` sent beside this one carries a
+            // `TerminationReason` that separates all three.
+            Self::Browser(_) => EndCause::Media,
             // The media path could not be built on this side: no port, no certificate.
             Self::NoMediaPort(_) | Self::NoIdentity => EndCause::Media,
             // Nothing was ever dialled, so nothing refused or timed out. An address that is not a
@@ -145,9 +154,13 @@ impl Phone {
 
     /// Bring one bridge up: answer the offer, place the call, forward the audio.
     ///
-    /// The order is the specification's. The answer goes out before the call is placed, because
+    /// The order matters twice over. The answer goes out before the call is placed, because
     /// `softphone.bridge.ConfirmBridge` is what moves a bridge to `Live` and a page whose bridge is
-    /// still `Connecting` has nowhere to put a ringing call.
+    /// still `Connecting` has nowhere to put a ringing call. And **every refusal comes before that
+    /// answer**: the same command hands the page a session description to install, so answering an
+    /// offer this server is about to decline sets the page negotiating against a media port that is
+    /// already gone. Nothing is said to the page until the pair is known to be one this server can
+    /// carry.
     ///
     /// # Errors
     ///
@@ -178,13 +191,22 @@ impl Phone {
             )
             .await?;
         let accepted = answer_offer(offer, &local)?;
+
+        // Every refusal comes before the page is told anything, and this order is the whole of
+        // what "fail-closed" means here. `ConfirmBridge` carries the answer *and* moves the page's
+        // `BridgeSession` to `Live`, so a page told it installs a remote description and starts
+        // ICE and DTLS — against a media port this server drops on its way out of this function.
+        // Asking after the `say` made every Opus-first offer, which is what Chrome and Firefox
+        // send, into a wasted handshake against a port that was already gone.
+        let (codec, payload) = accepted.codec()?;
+        crate::browser::bridgeable(codec)?;
+
         say(ToBrowser::ConfirmBridge {
             bridge_id: bridge_id.clone(),
             session_id: session_id.clone(),
             answer: accepted.answer.clone(),
         });
 
-        let (codec, payload) = accepted.codec()?;
         let browser = Arc::new(
             leg.start(
                 accepted.remote_addr(),
@@ -213,6 +235,33 @@ impl Phone {
         // The fact receiver comes back beside the bridge rather than inside it: there is exactly
         // one consumer of it, and handing it to the caller is what says so.
         Ok((Live { call, bridge }, reports))
+    }
+}
+
+/// How often a live bridge is checked for having stopped.
+///
+/// `sipx_media::Bridge` has `is_connected` and nothing awaitable, so this is a poll rather than a
+/// wakeup. A quarter of a second is well inside what a person notices on a call that has gone
+/// silent, and it costs one wakeup per call per interval.
+pub const BRIDGE_POLL: Duration = Duration::from_millis(250);
+
+/// Resolve once this bridge has stopped forwarding, and answer what the page is told.
+///
+/// The row *the bridge is gone → `softphone.bridge.FailBridge`* was in this unit's first brief and
+/// was unimplemented until now: `fail_bridge` was reachable only from [`OpenFailed`], so a bridge
+/// that came up and then died told the page nothing and left its `BridgeSession` in `Live` for
+/// ever. Both directions go together — sipx's `Bridge` takes the whole thing down when either
+/// stops — so there is one command and not one per direction.
+pub async fn bridge_lost(live: &Live, bridge_id: &Id, session_id: &Id) -> ToBrowser {
+    live.bridge.until_lost(BRIDGE_POLL).await;
+    ToBrowser::FailBridge {
+        bridge_id: bridge_id.clone(),
+        session_id: session_id.clone(),
+        // The forwarding stopped without this server closing it, which is what
+        // `softphone.bridge.BridgeCause::Transport` — "the connection died" — is for. A bridge the
+        // page closed goes through `CloseBridge` and never reaches here.
+        cause: BridgeCause::Transport,
+        reason: TerminationReason::TransportLost,
     }
 }
 
@@ -251,7 +300,7 @@ pub async fn apply(message: &FromBrowser, live: &mut Live) {
         FromBrowser::Hold { held, .. } => {
             // The previous value is not wanted: the page sent the new one, and this server holds
             // no phone state to reconcile it against.
-            let _ = live.bridge.set_held(*held, &live.call);
+            let _ = live.bridge.set_held(*held);
         }
     }
 }

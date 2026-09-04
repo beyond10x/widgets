@@ -15,7 +15,9 @@ use std::time::Duration;
 
 use common::{answer_one, destination, endpoint, LOOPBACK, PATIENCE};
 use phone_server::bridge::Bridged;
+use phone_server::session::{self, Live};
 use phone_server::sip::{LegFact, SipLeg};
+use phone_server::wire::{BridgeCause, TerminationReason, ToBrowser};
 use sipx_media::{Codec, Config, MediaSession};
 use sipx_transport::Handle;
 use tokio::sync::mpsc;
@@ -123,7 +125,15 @@ async fn audio_crosses_the_bridge_to_the_far_end() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn muting_the_browser_leg_is_local_to_it() {
+async fn muting_the_page_stops_the_far_end_hearing_it_and_nothing_else() {
+    // This case asserted `!near_call.is_muted()` under the name
+    // `muting_the_browser_leg_is_local_to_it`, with the message "the SIP leg keeps sending: mute is
+    // local to the browser leg". Correction round 2 established that both halves of that were the
+    // wrong way round — `MediaSession::set_muted` gates a session's *outbound* audio, so the leg
+    // that carries the page's microphone to the far end is the SIP leg, and gating the browser leg
+    // instead silenced the far end in the page's ear while the microphone kept crossing. What is
+    // local about muting is that no signalling moves and the page keeps hearing the far end, which
+    // is what this now asserts.
     let (near_call, _far_call, _far, _near) = placed_call().await;
     let browser_leg = Arc::new(session(SocketAddr::new(LOOPBACK, 9)).await);
     let bridged = Bridged::connect(Arc::clone(&browser_leg), &near_call);
@@ -132,16 +142,120 @@ async fn muting_the_browser_leg_is_local_to_it() {
     // without a read-then-write that races a second muter.
     assert!(
         !bridged.set_browser_muted(true),
-        "the browser leg was not muted before this"
+        "the page was not muted before this"
     );
     assert!(
         bridged.set_browser_muted(true),
-        "muting an already-muted leg is not a transition, and says so"
+        "muting an already-muted page is not a transition, and says so"
+    );
+
+    assert!(
+        near_call.is_muted(),
+        "the microphone leaves by the SIP leg, so that is the leg mute gates"
     );
     assert!(
-        !near_call.is_muted(),
-        "the SIP leg keeps sending: mute is local to the browser leg and the far end is told \
-         nothing"
+        !browser_leg.is_muted(),
+        "and the browser leg keeps sending, because that is the direction the page listens to — \
+         mute is not hold, and a muted page still hears the far end"
     );
+    assert!(!bridged.is_held(), "nothing here held the call");
     assert!(bridged.is_connected(), "a muted leg is still a bridged leg");
+}
+
+/// Hold gates both directions, which is what makes it not mute.
+///
+/// `softphone.control` says of holding — and not of muting — that "this side stops sending and
+/// rendering". Two gates, so two assertions; the case exists because hold worked by accident while
+/// mute was inverted, and `set_held` calling `Call::mute` itself was the accident.
+#[tokio::test(flavor = "multi_thread")]
+async fn holding_gates_both_directions() {
+    let (near_call, _far_call, _far, _near) = placed_call().await;
+    let browser_leg = Arc::new(session(SocketAddr::new(LOOPBACK, 9)).await);
+    let bridged = Bridged::connect(Arc::clone(&browser_leg), &near_call);
+
+    assert!(!bridged.set_held(true), "the call was not held before this");
+    assert!(
+        near_call.is_muted(),
+        "held: the far end hears silence from this side"
+    );
+    assert!(
+        browser_leg.is_muted(),
+        "held: and the page hears silence from the far end"
+    );
+
+    assert!(bridged.set_held(false), "and hold is lifted");
+    assert!(
+        !near_call.is_muted() && !browser_leg.is_muted(),
+        "unholding a call nobody muted opens both directions again"
+    );
+}
+
+/// The guard the round-2 pass asked for: the SIP leg's audio rate is what the constant says.
+///
+/// `browser::SIP_LEG_AUDIO_RATE` is the number `browser::bridgeable` refuses a browser leg against,
+/// and it is right only because `SipLeg::options` leaves `DialOptions::new`'s default codec set
+/// alone. Nothing asserted that, so widening `SipLeg::options` to a codec set with G.722 or L16 in
+/// it would silently reopen the mis-rating this crate refuses — the constant would go on saying
+/// 8 000 while the leg ran at 16 000 or 44 100. This reads the rate off a leg that was really
+/// negotiated with a real far end.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_sip_legs_negotiated_audio_rate_is_what_the_constant_says() {
+    let (near_call, far_call, _far, _near) = placed_call().await;
+    assert_eq!(
+        near_call.media().audio_rate(),
+        phone_server::browser::SIP_LEG_AUDIO_RATE,
+        "the SIP leg negotiated a rate `browser::bridgeable` compares browser legs against, and \
+         the two no longer agree"
+    );
+    assert_eq!(
+        far_call.media().audio_rate(),
+        phone_server::browser::SIP_LEG_AUDIO_RATE,
+        "and the far end agrees, so this is the negotiated rate and not one side's preference"
+    );
+}
+
+/// A bridge that comes up and then dies tells the page so.
+///
+/// The row *the bridge is gone → `softphone.bridge.FailBridge`* has been in this unit's brief
+/// since the first round and was unimplemented until the second: `fail_bridge` was reachable only
+/// from `OpenFailed`, so a bridge that died after coming up left the page's `BridgeSession` in
+/// `Live` with nothing ever moving it.
+///
+/// The death here is the ordinary one — the SIP leg goes away, which stops its media session, and
+/// sipx's `Bridge` takes both directions down when either stops.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_bridge_that_dies_mid_call_tells_the_page() {
+    let (mut near_call, _far_call, _far, _near) = placed_call().await;
+    let browser_leg = Arc::new(session(SocketAddr::new(LOOPBACK, 9)).await);
+    let bridge = Bridged::connect(Arc::clone(&browser_leg), &near_call);
+    assert!(bridge.is_connected(), "it came up first");
+
+    // Hang up the SIP leg: its media session stops, so the bridge direction reading from it ends.
+    near_call.hang_up().await.expect("the BYE goes out");
+    let live = Live {
+        call: near_call,
+        bridge,
+    };
+
+    let told = tokio::time::timeout(
+        PATIENCE,
+        session::bridge_lost(&live, &"b9".to_owned(), &"s9".to_owned()),
+    )
+    .await
+    .expect("the loss is noticed within the patience, and not only on the next page message");
+
+    assert_eq!(
+        told,
+        ToBrowser::FailBridge {
+            bridge_id: "b9".to_owned(),
+            session_id: "s9".to_owned(),
+            cause: BridgeCause::Transport,
+            reason: TerminationReason::TransportLost,
+        },
+        "the forwarding stopped without this server closing it, which is what `Transport` is for"
+    );
+    assert!(
+        !live.bridge.is_connected(),
+        "and it really is gone rather than the watch having answered early"
+    );
 }

@@ -50,6 +50,13 @@ async fn placed_call() -> (sipx_call::Call, sipx_call::Call, Handle, Handle) {
     (near_call, far_call, far, near)
 }
 
+/// 20 ms of a loud square wave at 8 kHz, so that a gate can be measured and not just read.
+fn tone() -> Vec<i16> {
+    (0..160)
+        .map(|index| if (index / 20) % 2 == 0 { 8000 } else { -8000 })
+        .collect()
+}
+
 /// A live bridge, and the browser leg's session kept aside so its gate can be read.
 async fn live_bridge() -> (Live, Arc<MediaSession>, sipx_call::Call, Handle, Handle) {
     let (near_call, far_call, far, near) = placed_call().await;
@@ -72,8 +79,20 @@ async fn live_bridge() -> (Live, Arc<MediaSession>, sipx_call::Call, Handle, Han
 /// not answer the mute question, and a page whose `muted` is still `true` must not be sending.
 #[tokio::test(flavor = "multi_thread")]
 async fn unholding_does_not_clear_the_pages_mute() {
-    let (mut live, browser, _far_call, _far, _near) = live_bridge().await;
+    let (mut live, browser, far_call, _far, _near) = live_bridge().await;
     let call_id = "c1".to_owned();
+
+    // The page has to be speaking for "the far end cannot hear it" to mean anything, and symmetric
+    // RTP needs a first packet before the browser leg knows where to answer.
+    let page = session(browser.local_addr()).await;
+    let speaking = tokio::spawn(async move {
+        loop {
+            if !page.send(tone()).await {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    });
 
     apply(
         &FromBrowser::Mute {
@@ -83,9 +102,20 @@ async fn unholding_does_not_clear_the_pages_mute() {
         &mut live,
     )
     .await;
+    // Correction round 2 replaced the assertion that used to stand here. It read
+    // `browser.is_muted()` — "the page asked for muted, so the browser leg's outbound audio is
+    // gated" — and that is the inversion the adversary's own second pass found: the browser leg's
+    // outbound is what the *page* hears, so gating it on mute silenced the far end in the page's
+    // ear and left the microphone crossing the bridge. The two gates are now the other way round,
+    // and this case asserts what is audible rather than what a flag was set to, because a gate on
+    // the wrong leg satisfies the flag either way.
     assert!(
-        browser.is_muted(),
-        "the page asked for muted, so the browser leg's outbound audio is gated"
+        live.bridge.is_browser_muted(),
+        "the page's mute is recorded"
+    );
+    assert!(
+        live.call.is_muted(),
+        "and it is the SIP leg that is gated, because that is the leg the microphone leaves by"
     );
 
     apply(
@@ -106,10 +136,29 @@ async fn unholding_does_not_clear_the_pages_mute() {
     .await;
 
     assert!(
-        browser.is_muted(),
+        live.bridge.is_browser_muted(),
         "unholding restored the mute the page never lifted: `muted` and `held` are two fields in \
-         the specification and one gate in `Bridged`, so the page reads muted while the microphone \
-         is live"
+         the specification, so unholding must not answer the mute question"
+    );
+    assert!(
+        !live.bridge.is_held(),
+        "and hold really was lifted, so this is not passing because nothing changed"
+    );
+
+    // The measurement the flags cannot make: after an unhold, a page that is still muted is still
+    // not heard.
+    let heard = tokio::time::timeout(
+        PATIENCE,
+        far_call.record_at_least(4_000, Duration::from_secs(3)),
+    )
+    .await
+    .expect("the far end stops recording within the patience");
+    speaking.abort();
+    let loudest = heard.iter().copied().map(i16::abs).max().unwrap_or(0);
+    assert!(
+        loudest <= 1_000,
+        "unholding let a muted page be heard again: {} samples at the far end, loudest {loudest}",
+        heard.len(),
     );
 }
 
@@ -153,6 +202,15 @@ async fn clearing_mute_while_held_does_not_resume_a_held_leg() {
 
 /// An offer of the shape a browser sends. The fixture is `tests/browser_profile.rs`'s, restated
 /// because an integration test cannot import another one.
+///
+/// **PCMU before Opus in the `m=` line, and that one token is all that changed in correction round
+/// 2.** This case is about the `o=` line and the codec order is incidental to it — but pass 2 of
+/// the adversary required that an Opus-first offer be refused *before* `ConfirmBridge` is sent,
+/// and this case reads the answer out of that very command. With Opus first there is now no answer
+/// to read and the case fails on its own helper rather than on its subject. Every codec the
+/// profile requires is still present with its own `rtpmap`, so this is a reordering and not a
+/// weakening; `tests/browser_profile.rs:a_pcmu_first_offer_is_the_shape_this_server_can_bridge`
+/// measures that the reordered shape is on the profile.
 fn browser_offer() -> String {
     [
         "v=0",
@@ -160,7 +218,7 @@ fn browser_offer() -> String {
         "s=-",
         "t=0 0",
         "a=ice-options:trickle",
-        "m=audio 51234 UDP/TLS/RTP/SAVPF 111 0 8 13 101",
+        "m=audio 51234 UDP/TLS/RTP/SAVPF 0 8 111 13 101",
         "c=IN IP4 192.0.2.10",
         "a=sendrecv",
         "a=rtcp-mux",
