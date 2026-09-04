@@ -226,6 +226,34 @@ tasks:
       - cmd: echo "http://127.0.0.1:{{.PORT}}/index.html"
       - cd {{.OUT}}/phone && python3 -m http.server {{.PORT}} --bind 127.0.0.1
 
+  test-web:
+    desc: The page's own function under node — no browser, no build.
+    # `web/pcmu-first.mjs` is pure so it can be decided without a browser: it puts PCMU at the head
+    # of an offer's `m=audio` format list, which is what makes a call bridgeable against a SIP leg
+    # this server does not resample for. `web/offer.mjs` needs an `RTCPeerConnection` and is not
+    # reachable from here; it says so in its own doc.
+    #
+    # The plain-script form on purpose: `node --test web/test/` on Node 22 treats the directory as a
+    # file and reports one passing test having run nothing.
+    cmds:
+      # Every case, and the adversarial pass's two files among them: the second checks this page's
+      # own reading of the server's audio profile against a transcription written independently of
+      # it, which is worth more than either alone.
+      - node --test web/test/*.test.mjs
+
+  lints:
+    desc: Formatting and clippy, over the crates this application wrote.
+    # Package-scoped on purpose, twice over. `--all` reaches into `.build/`, whose crates are
+    # generated and carry `do not edit`, and rustfmt does not agree with all of them — a gate that
+    # fails on emitted code would demand editing it. And `softphone-shell` links the generated web
+    # bridge, which refuses to compile for anything but `wasm32-unknown-unknown`, so its lane names
+    # that target.
+    deps: [synthesize]
+    cmds:
+      - cargo fmt --check -p softphone-behaviour -p softphone-shell -p phone-server
+      - cargo clippy -p softphone-behaviour -p phone-server --all-targets -- -D warnings
+      - cargo clippy -p softphone-shell --target wasm32-unknown-unknown -- -D warnings
+
   # ── the gates ───────────────────────────────────────────────────────────────
   check:
     desc: The fast gate — specification, scenarios, and committed documentation.
@@ -235,6 +263,8 @@ tasks:
       - task: scenarios
       - task: drift
       - task: test
+      - task: test-web
+      - task: lints
 
   build:
     desc: Everything. Run this before pushing.

@@ -39,7 +39,7 @@ impl obligations::RegisterBehavior for Behaviour {
                 sip::RegistrationData {
                     registration_id: registration_id.clone(),
                     aor: input.aor.clone(),
-                    transport: input.transport.clone(),
+                    transport: input.transport,
                     expires: input.expires.clone(),
                 },
             )));
@@ -240,17 +240,17 @@ impl obligations::OpenDialogBehavior for Behaviour {
     ) -> Result<sip::OpenDialogOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         let dialog_id = sip::SipDialogId(store.mint());
-        store.dialogs.push(stamp_dialog(sip::SipDialog::new(
-            sip::SipDialogData {
+        store
+            .dialogs
+            .push(stamp_dialog(sip::SipDialog::new(sip::SipDialogData {
                 dialog_id: dialog_id.clone(),
                 session_id: input.session_id.clone(),
                 registration_id: input.registration_id.clone(),
                 remote_uri: input.remote_uri.clone(),
-                media_security: input.media_security.clone(),
+                media_security: input.media_security,
                 local_sdp: None,
                 remote_sdp: None,
-            },
-        )));
+            })));
         Ok(sip::OpenDialogOutcome::Opened {
             sip_dialog_opened: sip::SipDialogOpened {
                 dialog_id,
@@ -387,7 +387,7 @@ impl obligations::RegistrationByIdQuery for Behaviour {
             .map(|r| sip::RegistrationById {
                 registration_id: r.data.registration_id.clone(),
                 aor: r.data.aor.clone(),
-                transport: r.data.transport.clone(),
+                transport: r.data.transport,
                 state: r.state,
             })
             .collect())
@@ -405,7 +405,7 @@ impl obligations::SipDialogByIdQuery for Behaviour {
                 session_id: d.data.session_id.clone(),
                 registration_id: d.data.registration_id.clone(),
                 remote_uri: d.data.remote_uri.clone(),
-                media_security: d.data.media_security.clone(),
+                media_security: d.data.media_security,
                 local_sdp: d.data.local_sdp.clone(),
                 remote_sdp: d.data.remote_sdp.clone(),
                 state: d.state,

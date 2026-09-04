@@ -19,7 +19,9 @@ scope:
   path: docs
 - confidence: inferred
   path: ess/domains/bridge.yaml
-revision: 10
+- confidence: inferred
+  path: web
+revision: 12
 ---
 # Adapt browser-native audio
 
@@ -36,6 +38,31 @@ microphone permission ends the call with `softphone.control.EndCause::Media` and
 connected — and the model now holds that rather than hoping for it: a call reaches `Active` only
 through `MediaConnected`, which only `Kernel` may issue, so `Answering` is where a call whose media
 failed stops.
+
+## What `phone-server` requires of this adapter, measured
+
+`crates/phone-server` refuses to bridge a browser leg whose audio rate differs from the SIP leg's,
+at the media seam, before ICE and before the SIP call is placed. That refusal is not a limitation of
+the SDP: `sipx_sdp::browser_audio::answer` **can** select PCMU, and the measurement that decided it
+is in `review-result:adversary-phone-server-pass-1`'s correction —
+
+| offer | answer | `validate_answer` |
+|---|---|---|
+| Opus first | Opus first, payload 111 both sides | `Ok` |
+| **PCMU first** | **PCMU first, payload 0 both sides**, Opus still in the vocabulary | `Ok` |
+| Opus first, answer hand-reordered to PCMU first | — | **`Err(CodecSetIncomplete)`** |
+
+The answer must preserve the offer's format order, so the answerer has no say. **This adapter has
+it.** Offering PCMU ahead of Opus is what makes a call bridge today, and it is one line in the
+`RTCPeerConnection` setup rather than a negotiation.
+
+Until it does, the server answers and then declines, with a refusal naming the pair and the way
+through. `crates/phone-server/tests/browser_profile.rs`'s
+`a_pcmu_first_offer_is_the_shape_this_server_can_bridge` is the checkable target: it proves the
+PCMU-first path works end to end.
+
+The alternative is `story:opus-needs-rate-conversion`, which is Opus with the rate conversion it
+needs and belongs upstream in sipx, where both rates are known. This story does not wait for it.
 
 ## Scope
 

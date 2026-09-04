@@ -27,9 +27,8 @@ impl obligations::ConnectBridgeBehavior for Behaviour {
     ) -> Result<bridge::ConnectBridgeOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         let bridge_id = bridge::BridgeId(store.mint());
-        store
-            .bridges
-            .push(stamp(bridge::BridgeSession::new(bridge::BridgeSessionData {
+        store.bridges.push(stamp(bridge::BridgeSession::new(
+            bridge::BridgeSessionData {
                 bridge_id: bridge_id.clone(),
                 session_id: input.session_id.clone(),
                 endpoint: input.endpoint.clone(),
@@ -38,7 +37,8 @@ impl obligations::ConnectBridgeBehavior for Behaviour {
                 // what says no media crosses before it does.
                 remote_sdp: None,
                 cause: None,
-            })));
+            },
+        )));
         Ok(bridge::ConnectBridgeOutcome::Connecting {
             bridge_connecting: bridge::BridgeConnecting {
                 bridge_id,
@@ -124,7 +124,7 @@ impl obligations::FailBridgeBehavior for Behaviour {
         input: bridge::FailBridge,
     ) -> Result<bridge::FailBridgeOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
-        match close(&mut store, &input.bridge_id, input.cause.clone()) {
+        match close(&mut store, &input.bridge_id, input.cause) {
             Ok(()) => Ok(bridge::FailBridgeOutcome::Failed {
                 bridge_failed: bridge::BridgeFailed {
                     bridge_id: input.bridge_id,
@@ -134,8 +134,9 @@ impl obligations::FailBridgeBehavior for Behaviour {
                 },
             }),
             Err(state) => Ok(bridge::FailBridgeOutcome::WrongState {
-                error: state
-                    .map_or_else(no_such_bridge, |state| bridge::BridgeStateConflict { state }),
+                error: state.map_or_else(no_such_bridge, |state| bridge::BridgeStateConflict {
+                    state,
+                }),
             }),
         }
     }
@@ -147,7 +148,7 @@ impl obligations::CloseBridgeBehavior for Behaviour {
         input: bridge::CloseBridge,
     ) -> Result<bridge::CloseBridgeOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
-        match close(&mut store, &input.bridge_id, input.cause.clone()) {
+        match close(&mut store, &input.bridge_id, input.cause) {
             Ok(()) => Ok(bridge::CloseBridgeOutcome::Closed {
                 bridge_closed: bridge::BridgeClosed {
                     bridge_id: input.bridge_id,
@@ -157,8 +158,9 @@ impl obligations::CloseBridgeBehavior for Behaviour {
                 },
             }),
             Err(state) => Ok(bridge::CloseBridgeOutcome::WrongState {
-                error: state
-                    .map_or_else(no_such_bridge, |state| bridge::BridgeStateConflict { state }),
+                error: state.map_or_else(no_such_bridge, |state| bridge::BridgeStateConflict {
+                    state,
+                }),
             }),
         }
     }
@@ -176,7 +178,7 @@ impl obligations::BridgeByIdQuery for Behaviour {
                 endpoint: b.data.endpoint.clone(),
                 local_sdp: b.data.local_sdp.clone(),
                 remote_sdp: b.data.remote_sdp.clone(),
-                cause: b.data.cause.clone(),
+                cause: b.data.cause,
                 state: b.state,
             })
             .collect())
@@ -196,7 +198,7 @@ impl obligations::LiveBridgesQuery for Behaviour {
                 endpoint: b.data.endpoint.clone(),
                 local_sdp: b.data.local_sdp.clone(),
                 remote_sdp: b.data.remote_sdp.clone(),
-                cause: b.data.cause.clone(),
+                cause: b.data.cause,
                 state: b.state,
             })
             .collect())

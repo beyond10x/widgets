@@ -25,7 +25,7 @@ impl obligations::OpenSessionBehavior for Behaviour {
         let data = media::MediaSessionData {
             session_id: session_id.clone(),
             session_ref: input.session_ref.clone(),
-            binding: input.binding.clone(),
+            binding: input.binding,
             profile: input.profile.clone(),
             participant: input.participant.clone(),
             // Absent until `terminate` supplies it, which is the entity's own invariant.
@@ -112,11 +112,11 @@ impl obligations::TerminateSessionBehavior for Behaviour {
         };
         match session.refine() {
             media::AnyMediaSession::Requested(requested) => {
-                let moved = terminated(stamp(requested.terminate()), input.reason.clone());
+                let moved = terminated(stamp(requested.terminate()), input.reason);
                 store.sessions.insert(index, moved);
             }
             media::AnyMediaSession::Live(live) => {
-                let moved = terminated(stamp(live.terminate()), input.reason.clone());
+                let moved = terminated(stamp(live.terminate()), input.reason);
                 store.sessions.insert(index, moved);
             }
             other => {
@@ -188,10 +188,10 @@ impl obligations::MediaSessionByIdQuery for Behaviour {
             .map(|s| media::MediaSessionById {
                 session_id: s.data.session_id.clone(),
                 session_ref: s.data.session_ref.clone(),
-                binding: s.data.binding.clone(),
+                binding: s.data.binding,
                 profile: s.data.profile.clone(),
                 participant: s.data.participant.clone(),
-                termination: s.data.termination.clone(),
+                termination: s.data.termination,
                 state: s.state,
             })
             .collect())
@@ -208,10 +208,10 @@ impl obligations::LiveSessionsQuery for Behaviour {
             .map(|s| media::LiveSessions {
                 session_id: s.data.session_id.clone(),
                 session_ref: s.data.session_ref.clone(),
-                binding: s.data.binding.clone(),
+                binding: s.data.binding,
                 profile: s.data.profile.clone(),
                 participant: s.data.participant.clone(),
-                termination: s.data.termination.clone(),
+                termination: s.data.termination,
                 state: s.state,
             })
             .collect())

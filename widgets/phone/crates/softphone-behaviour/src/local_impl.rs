@@ -21,14 +21,14 @@ impl obligations::AttachLoopbackBehavior for Behaviour {
     ) -> Result<local::AttachLoopbackOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         let device_id = local::LoopbackDeviceId(store.mint());
-        store
-            .devices
-            .push(stamp(local::LoopbackDevice::new(local::LoopbackDeviceData {
+        store.devices.push(stamp(local::LoopbackDevice::new(
+            local::LoopbackDeviceData {
                 device_id: device_id.clone(),
                 session_id: input.session_id.clone(),
                 capture: input.capture.clone(),
                 render: input.render.clone(),
-            })));
+            },
+        )));
         Ok(local::AttachLoopbackOutcome::Attached {
             loopback_attached: local::LoopbackAttached {
                 device_id,

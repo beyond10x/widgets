@@ -29,16 +29,14 @@ impl obligations::ConfigureEndpointBehavior for Behaviour {
     ) -> Result<control::ConfigureEndpointOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         let endpoint_id = control::EndpointId(store.mint());
-        store
-            .endpoints
-            .push(control::PhoneEndpointSnapshot {
-                state: control::PhoneEndpointState::Enabled,
-                data: control::PhoneEndpointData {
-                    endpoint_id: endpoint_id.clone(),
-                    label: input.label.clone(),
-                    default_binding: input.default_binding.clone(),
-                },
-            });
+        store.endpoints.push(control::PhoneEndpointSnapshot {
+            state: control::PhoneEndpointState::Enabled,
+            data: control::PhoneEndpointData {
+                endpoint_id: endpoint_id.clone(),
+                label: input.label.clone(),
+                default_binding: input.default_binding,
+            },
+        });
         Ok(control::ConfigureEndpointOutcome::Configured {
             endpoint_configured: control::EndpointConfigured {
                 endpoint_id,
@@ -113,7 +111,11 @@ impl obligations::RingCallBehavior for Behaviour {
         input: control::RingCall,
     ) -> Result<control::RingCallOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
-        let Some(index) = store.calls.iter().position(|c| c.data.call_id == input.call_id) else {
+        let Some(index) = store
+            .calls
+            .iter()
+            .position(|c| c.data.call_id == input.call_id)
+        else {
             return Ok(control::RingCallOutcome::WrongState {
                 error: no_such_call(),
             });
@@ -169,7 +171,10 @@ fn accept(
 }
 
 impl obligations::AnswerBehavior for Behaviour {
-    fn answer(&mut self, input: control::Answer) -> Result<control::AnswerOutcome, UnmetObligation> {
+    fn answer(
+        &mut self,
+        input: control::Answer,
+    ) -> Result<control::AnswerOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         match accept(&mut store, &input.call_id) {
             Ok(()) => Ok(control::AnswerOutcome::Answered {
@@ -211,7 +216,11 @@ impl obligations::MediaConnectedBehavior for Behaviour {
         input: control::MediaConnected,
     ) -> Result<control::MediaConnectedOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
-        let Some(index) = store.calls.iter().position(|c| c.data.call_id == input.call_id) else {
+        let Some(index) = store
+            .calls
+            .iter()
+            .position(|c| c.data.call_id == input.call_id)
+        else {
             return Ok(control::MediaConnectedOutcome::WrongState {
                 error: no_such_call(),
             });
@@ -259,7 +268,10 @@ fn end(
 }
 
 impl obligations::HangUpBehavior for Behaviour {
-    fn hang_up(&mut self, input: control::HangUp) -> Result<control::HangUpOutcome, UnmetObligation> {
+    fn hang_up(
+        &mut self,
+        input: control::HangUp,
+    ) -> Result<control::HangUpOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         match end(&mut store, &input.call_id) {
             Ok(()) => {
@@ -279,7 +291,10 @@ impl obligations::HangUpBehavior for Behaviour {
 }
 
 impl obligations::RejectBehavior for Behaviour {
-    fn reject(&mut self, input: control::Reject) -> Result<control::RejectOutcome, UnmetObligation> {
+    fn reject(
+        &mut self,
+        input: control::Reject,
+    ) -> Result<control::RejectOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         match end(&mut store, &input.call_id) {
             Ok(()) => {
@@ -311,7 +326,7 @@ impl obligations::FailCallBehavior for Behaviour {
         let mut store = self.store.borrow_mut();
         match end(&mut store, &input.call_id) {
             Ok(()) => {
-                store.ended(&input.call_id, input.cause.clone(), None);
+                store.ended(&input.call_id, input.cause, None);
                 Ok(control::FailCallOutcome::Failed {
                     call_failed: control::CallFailed {
                         call_id: input.call_id,
@@ -416,7 +431,7 @@ fn call_row(snapshot: &control::CallSnapshot) -> control::CallRow {
     control::CallRow {
         call_id: snapshot.data.call_id.clone(),
         endpoint_id: snapshot.data.endpoint_id.clone(),
-        direction: snapshot.data.direction.clone(),
+        direction: snapshot.data.direction,
         remote: snapshot.data.remote.clone(),
         session_id: snapshot.data.session_id.clone(),
         muted: snapshot.data.muted,
@@ -434,7 +449,7 @@ impl obligations::EndpointByIdQuery for Behaviour {
             .map(|e| control::EndpointById {
                 endpoint_id: e.data.endpoint_id.clone(),
                 label: e.data.label.clone(),
-                default_binding: e.data.default_binding.clone(),
+                default_binding: e.data.default_binding,
                 state: e.state,
             })
             .collect())

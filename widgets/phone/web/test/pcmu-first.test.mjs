@@ -145,26 +145,33 @@ test("the rtpmap, fmtp and rtcp-fb attributes stay on the lines they were on", (
 
 // ── by name, not by number ──────────────────────────────────────────────────
 
-test("PCMU is the format `a=rtpmap` calls PCMU/8000, not payload type 0", () => {
-  // RFC 3551 makes 0 static and browsers do use it. This offer does not: Opus is 96, PCMU 97.
+test("PCMU named at a payload other than 0 is refused, because the server cannot resolve it", () => {
+  // This case asserted the opposite — that PCMU is whatever `a=rtpmap` calls PCMU/8000 and payload
+  // 97 would be moved to the head. The adversarial pass ran the consumer,
+  // `sipx_sdp::browser_audio`, against exactly that offer: `Err(CodecSetIncomplete)`.
+  // `static_or_mapping(media, 0, "PCMU", 8_000)` looks for the *number*, and consults an
+  // `a=rtpmap` only to check it does not disagree. So moving 97 to the head produces an offer the
+  // server answers and then refuses, and the refusal belongs here instead.
   const lines = [
     ...SESSION,
     "m=audio 9 UDP/TLS/RTP/SAVPF 96 97",
     "a=rtpmap:96 opus/48000/2",
     "a=rtpmap:97 PCMU/8000",
   ];
-  assert.equal(
-    pcmuFirst(crlf(lines)),
-    crlf(withMediaLine(lines, "m=audio 9 UDP/TLS/RTP/SAVPF 97 96")),
-  );
+  assert.throws(() => pcmuFirst(crlf(lines)), { message: /payload 97/ });
 });
 
-test("a format with no `a=rtpmap` is not PCMU, even when its number is 0", () => {
-  // The offer's own `a=rtpmap` lines are its vocabulary. Reading 0 as PCMU without one would be
-  // importing the static table this function is written not to assume — and every browser writes
-  // the line, so an offer without it did not come from `offer.mjs`.
+test("payload 0 with no `a=rtpmap` is PCMU, because that is what the server resolves", () => {
+  // This case asserted the opposite, on the ground that the offer's own `a=rtpmap` lines are its
+  // vocabulary and reading 0 as PCMU would import the static table. Measured against the consumer:
+  // payload 0 with no `a=rtpmap` is `Ok`, selecting 0. Refusing it here would mean the page
+  // declining an offer the server would have answered — and RFC 3551 is why: 0 is static, so an
+  // `a=rtpmap` for it is optional and only ever a contradiction to check.
   const lines = [...SESSION, "m=audio 9 UDP/TLS/RTP/SAVPF 111 0", "a=rtpmap:111 opus/48000/2"];
-  assert.throws(() => pcmuFirst(crlf(lines)), { message: /PCMU\/8000/ });
+  assert.equal(
+    pcmuFirst(crlf(lines)),
+    crlf(withMediaLine(lines, "m=audio 9 UDP/TLS/RTP/SAVPF 0 111")),
+  );
 });
 
 // ── the head of the list is the contract ────────────────────────────────────
@@ -215,11 +222,13 @@ test("an offer that already has PCMU first comes back byte-identical", () => {
 test("an offer with no PCMU is refused, and the refusal says what is missing", () => {
   // Returning it unchanged would produce a call that fails later, at the media seam, for a reason
   // the page would then have to explain.
+  // The payload, not the mapping: removing `a=rtpmap:0 PCMU/8000` and leaving 0 in the format list
+  // is still an offer the server answers, so what has to be missing is the 0 itself.
   const without = withMediaLine(
     CHROME.filter((line) => line !== "a=rtpmap:0 PCMU/8000"),
     "m=audio 9 UDP/TLS/RTP/SAVPF 111 63 9 8 13 110 126",
   );
-  assert.throws(() => pcmuFirst(crlf(without)), { message: /PCMU\/8000/ });
+  assert.throws(() => pcmuFirst(crlf(without)), { message: /no payload 0/ });
 });
 
 // ── one audio section, exactly ──────────────────────────────────────────────

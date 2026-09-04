@@ -33,8 +33,13 @@ import { pcmuFirst } from "./pcmu-first.mjs";
  */
 export async function createPcmuFirstOffer(configuration = {}) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const connection = new RTCPeerConnection(configuration);
+  // Inside the `try`, because `RTCPeerConnection` throws synchronously on a configuration it will
+  // not take — a malformed URL, a TURN server with no credential — and the microphone is already
+  // open by then. Constructed outside it, that throw left a live microphone behind, which is the
+  // one thing the paragraph above promises cannot happen.
+  let connection;
   try {
+    connection = new RTCPeerConnection(configuration);
     for (const track of stream.getAudioTracks()) connection.addTrack(track, stream);
     const { sdp } = await connection.createOffer();
     await connection.setLocalDescription({ type: "offer", sdp: pcmuFirst(sdp) });
@@ -42,7 +47,7 @@ export async function createPcmuFirstOffer(configuration = {}) {
     return { connection, stream, sdp: connection.localDescription.sdp };
   } catch (error) {
     for (const track of stream.getTracks()) track.stop();
-    connection.close();
+    connection?.close();
     throw error;
   }
 }
