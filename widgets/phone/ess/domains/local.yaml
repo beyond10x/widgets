@@ -1,0 +1,152 @@
+domain: softphone.local
+
+# The second binding, and the reason `softphone.media` can be called protocol-agnostic at all. One
+# binding proves nothing: the neutral layer and its only carrier are indistinguishable. This one is
+# cheap on purpose — local audio, no network, no registration — and it exists so that a claim about
+# the media layer has evidence behind it.
+#
+# Cited from `connectors/crates/voice-local-audio`, the sibling of `driver-sip` behind the same
+# neutral `TelephonySession` port.
+summary: >-
+  A media session carried by local audio devices. No network, no signalling, no registration — the
+  binding whose existence is the evidence that the media layer is not the SIP layer.
+
+naming:
+  wire: local
+  display: Local binding
+
+types:
+  - name: softphone.local.LoopbackDeviceId
+    kind: newtype
+    of: Uuid
+
+  # Whatever the platform calls the capture and render endpoints. Opaque: choosing a device is the
+  # host's, and `driver-audio` upstream opens an exact identifier only behind a Cargo feature.
+  - name: softphone.local.DeviceRef
+    kind: newtype
+    of: String
+
+  - name: softphone.local.LoopbackDeviceRow
+    kind: struct
+    fields:
+      - name: device_id
+        type: softphone.local.LoopbackDeviceId
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: capture
+        type: softphone.local.DeviceRef
+      - name: render
+        type: softphone.local.DeviceRef
+      - name: state
+        type: softphone.local.LoopbackDevice.State
+
+entities:
+  # Bridge 3, declared on this side for the reason bridge 2 is — see `domains/sip.yaml`. Not
+  # `Optional`, for the same reason `softphone.sip.SipDialog.session_id` is not.
+  - name: softphone.local.LoopbackDevice
+    identity:
+      name: device_id
+      type: softphone.local.LoopbackDeviceId
+    fields:
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: capture
+        type: softphone.local.DeviceRef
+      - name: render
+        type: softphone.local.DeviceRef
+    relations:
+      - name: session
+        kind: references
+        target: softphone.media.MediaSession
+        cardinality: one
+        via: session_id
+    lifecycle:
+      initial: Attached
+      states: [Attached, Detached]
+      terminal: [Detached]
+      transitions:
+        - name: detach
+          from: [Attached]
+          to: Detached
+
+actors:
+  - name: softphone.local.LocalHost
+    may:
+      - softphone.local.AttachLoopback
+      - softphone.local.DetachLoopback
+    naming:
+      display: Local host
+
+errors:
+  - name: softphone.local.LoopbackDeviceStateConflict
+    summary: The device is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.local.LoopbackDevice.State
+
+commands:
+  - name: softphone.local.AttachLoopback
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: capture, type: softphone.local.DeviceRef }
+      - { name: render, type: softphone.local.DeviceRef }
+    outcomes:
+      - name: attached
+        creates: softphone.local.LoopbackDevice
+        instance: device_id
+        emits: [softphone.local.LoopbackAttached]
+        sets:
+          session_id: input.session_id
+          capture: input.capture
+          render: input.render
+        payload:
+          softphone.local.LoopbackAttached:
+            session_id: input.session_id
+            capture: input.capture
+            render: input.render
+        summary: The only outcome that creates a `LoopbackDevice`.
+    naming: { wire: attach-loopback, display: Attach loopback }
+
+  # Carries `session_id` and `reason` for the reason `softphone.sip.CloseDialog` does: the binding
+  # `local.LoopbackDetached -> media.TerminateSession` can map only from this event.
+  - name: softphone.local.DetachLoopback
+    input:
+      - { name: device_id, type: softphone.local.LoopbackDeviceId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: reason, type: softphone.media.TerminationReason }
+    outcomes:
+      - name: detached
+        moves: softphone.local.LoopbackDevice.detach
+        instance: device_id
+        emits: [softphone.local.LoopbackDetached]
+        payload:
+          softphone.local.LoopbackDetached:
+            device_id: input.device_id
+            session_id: input.session_id
+            reason: input.reason
+      - { name: wrong-state, wrong_state: true, error: softphone.local.LoopbackDeviceStateConflict }
+    naming: { wire: detach-loopback, display: Detach loopback }
+
+events:
+  - name: softphone.local.LoopbackAttached
+    fields:
+      - { name: device_id, type: softphone.local.LoopbackDeviceId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: capture, type: softphone.local.DeviceRef }
+      - { name: render, type: softphone.local.DeviceRef }
+  - name: softphone.local.LoopbackDetached
+    fields:
+      - { name: device_id, type: softphone.local.LoopbackDeviceId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: reason, type: softphone.media.TerminationReason }
+
+views:
+  - name: softphone.local.LoopbackDeviceById
+    source: softphone.local.LoopbackDevice
+    shape: softphone.local.LoopbackDeviceRow
+    params:
+      - name: device_id
+        type: softphone.local.LoopbackDeviceId
+    filter: device_id == param.device_id
+    consistency: read_your_writes
+    naming: { wire: loopback-device-by-id, display: Loopback device by id }

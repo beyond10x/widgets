@@ -1,0 +1,24 @@
+# One system, one domain per layer. The layers are bridged by cross-domain `relations:` entries,
+# which `ess validate` refuses when the target, the carrying field or its type is wrong — so the
+# bridge between two layers is checked rather than described.
+#
+# The browser owns RTCPeerConnection, ICE, DTLS-SRTP, capture and render. Read from sipx
+# `docs/roadmap.md` M15 and `README.md`: sipx is "not a proxy, registrar, PBX, browser media engine,
+# or video stack".
+format: ess/1
+system: softphone
+version: v1
+
+summary: >-
+  A softphone in four layers: a protocol-neutral media session, a control surface a human or an
+  agent drives identically, what it recorded and who it can call, and a presentation over both.
+  Two bindings carry the media session, and neither appears in it.
+
+domains:
+  - softphone.media
+  - softphone.control
+  - softphone.sip
+  - softphone.local
+  - softphone.directory
+  - softphone.history
+  - softphone.presentation

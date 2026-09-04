@@ -1,0 +1,367 @@
+domain: softphone.media
+
+# The protocol-neutral half. Modelled construct-for-type from the Rust port that already exists,
+# `connectors/crates/domain/src/voice.rs` — `TelephonySession` (:163), `VoiceSessionDescriptor`
+# (:152), `MediaDescriptor` (:68), `ChannelSignal` (:114-135), `TerminationReason` (:140-149),
+# `ParticipantContext` (:58), `VoiceRef` (:33).
+#
+# No construct here *references* a binding, and the check is mechanical: `ess compile --format json`,
+# then search `domains."softphone.media"` for `softphone.sip.*` or `softphone.local.*` — it returns
+# nothing. That is the claim, and it is narrower than the one an earlier version of this comment
+# made. `BindingKind`'s variants are spelt `Sip` and `Loopback`, which are labels rather than
+# references, and the prose below names `softphone.sip` twice to explain why nothing else does.
+#
+# One deliberate difference from that port, and the reason it is not a contradiction: upstream,
+# establishment happens before a neutral session exists — `RuntimeError` is documented as "Failure
+# before a neutral telephony session exists" (`connectors/crates/voice-runtime/src/lib.rs:307-309`).
+# Here establishment is the `Requested -> Live` move, and the protocol detail of how it happened
+# lives in a binding domain. The neutral session therefore starts one state earlier than the port's.
+#
+# `binding` says which binding carries this session, and its type is the system-level
+# `softphone.media.BindingKind` — declared in `system.yaml`, belonging to no domain, because the type that
+# enumerates the bindings cannot live in the one domain that names none.
+#
+# Which binding actually carries a given session is held by causation, not by a rule here: only
+# `softphone.sip.OpenDialog` creates a `SipDialog` and only `softphone.local.AttachLoopback` creates
+# a `LoopbackDevice`. An invariant could not hold it either way — one reads only this entity's own
+# fields, its identity and its state — so do not add one that looks like it does.
+summary: >-
+  One admitted media session, its neutral audio profile, the signals crossing it and the one reason
+  it ended. Agnostic to SIP, RTVBP and WebRTC by construction: no relation and no field type here
+  points at a binding domain.
+
+naming:
+  wire: media
+  display: Media session
+
+types:
+  # Declared here and not at system level. A system-level type is the right home for this — it
+  # enumerates the bindings and belongs to no context — and `ess validate` and `ess compile` both
+  # accept it there, but all three `ess generate synthesize` targets panic on one at 0.14.0:
+  # "`softphone.BindingKind` is not a declaration this layout knows". See
+  # `upstream-blocker:ess-system-level-type-breaks-synthesis`. Move it when that clears.
+  - name: softphone.media.BindingKind
+    kind: enum
+    variants: [Sip, Loopback]
+
+  - name: softphone.media.MediaSessionId
+    kind: newtype
+    of: Uuid
+
+  # `VoiceRef` upstream: opaque, no protocol or tenant meaning, capped at 128 bytes
+  # (`voice.rs:30-47`). ESS carries the opacity; the byte cap is the host's.
+  - name: softphone.media.SessionRef
+    kind: newtype
+    of: String
+
+  # `MediaDescriptor::pcm_s16le_8khz_mono_20ms` is the only descriptor `validate` accepts
+  # (`voice.rs:78-95`), so the format enum has one member and says so rather than implying a choice.
+  - name: softphone.media.SampleFormat
+    kind: enum
+    variants: [PcmS16Le]
+
+  - name: softphone.media.MediaProfile
+    kind: struct
+    fields:
+      - name: sample_format
+        type: softphone.media.SampleFormat
+      - name: sample_rate_hz
+        type: Integer
+      - name: channels
+        type: Integer
+      - name: packet_time_ms
+        type: Integer
+      - name: frame_bytes
+        type: Integer
+    # The comment above says `pcm_s16le_8khz_mono_20ms` is the only descriptor upstream accepts, and
+    # until now the struct left all four numbers free — so the claim was prose and a profile of
+    # 44100 Hz stereo validated. These four are the claim, checked.
+    invariants:
+      - sample_rate_hz == 8000
+      - channels == 1
+      - packet_time_ms == 20
+      - frame_bytes == 320
+
+  # `ContextTrust` upstream has one member for a reason: remote channel context never becomes
+  # authority by inference (`voice.rs:49-53`).
+  - name: softphone.media.ContextTrust
+    kind: enum
+    variants: [Untrusted]
+
+  - name: softphone.media.Participant
+    kind: struct
+    fields:
+      - name: reference
+        type: softphone.media.SessionRef
+      - name: trust
+        type: softphone.media.ContextTrust
+      - name: display
+        type: Optional<String>
+
+  # Upstream is `ChannelSignal::Dtmf { digits }` with digits in `0-9 * # A-D`, at most 32
+  # (`voice.rs:114-135`). The grammar and the bound stay the host's: the predicate language has
+  # neither a length nor a pattern, so a rule here would be a rule that cannot be checked.
+  - name: softphone.media.DigitString
+    kind: newtype
+    of: String
+
+  # A tagged union, which is what this always was. An earlier version hand-rolled it as a struct
+  # with a discriminator field and justified that with "an ESS enum carries no fields" — true of
+  # `kind: enum`, and beside the point: `kind: union` with `tag:` is exactly a discriminated variant
+  # carrying a payload, and the discriminator it generates is the enum the struct declared by hand.
+  - name: softphone.media.ChannelSignal
+    kind: union
+    tag: kind
+    variants:
+      dtmf: softphone.media.DigitString
+
+  # All eight variants of `TerminationReason` (`voice.rs:137-147`), unchanged. This is the type the
+  # call log records, which is what keeps history out of SIP's vocabulary.
+  - name: softphone.media.TerminationReason
+    kind: enum
+    variants:
+      - Completed
+      - Cancelled
+      - RemoteHangup
+      - AuthorityRevoked
+      - LeaseExpired
+      - MediaOverload
+      - TransportLost
+      - ProtocolError
+
+  - name: softphone.media.MediaSessionRow
+    kind: struct
+    fields:
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: session_ref
+        type: softphone.media.SessionRef
+      - name: binding
+        type: softphone.media.BindingKind
+      - name: profile
+        type: softphone.media.MediaProfile
+      - name: participant
+        type: softphone.media.Participant
+      - name: termination
+        type: Optional<softphone.media.TerminationReason>
+      - name: state
+        type: softphone.media.MediaSession.State
+
+entities:
+  - name: softphone.media.MediaSession
+    identity:
+      name: session_id
+      type: softphone.media.MediaSessionId
+    fields:
+      - name: session_ref
+        type: softphone.media.SessionRef
+      - name: binding
+        type: softphone.media.BindingKind
+      - name: profile
+        type: softphone.media.MediaProfile
+      - name: participant
+        type: softphone.media.Participant
+      - name: termination
+        type: Optional<softphone.media.TerminationReason>
+    # `termination` was `Optional` with nothing tying it to the state, so a `Terminated` session with
+    # no reason validated. Read as an implication: unless the session is `Terminated`, nothing is
+    # claimed; once it is, the reason is there.
+    invariants:
+      - any:
+          - not: state == Terminated
+          - defined(termination)
+    # No relations. This entity names no binding, which is the whole point of it, and a relation
+    # naming one would put `softphone.sip` back in this file. The two bindings each declare a
+    # `references` entry pointing here; see
+    # `architecture-decision-record:media-session-owns-nothing` for what `owns` bought that
+    # `references` does not.
+    lifecycle:
+      initial: Requested
+      states: [Requested, Live, Terminated]
+      terminal: [Terminated]
+      transitions:
+        - name: establish
+          from: [Requested]
+          to: Live
+        - name: terminate
+          from: [Requested, Live]
+          to: Terminated
+
+actors:
+  # In-process only. Whoever holds the session drives it; a grant is not enforceable here anyway —
+  # web synthesis refuses actor grants because "a grant is checked against a caller identity, which
+  # types do not carry".
+  - name: softphone.media.SessionHost
+    may:
+      - softphone.media.OpenSession
+      - softphone.media.ActivateSession
+      - softphone.media.SendSignal
+      - softphone.media.ReceiveSignal
+      - softphone.media.InterruptOutput
+      - softphone.media.TerminateSession
+    naming:
+      display: Session host
+
+errors:
+  - name: softphone.media.MediaSessionStateConflict
+    summary: The session is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.media.MediaSession.State
+
+commands:
+  - name: softphone.media.OpenSession
+    input:
+      - { name: session_ref, type: softphone.media.SessionRef }
+      - { name: binding, type: softphone.media.BindingKind }
+      - { name: profile, type: softphone.media.MediaProfile }
+      - { name: participant, type: softphone.media.Participant }
+    outcomes:
+      - name: opened
+        creates: softphone.media.MediaSession
+        instance: session_id
+        emits: [softphone.media.SessionOpened]
+        sets:
+          session_ref: input.session_ref
+          binding: input.binding
+          profile: input.profile
+          participant: input.participant
+        payload:
+          softphone.media.SessionOpened:
+            session_ref: input.session_ref
+            binding: input.binding
+            profile: input.profile
+            participant: input.participant
+        summary: The session is Requested; no media crosses it until it is Live.
+    refs:
+      - connectors:crates/domain/src/voice.rs#L152
+    naming: { wire: open-session, display: Open session }
+
+  - name: softphone.media.ActivateSession
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+    outcomes:
+      - name: activated
+        moves: softphone.media.MediaSession.establish
+        instance: session_id
+        emits: [softphone.media.SessionActivated]
+        payload:
+          softphone.media.SessionActivated:
+            session_id: input.session_id
+      - { name: wrong-state, wrong_state: true, error: softphone.media.MediaSessionStateConflict }
+    naming: { wire: activate-session, display: Activate session }
+
+  # `TelephonySession::send_signal` (`voice.rs:174-190`). A keypress is not audio, so it cannot
+  # travel the frame path; a binding that cannot signal refuses by name upstream.
+  - name: softphone.media.SendSignal
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: signal, type: softphone.media.ChannelSignal }
+    outcomes:
+      - name: sent
+        emits: [softphone.media.SignalSent]
+        payload:
+          softphone.media.SignalSent:
+            session_id: input.session_id
+            signal: input.signal
+    refs:
+      - connectors:crates/domain/src/voice.rs#L174
+    naming: { wire: send-signal, display: Send signal }
+
+  # `TelephonySession::next_signal` (`voice.rs:167`), read direction.
+  - name: softphone.media.ReceiveSignal
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: signal, type: softphone.media.ChannelSignal }
+    outcomes:
+      - name: received
+        emits: [softphone.media.SignalReceived]
+        payload:
+          softphone.media.SignalReceived:
+            session_id: input.session_id
+            signal: input.signal
+    refs:
+      - connectors:crates/domain/src/voice.rs#L167
+    naming: { wire: receive-signal, display: Receive signal }
+
+  # `TelephonySession::interrupt_output` (`voice.rs:192`) — barge-in, which drops queued playback
+  # without ending the session.
+  - name: softphone.media.InterruptOutput
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+    outcomes:
+      - name: interrupted
+        emits: [softphone.media.OutputInterrupted]
+        payload:
+          softphone.media.OutputInterrupted:
+            session_id: input.session_id
+    refs:
+      - connectors:crates/domain/src/voice.rs#L192
+    naming: { wire: interrupt-output, display: Interrupt output }
+
+  # `TelephonySession::terminate` (`voice.rs:193`). The reason is carried, not derived from media or
+  # signal EOF — `wait_terminated`'s doc says the driver's first terminal fact is never guessed.
+  - name: softphone.media.TerminateSession
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: reason, type: softphone.media.TerminationReason }
+    outcomes:
+      - name: terminated
+        moves: softphone.media.MediaSession.terminate
+        instance: session_id
+        emits: [softphone.media.SessionTerminated]
+        sets:
+          termination: input.reason
+        payload:
+          softphone.media.SessionTerminated:
+            session_id: input.session_id
+            reason: input.reason
+      - { name: wrong-state, wrong_state: true, error: softphone.media.MediaSessionStateConflict }
+    refs:
+      - connectors:crates/domain/src/voice.rs#L193
+    naming: { wire: terminate-session, display: Terminate session }
+
+events:
+  - name: softphone.media.SessionOpened
+    fields:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: session_ref, type: softphone.media.SessionRef }
+      - { name: binding, type: softphone.media.BindingKind }
+      - { name: profile, type: softphone.media.MediaProfile }
+      - { name: participant, type: softphone.media.Participant }
+  - name: softphone.media.SessionActivated
+    fields:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+  - name: softphone.media.SignalSent
+    fields:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: signal, type: softphone.media.ChannelSignal }
+  - name: softphone.media.SignalReceived
+    fields:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: signal, type: softphone.media.ChannelSignal }
+  - name: softphone.media.OutputInterrupted
+    fields:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+  - name: softphone.media.SessionTerminated
+    fields:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: reason, type: softphone.media.TerminationReason }
+
+views:
+  - name: softphone.media.MediaSessionById
+    source: softphone.media.MediaSession
+    shape: softphone.media.MediaSessionRow
+    params:
+      - name: session_id
+        type: softphone.media.MediaSessionId
+    filter: session_id == param.session_id
+    consistency: read_your_writes
+    naming: { wire: media-session-by-id, display: Media session by id }
+
+  - name: softphone.media.LiveSessions
+    source: softphone.media.MediaSession
+    shape: softphone.media.MediaSessionRow
+    filter: state == Live
+    consistency: read_your_writes
+    naming: { wire: live-sessions, display: Live sessions }

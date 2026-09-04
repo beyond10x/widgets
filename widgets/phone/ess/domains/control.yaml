@@ -1,0 +1,518 @@
+domain: softphone.control
+
+# The surface. Whatever drives this phone — a person through a page, or an agent through the same
+# commands — issues exactly these, and the two grants below are byte-identical on purpose: the diff
+# that proves the phone is a surface for either is the one that shows no difference.
+#
+# This domain deals in addresses, never in contacts. Name resolution belongs to
+# `softphone.presentation` for a live call and `softphone.history` for a finished one, each of which
+# references `softphone.directory.Contact` itself. That is what keeps the agent-facing surface free
+# of the phonebook.
+#
+# It also names no protocol. `Call.session_id` points at the neutral `softphone.media.MediaSession`,
+# and which binding carries that session is the session's business.
+summary: >-
+  Calls this phone is placing or receiving, and the commands a human or an agent issues identically
+  to drive them. No protocol type and no contact appears here.
+
+naming:
+  wire: control
+  display: Phone control
+
+types:
+  - name: softphone.control.CallId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.control.EndpointId
+    kind: newtype
+    of: Uuid
+
+  # A SIP URI, a telephone number, or whatever the selected binding accepts. Opaque here by design:
+  # a control surface that could parse it would be a control surface that knows the protocol.
+  - name: softphone.control.RemoteAddress
+    kind: newtype
+    of: String
+
+  - name: softphone.control.CallDirection
+    kind: enum
+    variants: [Outbound, Inbound]
+
+  - name: softphone.control.DigitString
+    kind: newtype
+    of: String
+
+  # Why a call ended, in the classes the signalling side actually reports. Read from sipx's
+  # `"call-ended"` event, whose `cause.class` is one of `local | remote | refused | sip | media |
+  # timeout` (`docs/specs/browser-sdk.md:365`). Neutral enough to survive a second binding: none of
+  # these six words is SIP's.
+  - name: softphone.control.EndCause
+    kind: enum
+    variants: [Local, Remote, Refused, Sip, Media, Timeout]
+
+  # A SIP response code, 300-699, which `"reject"` requires (`browser-sdk.md:348`). Carried so a
+  # declined call and a busy one are different rows in the log rather than the same one.
+  - name: softphone.control.RejectStatus
+    kind: newtype
+    of: Integer
+
+  - name: softphone.control.EndpointRow
+    kind: struct
+    fields:
+      - name: endpoint_id
+        type: softphone.control.EndpointId
+      - name: label
+        type: String
+      - name: default_binding
+        type: softphone.media.BindingKind
+      - name: state
+        type: softphone.control.PhoneEndpoint.State
+
+  - name: softphone.control.CallRow
+    kind: struct
+    fields:
+      - name: call_id
+        type: softphone.control.CallId
+      - name: endpoint_id
+        type: softphone.control.EndpointId
+      - name: direction
+        type: softphone.control.CallDirection
+      - name: remote
+        type: softphone.control.RemoteAddress
+      - name: session_id
+        type: Optional<softphone.media.MediaSessionId>
+      - name: muted
+        type: Boolean
+      - name: state
+        type: softphone.control.Call.State
+
+entities:
+  # The phone itself: which binding its calls default to, and what to call it on screen.
+  - name: softphone.control.PhoneEndpoint
+    identity:
+      name: endpoint_id
+      type: softphone.control.EndpointId
+    fields:
+      - name: label
+        type: String
+      - name: default_binding
+        type: softphone.media.BindingKind
+    lifecycle:
+      initial: Enabled
+      states: [Enabled]
+      terminal: [Enabled]
+
+  - name: softphone.control.Call
+    identity:
+      name: call_id
+      type: softphone.control.CallId
+    fields:
+      - name: endpoint_id
+        type: softphone.control.EndpointId
+      - name: direction
+        type: softphone.control.CallDirection
+      - name: remote
+        type: softphone.control.RemoteAddress
+      - name: session_id
+        type: Optional<softphone.media.MediaSessionId>
+      - name: muted
+        type: Boolean
+    # A call that is `Active` has media, and before this the model said so only in a comment. The
+    # same implication shape as `softphone.media.MediaSession.termination`: nothing is claimed until
+    # the call is `Active`, and then `session_id` is there.
+    invariants:
+      - any:
+          - not: state == Active
+          - defined(session_id)
+    # Bridge 1. `references` and not `owns`: a media session is a thing in its own right, and a call
+    # that ends does not take it with it. `Optional`, because a call exists before its media does.
+    relations:
+      - name: media
+        kind: references
+        target: softphone.media.MediaSession
+        cardinality: one
+        via: session_id
+    # `Answering` exists because `Active` was being asserted a step too early. The target contract
+    # maps answering to `Incoming -> AnswerPending -> AnswerSent -> SipEstablished`
+    # (`browser-sdk.md:404-406`), and adds that established additionally requires the
+    # `RTCPeerConnection` be connected — a call whose media failed is "presented as `failed`, not as
+    # connected" (`:471-476`). One intermediate state is the smallest thing that can hold that: a
+    # call is `Answering` from the moment somebody accepts it until media is up, and only
+    # `MediaConnected` moves it on.
+    lifecycle:
+      initial: Requested
+      states: [Requested, Ringing, Answering, Active, Ended]
+      terminal: [Ended]
+      transitions:
+        - name: ring
+          from: [Requested]
+          to: Ringing
+        - name: accept
+          from: [Requested, Ringing]
+          to: Answering
+        - name: activate
+          from: [Answering]
+          to: Active
+        - name: end
+          from: [Requested, Ringing, Answering, Active]
+          to: Ended
+
+actors:
+  # These two `may:` lists are identical, and that is the specification of actor-neutrality. Keep
+  # them identical; a command one can issue and the other cannot belongs to `Kernel` below or to
+  # `softphone.presentation`.
+  - name: softphone.control.Human
+    may:
+      - softphone.control.ConfigureEndpoint
+      - softphone.control.Dial
+      - softphone.control.Answer
+      - softphone.control.Reject
+      - softphone.control.HangUp
+      - softphone.control.SendDigits
+      - softphone.control.SetMuted
+    naming:
+      display: Human
+
+  - name: softphone.control.Agent
+    may:
+      - softphone.control.ConfigureEndpoint
+      - softphone.control.Dial
+      - softphone.control.Answer
+      - softphone.control.Reject
+      - softphone.control.HangUp
+      - softphone.control.SendDigits
+      - softphone.control.SetMuted
+    naming:
+      display: Agent
+
+  # The signalling side. A page or an agent must not be able to assert that the far end rang or
+  # answered — those are facts arriving from the network, so they are granted here and nowhere else.
+  - name: softphone.control.Kernel
+    may:
+      - softphone.control.OfferCall
+      - softphone.control.RingCall
+      - softphone.control.ConfirmAnswer
+      - softphone.control.MediaConnected
+      - softphone.control.AttachMedia
+      - softphone.control.FailCall
+    naming:
+      display: Signalling kernel
+
+errors:
+  - name: softphone.control.CallStateConflict
+    summary: The call is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.control.Call.State
+
+commands:
+  - name: softphone.control.ConfigureEndpoint
+    input:
+      - { name: label, type: String }
+      - { name: default_binding, type: softphone.media.BindingKind }
+    outcomes:
+      - name: configured
+        creates: softphone.control.PhoneEndpoint
+        instance: endpoint_id
+        emits: [softphone.control.EndpointConfigured]
+        sets:
+          label: input.label
+          default_binding: input.default_binding
+        payload:
+          softphone.control.EndpointConfigured:
+            label: input.label
+            default_binding: input.default_binding
+    naming: { wire: configure-endpoint, display: Configure endpoint }
+
+  - name: softphone.control.Dial
+    input:
+      - { name: endpoint_id, type: softphone.control.EndpointId }
+      - { name: remote, type: softphone.control.RemoteAddress }
+    outcomes:
+      - name: dialled
+        creates: softphone.control.Call
+        instance: call_id
+        emits: [softphone.control.CallDialled]
+        sets:
+          endpoint_id: input.endpoint_id
+          remote: input.remote
+          direction: Outbound
+          muted: "false"
+        payload:
+          softphone.control.CallDialled:
+            endpoint_id: input.endpoint_id
+            remote: input.remote
+        summary: The call is Requested and Outbound; no media exists yet, so `session_id` is absent.
+    naming: { wire: dial, display: Dial }
+
+  - name: softphone.control.OfferCall
+    input:
+      - { name: endpoint_id, type: softphone.control.EndpointId }
+      - { name: remote, type: softphone.control.RemoteAddress }
+    outcomes:
+      - name: offered
+        creates: softphone.control.Call
+        instance: call_id
+        emits: [softphone.control.CallOffered]
+        sets:
+          endpoint_id: input.endpoint_id
+          remote: input.remote
+          direction: Inbound
+          muted: "false"
+        payload:
+          softphone.control.CallOffered:
+            endpoint_id: input.endpoint_id
+            remote: input.remote
+        summary: An inbound call the signalling side reports; the direction is Inbound.
+    naming: { wire: offer-call, display: Offer call }
+
+  - name: softphone.control.RingCall
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: ringing
+        moves: softphone.control.Call.ring
+        instance: call_id
+        emits: [softphone.control.CallRinging]
+        payload:
+          softphone.control.CallRinging:
+            call_id: input.call_id
+      - { name: wrong-state, wrong_state: true, error: softphone.control.CallStateConflict }
+    naming: { wire: ring-call, display: Ring call }
+
+  # Answering an inbound call: the local decision.
+  - name: softphone.control.Answer
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: answered
+        moves: softphone.control.Call.accept
+        instance: call_id
+        emits: [softphone.control.CallAnswered]
+        payload:
+          softphone.control.CallAnswered:
+            call_id: input.call_id
+      - { name: wrong-state, wrong_state: true, error: softphone.control.CallStateConflict }
+    naming: { wire: answer, display: Answer }
+
+  # The far end answering an outbound call: the same move, a different fact, and only the kernel may
+  # assert it.
+  - name: softphone.control.ConfirmAnswer
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: confirmed
+        moves: softphone.control.Call.accept
+        instance: call_id
+        emits: [softphone.control.CallConfirmed]
+        payload:
+          softphone.control.CallConfirmed:
+            call_id: input.call_id
+      - { name: wrong-state, wrong_state: true, error: softphone.control.CallStateConflict }
+    naming: { wire: confirm-answer, display: Confirm answer }
+
+  - name: softphone.control.Reject
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: status, type: softphone.control.RejectStatus }
+    outcomes:
+      - name: rejected
+        moves: softphone.control.Call.end
+        instance: call_id
+        emits: [softphone.control.CallRejected]
+        payload:
+          softphone.control.CallRejected:
+            call_id: input.call_id
+            status: input.status
+      - { name: wrong-state, wrong_state: true, error: softphone.control.CallStateConflict }
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L348
+    naming: { wire: reject, display: Reject }
+
+  - name: softphone.control.HangUp
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: hung-up
+        moves: softphone.control.Call.end
+        instance: call_id
+        emits: [softphone.control.CallHungUp]
+        payload:
+          softphone.control.CallHungUp:
+            call_id: input.call_id
+      # `refuses: false`. Hanging up a call that has already ended is not an error a caller can act
+      # on, and claiming a refusal here would be claiming behaviour no implementation is going to
+      # write — the exact shape the 0.11.0 changelog records as having been filed as a defect
+      # against a consuming repository.
+      - { name: wrong-state, wrong_state: true, refuses: false }
+    naming: { wire: hang-up, display: Hang up }
+
+  # Media is up. Only the kernel can say so, because only the kernel watches the
+  # `RTCPeerConnection`; a page asserting this would be the fail-closed rule inverted.
+  - name: softphone.control.MediaConnected
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: established
+        moves: softphone.control.Call.activate
+        instance: call_id
+        emits: [softphone.control.CallEstablished]
+        payload:
+          softphone.control.CallEstablished:
+            call_id: input.call_id
+      - { name: wrong-state, wrong_state: true, error: softphone.control.CallStateConflict }
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L471
+    naming: { wire: media-connected, display: Media connected }
+
+  # The writer of bridge 1. Without this command `Call.session_id` had no source at all, so no call
+  # could be joined to its media and the relation was a link nothing could establish.
+  - name: softphone.control.AttachMedia
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+    outcomes:
+      - name: attached
+        updates: softphone.control.Call
+        instance: call_id
+        emits: [softphone.control.MediaAttached]
+        sets:
+          session_id: input.session_id
+        payload:
+          softphone.control.MediaAttached:
+            call_id: input.call_id
+            session_id: input.session_id
+    naming: { wire: attach-media, display: Attach media }
+
+  # The far end cancelled, refused, or the transport went. Before this, nothing on the network could
+  # end a call: `HangUp` and `Reject` are the local decisions and `Kernel` held neither, so a
+  # cancelled inbound call rang until a person hung up a call that was already gone.
+  - name: softphone.control.FailCall
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: cause, type: softphone.control.EndCause }
+    outcomes:
+      - name: failed
+        moves: softphone.control.Call.end
+        instance: call_id
+        emits: [softphone.control.CallFailed]
+        payload:
+          softphone.control.CallFailed:
+            call_id: input.call_id
+            cause: input.cause
+      - { name: wrong-state, wrong_state: true, error: softphone.control.CallStateConflict }
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L365
+    naming: { wire: fail-call, display: Fail call }
+
+  # Digits leave through the media session's signal path, never through audio. The control layer
+  # states the intent; `softphone.media.SendSignal` is what carries it.
+  - name: softphone.control.SendDigits
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: digits, type: softphone.control.DigitString }
+    outcomes:
+      - name: sent
+        emits: [softphone.control.DigitsSent]
+        payload:
+          softphone.control.DigitsSent:
+            call_id: input.call_id
+            digits: input.digits
+    naming: { wire: send-digits, display: Send digits }
+
+  - name: softphone.control.SetMuted
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: muted, type: Boolean }
+    outcomes:
+      - name: changed
+        updates: softphone.control.Call
+        instance: call_id
+        emits: [softphone.control.MuteChanged]
+        sets:
+          muted: input.muted
+        payload:
+          softphone.control.MuteChanged:
+            call_id: input.call_id
+            muted: input.muted
+    naming: { wire: set-muted, display: Set muted }
+
+events:
+  - name: softphone.control.EndpointConfigured
+    fields:
+      - { name: endpoint_id, type: softphone.control.EndpointId }
+      - { name: label, type: String }
+      - { name: default_binding, type: softphone.media.BindingKind }
+  - name: softphone.control.CallDialled
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: endpoint_id, type: softphone.control.EndpointId }
+      - { name: remote, type: softphone.control.RemoteAddress }
+  - name: softphone.control.CallOffered
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: endpoint_id, type: softphone.control.EndpointId }
+      - { name: remote, type: softphone.control.RemoteAddress }
+  - name: softphone.control.CallRinging
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.control.CallAnswered
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.control.CallConfirmed
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.control.CallRejected
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: status, type: softphone.control.RejectStatus }
+  - name: softphone.control.CallEstablished
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.control.MediaAttached
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+  - name: softphone.control.CallFailed
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: cause, type: softphone.control.EndCause }
+  - name: softphone.control.CallHungUp
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.control.DigitsSent
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: digits, type: softphone.control.DigitString }
+  - name: softphone.control.MuteChanged
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: muted, type: Boolean }
+
+views:
+  - name: softphone.control.EndpointById
+    source: softphone.control.PhoneEndpoint
+    shape: softphone.control.EndpointRow
+    params:
+      - name: endpoint_id
+        type: softphone.control.EndpointId
+    filter: endpoint_id == param.endpoint_id
+    consistency: read_your_writes
+    naming: { wire: endpoint-by-id, display: Endpoint by id }
+
+  - name: softphone.control.CallById
+    source: softphone.control.Call
+    shape: softphone.control.CallRow
+    params:
+      - name: call_id
+        type: softphone.control.CallId
+    filter: call_id == param.call_id
+    consistency: read_your_writes
+    naming: { wire: call-by-id, display: Call by id }
+
+  - name: softphone.control.ActiveCalls
+    source: softphone.control.Call
+    shape: softphone.control.CallRow
+    filter: state == Active
+    consistency: read_your_writes
+    naming: { wire: active-calls, display: Active calls }

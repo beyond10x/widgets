@@ -1,0 +1,52 @@
+# Semantic runtime requirements, not a deployment. Before this file every component was listed in the
+# generated `topology.md` under "Components that run nowhere" — legal, and the kind of legal worth
+# reading twice.
+#
+# `min: 1` throughout, and that is the design statement rather than a shrug: this is one browser page
+# with one WASM module, so a second instance is a second phone and not redundancy. `stateless: false`
+# because the phone holds the calls, the keypad, the log and the phonebook, and losing the process
+# loses them — the storage question `ess` deliberately does not answer.
+topology:
+  workloads:
+    media-session:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: audio-capture
+        - browser: audio-render
+
+    phone-control:
+      replicas: { min: 1 }
+      stateless: false
+
+    call-history:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: local-storage
+
+    phone-directory:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: local-storage
+
+    phone-console:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: dom
+
+    sip-binding:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: secure-websocket
+        - browser: rtc-peer-connection
+
+    local-binding:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: audio-capture
+        - browser: audio-render

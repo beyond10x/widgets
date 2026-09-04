@@ -1,0 +1,272 @@
+domain: softphone.directory
+
+# The phonebook. Separate from `softphone.control` because a contact outlives every call to it, and
+# because the control surface — the one an agent drives — deals in addresses and must not need a
+# phonebook to place a call.
+#
+# `Contact owns ContactAddress` is the load-bearing entry here: an address has no meaning without
+# its contact, so deleting the contact cannot leave it behind. What the delete actually does —
+# refuse while addresses remain, or take them with it — is a command outcome and not a property of
+# the relation, so `owns` narrows that question without answering it.
+#
+# An address is typed `softphone.control.RemoteAddress`: the phonebook holds exactly what `Dial`
+# takes, so no conversion sits between choosing a contact and calling one.
+#
+# In 0.1 this never leaves the browser. A later service version makes it personal data with a
+# retention question; that is the version that needs an answer.
+summary: >-
+  Contacts and the addresses they can be reached at. Owned by the person using the phone; the
+  control surface never names a contact.
+
+naming:
+  wire: directory
+  display: Phonebook
+
+types:
+  - name: softphone.directory.ContactId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.directory.ContactAddressId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.directory.AddressLabel
+    kind: enum
+    variants: [Mobile, Work, Home, Other]
+
+  - name: softphone.directory.ContactRow
+    kind: struct
+    fields:
+      - name: contact_id
+        type: softphone.directory.ContactId
+      - name: display_name
+        type: String
+      - name: state
+        type: softphone.directory.Contact.State
+
+  - name: softphone.directory.ContactAddressRow
+    kind: struct
+    fields:
+      - name: address_id
+        type: softphone.directory.ContactAddressId
+      - name: contact_id
+        type: softphone.directory.ContactId
+      - name: address
+        type: softphone.control.RemoteAddress
+      - name: label
+        type: softphone.directory.AddressLabel
+      - name: state
+        type: softphone.directory.ContactAddress.State
+
+entities:
+  - name: softphone.directory.Contact
+    identity:
+      name: contact_id
+      type: softphone.directory.ContactId
+    fields:
+      - name: display_name
+        type: String
+    # Bridge 5. The one intra-domain bridge, and the canonical `owns`/many shape: the carrier is on
+    # the child and is the owner's identity type unwrapped, because a child has exactly one owner
+    # whether the owner has one child or a thousand.
+    relations:
+      - name: addresses
+        kind: owns
+        target: softphone.directory.ContactAddress
+        cardinality: many
+        via: contact_id
+    lifecycle:
+      initial: Active
+      states: [Active, Deleted]
+      terminal: [Deleted]
+      transitions:
+        - name: delete
+          from: [Active]
+          to: Deleted
+
+  - name: softphone.directory.ContactAddress
+    identity:
+      name: address_id
+      type: softphone.directory.ContactAddressId
+    fields:
+      - name: contact_id
+        type: softphone.directory.ContactId
+      - name: address
+        type: softphone.control.RemoteAddress
+      - name: label
+        type: softphone.directory.AddressLabel
+    lifecycle:
+      initial: Active
+      states: [Active, Removed]
+      terminal: [Removed]
+      transitions:
+        - name: remove
+          from: [Active]
+          to: Removed
+
+actors:
+  # Human only, and that is a statement rather than an omission: the phonebook belongs to the person
+  # using the phone. An agent dials the address it was given — `softphone.control.Dial` takes
+  # `RemoteAddress`, not a contact — so it needs no grant here. Widening this is a decision, not a
+  # gap to be filled in passing.
+  - name: softphone.directory.Human
+    may:
+      - softphone.directory.AddContact
+      - softphone.directory.RenameContact
+      - softphone.directory.AddAddress
+      - softphone.directory.RemoveAddress
+      - softphone.directory.DeleteContact
+    naming:
+      display: Human
+
+errors:
+  - name: softphone.directory.ContactStateConflict
+    summary: The contact is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.directory.Contact.State
+
+  - name: softphone.directory.ContactAddressStateConflict
+    summary: The address is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.directory.ContactAddress.State
+
+commands:
+  - name: softphone.directory.AddContact
+    input:
+      - { name: display_name, type: String }
+    outcomes:
+      - name: added
+        creates: softphone.directory.Contact
+        instance: contact_id
+        emits: [softphone.directory.ContactAdded]
+        sets:
+          display_name: input.display_name
+        payload:
+          softphone.directory.ContactAdded:
+            display_name: input.display_name
+    naming: { wire: add-contact, display: Add contact }
+
+  - name: softphone.directory.RenameContact
+    input:
+      - { name: contact_id, type: softphone.directory.ContactId }
+      - { name: display_name, type: String }
+    outcomes:
+      - name: renamed
+        updates: softphone.directory.Contact
+        instance: contact_id
+        emits: [softphone.directory.ContactRenamed]
+        sets:
+          display_name: input.display_name
+        payload:
+          softphone.directory.ContactRenamed:
+            contact_id: input.contact_id
+            display_name: input.display_name
+    naming: { wire: rename-contact, display: Rename contact }
+
+  - name: softphone.directory.AddAddress
+    input:
+      - { name: contact_id, type: softphone.directory.ContactId }
+      - { name: address, type: softphone.control.RemoteAddress }
+      - { name: label, type: softphone.directory.AddressLabel }
+    outcomes:
+      - name: added
+        creates: softphone.directory.ContactAddress
+        instance: address_id
+        emits: [softphone.directory.ContactAddressAdded]
+        sets:
+          contact_id: input.contact_id
+          address: input.address
+          label: input.label
+        payload:
+          softphone.directory.ContactAddressAdded:
+            contact_id: input.contact_id
+            address: input.address
+            label: input.label
+    naming: { wire: add-address, display: Add address }
+
+  - name: softphone.directory.RemoveAddress
+    input:
+      - { name: address_id, type: softphone.directory.ContactAddressId }
+    outcomes:
+      - name: removed
+        moves: softphone.directory.ContactAddress.remove
+        instance: address_id
+        emits: [softphone.directory.ContactAddressRemoved]
+        payload:
+          softphone.directory.ContactAddressRemoved:
+            address_id: input.address_id
+      - { name: wrong-state, wrong_state: true, error: softphone.directory.ContactAddressStateConflict }
+    naming: { wire: remove-address, display: Remove address }
+
+  # Deletes the contact only. Its addresses are `owns`-ed, so they cannot outlive it — but what
+  # happens to them is this outcome's job to state, not the relation's, and one call record that
+  # referenced the contact keeps its own copy of the address it dialled.
+  - name: softphone.directory.DeleteContact
+    input:
+      - { name: contact_id, type: softphone.directory.ContactId }
+    outcomes:
+      - name: deleted
+        moves: softphone.directory.Contact.delete
+        instance: contact_id
+        emits: [softphone.directory.ContactDeleted]
+        payload:
+          softphone.directory.ContactDeleted:
+            contact_id: input.contact_id
+      - { name: wrong-state, wrong_state: true, error: softphone.directory.ContactStateConflict }
+    naming: { wire: delete-contact, display: Delete contact }
+
+events:
+  - name: softphone.directory.ContactAdded
+    fields:
+      - { name: contact_id, type: softphone.directory.ContactId }
+      - { name: display_name, type: String }
+  - name: softphone.directory.ContactRenamed
+    fields:
+      - { name: contact_id, type: softphone.directory.ContactId }
+      - { name: display_name, type: String }
+  - name: softphone.directory.ContactAddressAdded
+    fields:
+      - { name: address_id, type: softphone.directory.ContactAddressId }
+      - { name: contact_id, type: softphone.directory.ContactId }
+      - { name: address, type: softphone.control.RemoteAddress }
+      - { name: label, type: softphone.directory.AddressLabel }
+  - name: softphone.directory.ContactAddressRemoved
+    fields:
+      - { name: address_id, type: softphone.directory.ContactAddressId }
+  - name: softphone.directory.ContactDeleted
+    fields:
+      - { name: contact_id, type: softphone.directory.ContactId }
+
+views:
+  - name: softphone.directory.ContactById
+    source: softphone.directory.Contact
+    shape: softphone.directory.ContactRow
+    params:
+      - name: contact_id
+        type: softphone.directory.ContactId
+    filter: contact_id == param.contact_id
+    consistency: read_your_writes
+    naming: { wire: contact-by-id, display: Contact by id }
+
+  - name: softphone.directory.Contacts
+    source: softphone.directory.Contact
+    shape: softphone.directory.ContactRow
+    filter: state == Active
+    consistency: read_your_writes
+    naming: { wire: contacts, display: Contacts }
+
+  - name: softphone.directory.ContactAddresses
+    source: softphone.directory.ContactAddress
+    shape: softphone.directory.ContactAddressRow
+    params:
+      - name: contact_id
+        type: softphone.directory.ContactId
+    filter:
+      all:
+        - contact_id == param.contact_id
+        - state == Active
+    consistency: read_your_writes
+    naming: { wire: contact-addresses, display: Contact addresses }

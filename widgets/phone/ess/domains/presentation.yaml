@@ -1,0 +1,426 @@
+domain: softphone.presentation
+
+# What is on screen and what a gesture means. No protocol, no media, no signalling — this domain
+# holds the two things a page has that the layers below do not: a partially typed number, and a
+# tile per call with a name on it.
+#
+# Name resolution lives here rather than in `softphone.control` on purpose: the control surface is
+# the one an agent drives, and it deals in addresses. A tile is the thing that wants a name, so a
+# tile is what references a contact.
+#
+# A command in one domain *does* cause a command in another, and the construct for it is `bindings:`
+# in `components.yaml` — `when: {event}` / `invoke: {command}`. An earlier version of this comment
+# said ESS could not express that. It was wrong, and the bindings that make an arriving call put
+# itself on screen are the correction: `softphone.control.CallOffered -> ShowCall`.
+#
+# What is still not modelled is a *command* causing a command. A binding reacts to an event, so
+# pressing a key does not issue `softphone.control.Dial` — the host does that, from a gesture.
+summary: >-
+  A keypad holding a partially typed address, and one tile per call carrying the contact name to
+  show. The only domain a page reads directly.
+
+naming:
+  wire: presentation
+  display: Phone console
+
+types:
+  - name: softphone.presentation.KeypadId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.presentation.CallTileId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.presentation.ConsoleId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.presentation.ConsoleRow
+    kind: struct
+    fields:
+      - name: console_id
+        type: softphone.presentation.ConsoleId
+      - name: active_tile
+        type: Optional<softphone.presentation.CallTileId>
+      - name: state
+        type: softphone.presentation.Console.State
+
+  - name: softphone.presentation.KeypadRow
+    kind: struct
+    fields:
+      - name: keypad_id
+        type: softphone.presentation.KeypadId
+      - name: entry
+        type: String
+      - name: state
+        type: softphone.presentation.Keypad.State
+
+  - name: softphone.presentation.CallTileRow
+    kind: struct
+    fields:
+      - name: tile_id
+        type: softphone.presentation.CallTileId
+      - name: call_id
+        type: softphone.control.CallId
+      - name: contact_id
+        type: Optional<softphone.directory.ContactId>
+      - name: state
+        type: softphone.presentation.CallTile.State
+
+entities:
+  # Which mode the screen is in. This is the "switch to the active-call view" behaviour, and it is
+  # an entity rather than a view because a view is a projection — it has a source, a shape and a
+  # consistency, and nothing that could be activated. A mode has states and legal moves between
+  # them, which is a lifecycle.
+  #
+  # One honest limit: no binding can drive these moves. A binding maps only from its event's fields,
+  # and no `softphone.control` event carries a console id — there is one console and the model has
+  # no way to say so. So the host moves it, and what this domain buys is that the four modes and the
+  # moves between them are declared and checked rather than implicit in a page.
+  - name: softphone.presentation.Console
+    identity:
+      name: console_id
+      type: softphone.presentation.ConsoleId
+    fields:
+      - name: active_tile
+        type: Optional<softphone.presentation.CallTileId>
+    lifecycle:
+      initial: Idle
+      states: [Idle, Dialing, Incoming, InCall]
+      terminal: []
+      transitions:
+        - name: dial
+          from: [Idle]
+          to: Dialing
+        - name: offer
+          from: [Idle]
+          to: Incoming
+        - name: engage
+          from: [Dialing, Incoming]
+          to: InCall
+        - name: release
+          from: [Dialing, Incoming, InCall]
+          to: Idle
+
+  # Not the dialled address: a half-typed one. It becomes a
+  # `softphone.control.RemoteAddress` at the moment somebody dials, and until then it is text on a
+  # screen and this is the only layer that should hold it.
+  - name: softphone.presentation.Keypad
+    identity:
+      name: keypad_id
+      type: softphone.presentation.KeypadId
+    fields:
+      - name: entry
+        type: String
+    lifecycle:
+      initial: Ready
+      states: [Ready]
+      terminal: [Ready]
+
+  - name: softphone.presentation.CallTile
+    identity:
+      name: tile_id
+      type: softphone.presentation.CallTileId
+    fields:
+      - name: call_id
+        type: softphone.control.CallId
+      - name: contact_id
+        type: Optional<softphone.directory.ContactId>
+    # Bridges 4 and 8. `call_id` is not `Optional` — a tile with no call is not a tile. `contact_id`
+    # is, because an unknown number has no contact and the tile shows the address instead.
+    relations:
+      - name: call
+        kind: references
+        target: softphone.control.Call
+        cardinality: one
+        via: call_id
+      - name: contact
+        kind: references
+        target: softphone.directory.Contact
+        cardinality: one
+        via: contact_id
+    lifecycle:
+      initial: Shown
+      states: [Shown, Dismissed]
+      terminal: [Dismissed]
+      transitions:
+        - name: dismiss
+          from: [Shown]
+          to: Dismissed
+
+actors:
+  # Human only, and that is the other half of the actor-neutrality statement: `softphone.control`
+  # grants `Human` and `Agent` the same commands, and this domain grants an agent nothing. An agent
+  # drives the phone; it does not drive a screen.
+  - name: softphone.presentation.Human
+    may:
+      - softphone.presentation.OpenConsole
+      - softphone.presentation.EnterDialing
+      - softphone.presentation.EnterIncoming
+      - softphone.presentation.EnterCall
+      - softphone.presentation.LeaveCall
+      - softphone.presentation.OpenKeypad
+      - softphone.presentation.PressKey
+      - softphone.presentation.ClearEntry
+      - softphone.presentation.ShowCall
+      - softphone.presentation.AttributeTile
+      - softphone.presentation.DismissCall
+    naming:
+      display: Human
+
+errors:
+  - name: softphone.presentation.ConsoleStateConflict
+    summary: The console is not in a mode from which the requested move is allowed.
+    fields:
+      - name: state
+        type: softphone.presentation.Console.State
+
+  - name: softphone.presentation.CallTileStateConflict
+    summary: The tile is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.presentation.CallTile.State
+
+commands:
+  - name: softphone.presentation.OpenConsole
+    input: []
+    outcomes:
+      - name: opened
+        creates: softphone.presentation.Console
+        instance: console_id
+        emits: [softphone.presentation.ConsoleOpened]
+        payload:
+          softphone.presentation.ConsoleOpened: {}
+        summary: The console starts Idle with no active tile.
+    naming: { wire: open-console, display: Open console }
+
+  - name: softphone.presentation.EnterDialing
+    input:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+    outcomes:
+      - name: dialing
+        moves: softphone.presentation.Console.dial
+        instance: console_id
+        emits: [softphone.presentation.ConsoleDialing]
+        sets:
+          active_tile: input.tile_id
+        payload:
+          softphone.presentation.ConsoleDialing:
+            console_id: input.console_id
+            tile_id: input.tile_id
+      - { name: wrong-state, wrong_state: true, error: softphone.presentation.ConsoleStateConflict }
+    naming: { wire: enter-dialing, display: Enter dialing }
+
+  - name: softphone.presentation.EnterIncoming
+    input:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+    outcomes:
+      - name: incoming
+        moves: softphone.presentation.Console.offer
+        instance: console_id
+        emits: [softphone.presentation.ConsoleIncoming]
+        sets:
+          active_tile: input.tile_id
+        payload:
+          softphone.presentation.ConsoleIncoming:
+            console_id: input.console_id
+            tile_id: input.tile_id
+      - { name: wrong-state, wrong_state: true, error: softphone.presentation.ConsoleStateConflict }
+    naming: { wire: enter-incoming, display: Enter incoming }
+
+  - name: softphone.presentation.EnterCall
+    input:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+    outcomes:
+      - name: engaged
+        moves: softphone.presentation.Console.engage
+        instance: console_id
+        emits: [softphone.presentation.ConsoleEngaged]
+        payload:
+          softphone.presentation.ConsoleEngaged:
+            console_id: input.console_id
+      - { name: wrong-state, wrong_state: true, error: softphone.presentation.ConsoleStateConflict }
+    naming: { wire: enter-call, display: Enter call }
+
+  - name: softphone.presentation.LeaveCall
+    input:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+    outcomes:
+      - name: released
+        moves: softphone.presentation.Console.release
+        instance: console_id
+        emits: [softphone.presentation.ConsoleReleased]
+        payload:
+          softphone.presentation.ConsoleReleased:
+            console_id: input.console_id
+      - { name: wrong-state, wrong_state: true, error: softphone.presentation.ConsoleStateConflict }
+    naming: { wire: leave-call, display: Leave call }
+
+  - name: softphone.presentation.OpenKeypad
+    input: []
+    outcomes:
+      - name: opened
+        creates: softphone.presentation.Keypad
+        instance: keypad_id
+        emits: [softphone.presentation.KeypadOpened]
+        payload:
+          softphone.presentation.KeypadOpened: {}
+        summary: The entry starts empty.
+    naming: { wire: open-keypad, display: Open keypad }
+
+  - name: softphone.presentation.PressKey
+    input:
+      - { name: keypad_id, type: softphone.presentation.KeypadId }
+      - { name: key, type: String }
+    outcomes:
+      - name: pressed
+        updates: softphone.presentation.Keypad
+        instance: keypad_id
+        emits: [softphone.presentation.KeyPressed]
+        payload:
+          softphone.presentation.KeyPressed:
+            keypad_id: input.keypad_id
+            key: input.key
+        summary: >-
+          A keypress during a live call is not this command — digits leave through
+          `softphone.control.SendDigits`, which is a different surface and a different grant.
+    naming: { wire: press-key, display: Press key }
+
+  - name: softphone.presentation.ClearEntry
+    input:
+      - { name: keypad_id, type: softphone.presentation.KeypadId }
+    outcomes:
+      - name: cleared
+        updates: softphone.presentation.Keypad
+        instance: keypad_id
+        emits: [softphone.presentation.EntryCleared]
+        sets:
+          entry: ""
+        payload:
+          softphone.presentation.EntryCleared:
+            keypad_id: input.keypad_id
+    naming: { wire: clear-entry, display: Clear entry }
+
+  # Takes a call and nothing else, so a binding can invoke it: a binding maps only from the
+  # triggering event's fields or from a literal, and no control event carries a contact. Resolving a
+  # number to a name is a lookup, and a lookup is not a mapping — hence `AttributeTile` below, the
+  # same split `softphone.history` makes between `RecordCall` and `AttributeRecord`.
+  - name: softphone.presentation.ShowCall
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: shown
+        creates: softphone.presentation.CallTile
+        instance: tile_id
+        emits: [softphone.presentation.CallShown]
+        sets:
+          call_id: input.call_id
+        payload:
+          softphone.presentation.CallShown:
+            call_id: input.call_id
+    naming: { wire: show-call, display: Show call }
+
+  - name: softphone.presentation.AttributeTile
+    input:
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+      - { name: contact_id, type: Optional<softphone.directory.ContactId> }
+    outcomes:
+      - name: attributed
+        updates: softphone.presentation.CallTile
+        instance: tile_id
+        emits: [softphone.presentation.TileAttributed]
+        sets:
+          contact_id: input.contact_id
+        payload:
+          softphone.presentation.TileAttributed:
+            tile_id: input.tile_id
+            contact_id: input.contact_id
+        summary: An absent `contact_id` clears the name and the tile shows the address instead.
+    naming: { wire: attribute-tile, display: Attribute tile }
+
+  # Dismisses the tile. It does not end the call — that is `softphone.control.HangUp`, and keeping
+  # them apart is what stops a screen change from dropping a conversation.
+  - name: softphone.presentation.DismissCall
+    input:
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+    outcomes:
+      - name: dismissed
+        moves: softphone.presentation.CallTile.dismiss
+        instance: tile_id
+        emits: [softphone.presentation.CallDismissed]
+        payload:
+          softphone.presentation.CallDismissed:
+            tile_id: input.tile_id
+      - { name: wrong-state, wrong_state: true, error: softphone.presentation.CallTileStateConflict }
+    naming: { wire: dismiss-call, display: Dismiss call }
+
+events:
+  - name: softphone.presentation.ConsoleOpened
+    fields:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+  - name: softphone.presentation.ConsoleDialing
+    fields:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+  - name: softphone.presentation.ConsoleIncoming
+    fields:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+  - name: softphone.presentation.ConsoleEngaged
+    fields:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+  - name: softphone.presentation.ConsoleReleased
+    fields:
+      - { name: console_id, type: softphone.presentation.ConsoleId }
+  - name: softphone.presentation.KeypadOpened
+    fields:
+      - { name: keypad_id, type: softphone.presentation.KeypadId }
+  - name: softphone.presentation.KeyPressed
+    fields:
+      - { name: keypad_id, type: softphone.presentation.KeypadId }
+      - { name: key, type: String }
+  - name: softphone.presentation.EntryCleared
+    fields:
+      - { name: keypad_id, type: softphone.presentation.KeypadId }
+  - name: softphone.presentation.CallShown
+    fields:
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.presentation.TileAttributed
+    fields:
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+      - { name: contact_id, type: Optional<softphone.directory.ContactId> }
+  - name: softphone.presentation.CallDismissed
+    fields:
+      - { name: tile_id, type: softphone.presentation.CallTileId }
+
+views:
+  - name: softphone.presentation.ConsoleById
+    source: softphone.presentation.Console
+    shape: softphone.presentation.ConsoleRow
+    params:
+      - name: console_id
+        type: softphone.presentation.ConsoleId
+    filter: console_id == param.console_id
+    consistency: read_your_writes
+    naming: { wire: console-by-id, display: Console by id }
+
+  - name: softphone.presentation.KeypadById
+    source: softphone.presentation.Keypad
+    shape: softphone.presentation.KeypadRow
+    params:
+      - name: keypad_id
+        type: softphone.presentation.KeypadId
+    filter: keypad_id == param.keypad_id
+    consistency: read_your_writes
+    naming: { wire: keypad-by-id, display: Keypad by id }
+
+  - name: softphone.presentation.CallTiles
+    source: softphone.presentation.CallTile
+    shape: softphone.presentation.CallTileRow
+    filter: state == Shown
+    consistency: read_your_writes
+    naming: { wire: call-tiles, display: Call tiles }

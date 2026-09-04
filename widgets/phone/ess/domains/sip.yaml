@@ -1,0 +1,513 @@
+domain: softphone.sip
+
+# One of two bindings. Everything protocol-specific about carrying a media session over SIP lives
+# here and nowhere else: the address-of-record, the transport, the media keying, the dialog.
+#
+# A browser can open no signalling transport but a WebSocket, and the page is served over HTTPS, so
+# the secure form is the only member of `SignallingTransport`. Read from sipx
+# `docs/specs/browser-signalling.md`, which binds WebSocket only.
+#
+# DTMF is specified in `softphone.media` and reachable through `softphone.control.SendDigits`, and
+# this binding cannot carry it: `docs/specs/browser-sdk.md:830` lists DTMF sending among the v1
+# vocabulary's explicit omissions, alongside hold, transfer, MESSAGE and SUBSCRIBE. Keeping the
+# neutral capability is a decision — the Rust port has it and the next binding may — but there is no
+# SIP path for it until that contract changes.
+#
+# The token does not ride an `Authorization` header: a browser cannot set one on a WebSocket
+# upgrade. It rides the negotiated subprotocol list, the way
+# `~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` §4 records for the
+# console's RTVBP phone. Whether the SIP provider wants that or a digest REGISTER instead is a
+# deployment fact this domain does not decide.
+summary: >-
+  A SIP registration and the dialogs carrying media sessions over it. The only domain that names
+  SIP, SDP, an address-of-record or a WebSocket. The offer/answer exchange lives here as four
+  commands and the two descriptions a dialog carries.
+
+naming:
+  wire: sip
+  display: SIP binding
+
+types:
+  - name: softphone.sip.RegistrationId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.sip.SipDialogId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.sip.AddressOfRecord
+    kind: newtype
+    of: String
+
+  - name: softphone.sip.SipUri
+    kind: newtype
+    of: String
+
+  - name: softphone.sip.SignallingTransport
+    kind: enum
+    variants: [SecureWebSocket]
+
+  # The browser negotiates media, and DTLS-SRTP is the only keying `RTCPeerConnection` offers.
+  - name: softphone.sip.MediaSecurity
+    kind: enum
+    variants: [DtlsSrtp]
+
+  # A SIP response code or method name as the far end sent it. Kept as text rather than an enum:
+  # inventing a closed set of SIP causes here would be inventing the protocol's vocabulary.
+  - name: softphone.sip.SipCause
+    kind: newtype
+    of: String
+
+  # An SDP body, as the far end or the browser wrote it. Opaque: parsing it is the kernel's, and a
+  # domain that could read it would be a domain that reimplements SDP.
+  - name: softphone.sip.SessionDescription
+    kind: newtype
+    of: String
+
+  - name: softphone.sip.RegistrationRow
+    kind: struct
+    fields:
+      - name: registration_id
+        type: softphone.sip.RegistrationId
+      - name: aor
+        type: softphone.sip.AddressOfRecord
+      - name: transport
+        type: softphone.sip.SignallingTransport
+      - name: state
+        type: softphone.sip.Registration.State
+
+  - name: softphone.sip.SipDialogRow
+    kind: struct
+    fields:
+      - name: dialog_id
+        type: softphone.sip.SipDialogId
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: registration_id
+        type: softphone.sip.RegistrationId
+      - name: remote_uri
+        type: softphone.sip.SipUri
+      - name: media_security
+        type: softphone.sip.MediaSecurity
+      - name: local_sdp
+        type: Optional<softphone.sip.SessionDescription>
+      - name: remote_sdp
+        type: Optional<softphone.sip.SessionDescription>
+      - name: state
+        type: softphone.sip.SipDialog.State
+
+entities:
+  - name: softphone.sip.Registration
+    identity:
+      name: registration_id
+      type: softphone.sip.RegistrationId
+    fields:
+      - name: aor
+        type: softphone.sip.AddressOfRecord
+      - name: transport
+        type: softphone.sip.SignallingTransport
+      # sipx's `"register"` requires it (`browser-sdk.md:341`), and a registration with no lifetime
+      # is one nothing can refresh.
+      - name: expires
+        type: Duration
+    # `Failed` is no longer terminal. It was, and that made one transient WSS drop permanent: the
+    # entity had no path back and the phone could not re-register without a new one.
+    lifecycle:
+      initial: Requested
+      states: [Requested, Registered, Failed, Ended]
+      terminal: [Ended]
+      transitions:
+        - name: confirm
+          from: [Requested]
+          to: Registered
+        - name: fail
+          from: [Requested, Registered]
+          to: Failed
+        - name: retry
+          from: [Failed]
+          to: Requested
+        - name: end
+          from: [Registered]
+          to: Ended
+
+  # Bridge 2, declared on this side. `references` and not `owns`, and the direction is the decision:
+  # an `owns` entry would have had to live on `softphone.media.MediaSession`, naming
+  # `softphone.sip.SipDialog` from the one domain whose claim is that it names no binding.
+  #
+  # What that costs is written down rather than lost:
+  # `architecture-decision-record:media-session-owns-nothing`. `owns` said a dialog cannot outlive
+  # its session; `references` does not, so `softphone.media.SessionTerminated -> CloseDialog` in
+  # `components.yaml` is now the only thing holding it, and it is a binding rather than a rule.
+  #
+  # `session_id` is not `Optional`: a dialog with no session is not a dialog this model has a name
+  # for. A `references`/one carrier may be bare or optional, and bare is the stronger statement.
+  - name: softphone.sip.SipDialog
+    identity:
+      name: dialog_id
+      type: softphone.sip.SipDialogId
+    fields:
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: registration_id
+        type: softphone.sip.RegistrationId
+      - name: remote_uri
+        type: softphone.sip.SipUri
+      - name: media_security
+        type: softphone.sip.MediaSecurity
+      - name: local_sdp
+        type: Optional<softphone.sip.SessionDescription>
+      - name: remote_sdp
+        type: Optional<softphone.sip.SessionDescription>
+    relations:
+      - name: session
+        kind: references
+        target: softphone.media.MediaSession
+        cardinality: one
+        via: session_id
+    lifecycle:
+      initial: Open
+      states: [Open, Closed]
+      terminal: [Closed]
+      transitions:
+        - name: close
+          from: [Open]
+          to: Closed
+
+actors:
+  - name: softphone.sip.SipHost
+    may:
+      - softphone.sip.Register
+      - softphone.sip.RefreshRegistration
+      - softphone.sip.RetryRegistration
+      - softphone.sip.Unregister
+      - softphone.sip.OpenDialog
+      - softphone.sip.CloseDialog
+      - softphone.sip.OfferLocalMedia
+      - softphone.sip.FailLocalMedia
+    naming:
+      display: SIP host
+
+  # REGISTER succeeding or failing is a fact from the network, so only the kernel asserts it.
+  - name: softphone.sip.Kernel
+    may:
+      - softphone.sip.ConfirmRegistration
+      - softphone.sip.FailRegistration
+      - softphone.sip.CloseDialog
+      - softphone.sip.RequestLocalMedia
+      - softphone.sip.ApplyRemoteMedia
+    naming:
+      display: Signalling kernel
+
+errors:
+  - name: softphone.sip.RegistrationStateConflict
+    summary: The registration is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.sip.Registration.State
+
+  - name: softphone.sip.SipDialogStateConflict
+    summary: The dialog is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.sip.SipDialog.State
+
+commands:
+  - name: softphone.sip.Register
+    input:
+      - { name: aor, type: softphone.sip.AddressOfRecord }
+      - { name: transport, type: softphone.sip.SignallingTransport }
+      - { name: expires, type: Duration }
+    outcomes:
+      - name: requested
+        creates: softphone.sip.Registration
+        instance: registration_id
+        emits: [softphone.sip.RegistrationRequested]
+        sets:
+          aor: input.aor
+          transport: input.transport
+          expires: input.expires
+        payload:
+          softphone.sip.RegistrationRequested:
+            aor: input.aor
+            transport: input.transport
+            expires: input.expires
+        summary: Requested; no SIP transaction has succeeded yet.
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L341
+    naming: { wire: register, display: Register }
+
+  - name: softphone.sip.ConfirmRegistration
+    input:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+    outcomes:
+      - name: confirmed
+        moves: softphone.sip.Registration.confirm
+        instance: registration_id
+        emits: [softphone.sip.RegistrationConfirmed]
+        payload:
+          softphone.sip.RegistrationConfirmed:
+            registration_id: input.registration_id
+      - { name: wrong-state, wrong_state: true, error: softphone.sip.RegistrationStateConflict }
+    naming: { wire: confirm-registration, display: Confirm registration }
+
+  - name: softphone.sip.FailRegistration
+    input:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: cause, type: softphone.sip.SipCause }
+    outcomes:
+      - name: failed
+        moves: softphone.sip.Registration.fail
+        instance: registration_id
+        emits: [softphone.sip.RegistrationFailed]
+        payload:
+          softphone.sip.RegistrationFailed:
+            registration_id: input.registration_id
+            cause: input.cause
+      - { name: wrong-state, wrong_state: true, error: softphone.sip.RegistrationStateConflict }
+    naming: { wire: fail-registration, display: Fail registration }
+
+  - name: softphone.sip.Unregister
+    input:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+    outcomes:
+      - name: ended
+        moves: softphone.sip.Registration.end
+        instance: registration_id
+        emits: [softphone.sip.RegistrationEnded]
+        payload:
+          softphone.sip.RegistrationEnded:
+            registration_id: input.registration_id
+      - { name: wrong-state, wrong_state: true, error: softphone.sip.RegistrationStateConflict }
+    naming: { wire: unregister, display: Unregister }
+
+  - name: softphone.sip.OpenDialog
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: remote_uri, type: softphone.sip.SipUri }
+      - { name: media_security, type: softphone.sip.MediaSecurity }
+    outcomes:
+      - name: opened
+        creates: softphone.sip.SipDialog
+        instance: dialog_id
+        emits: [softphone.sip.SipDialogOpened]
+        sets:
+          session_id: input.session_id
+          registration_id: input.registration_id
+          remote_uri: input.remote_uri
+          media_security: input.media_security
+        payload:
+          softphone.sip.SipDialogOpened:
+            session_id: input.session_id
+            registration_id: input.registration_id
+            remote_uri: input.remote_uri
+            media_security: input.media_security
+        summary: >-
+          The only outcome that creates a `SipDialog`. This is what holds the binding discriminator
+          on `softphone.media.MediaSession` honest — no invariant can.
+    naming: { wire: open-dialog, display: Open dialog }
+
+  - name: softphone.sip.RefreshRegistration
+    input:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: expires, type: Duration }
+    outcomes:
+      - name: refreshed
+        updates: softphone.sip.Registration
+        instance: registration_id
+        emits: [softphone.sip.RegistrationRefreshed]
+        sets:
+          expires: input.expires
+        payload:
+          softphone.sip.RegistrationRefreshed:
+            registration_id: input.registration_id
+            expires: input.expires
+    naming: { wire: refresh-registration, display: Refresh registration }
+
+  - name: softphone.sip.RetryRegistration
+    input:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+    outcomes:
+      - name: retried
+        moves: softphone.sip.Registration.retry
+        instance: registration_id
+        emits: [softphone.sip.RegistrationRetried]
+        payload:
+          softphone.sip.RegistrationRetried:
+            registration_id: input.registration_id
+      - { name: wrong-state, wrong_state: true, error: softphone.sip.RegistrationStateConflict }
+    naming: { wire: retry-registration, display: Retry registration }
+
+  # The offer/answer exchange, which had no home at all. Four of the five words the browser SDK
+  # needs (`browser-sdk.md:350-352` host to kernel, `:368-370` kernel to host): `need-local-media`
+  # arrives as `RequestLocalMedia`, `local-media` leaves as `OfferLocalMedia`, `remote-media`
+  # arrives as `ApplyRemoteMedia`, `media-failed` leaves as `FailLocalMedia`.
+  - name: softphone.sip.RequestLocalMedia
+    input:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+    outcomes:
+      - name: requested
+        emits: [softphone.sip.LocalMediaRequested]
+        payload:
+          softphone.sip.LocalMediaRequested:
+            dialog_id: input.dialog_id
+        summary: The kernel is asking the browser for a description; nothing about the dialog changes.
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L368
+    naming: { wire: request-local-media, display: Request local media }
+
+  - name: softphone.sip.OfferLocalMedia
+    input:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: sdp, type: softphone.sip.SessionDescription }
+    outcomes:
+      - name: offered
+        updates: softphone.sip.SipDialog
+        instance: dialog_id
+        emits: [softphone.sip.LocalMediaOffered]
+        sets:
+          local_sdp: input.sdp
+        payload:
+          softphone.sip.LocalMediaOffered:
+            dialog_id: input.dialog_id
+            sdp: input.sdp
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L350
+    naming: { wire: offer-local-media, display: Offer local media }
+
+  - name: softphone.sip.ApplyRemoteMedia
+    input:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: sdp, type: softphone.sip.SessionDescription }
+    outcomes:
+      - name: applied
+        updates: softphone.sip.SipDialog
+        instance: dialog_id
+        emits: [softphone.sip.RemoteMediaApplied]
+        sets:
+          remote_sdp: input.sdp
+        payload:
+          softphone.sip.RemoteMediaApplied:
+            dialog_id: input.dialog_id
+            sdp: input.sdp
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L370
+    naming: { wire: apply-remote-media, display: Apply remote media }
+
+  - name: softphone.sip.FailLocalMedia
+    input:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: cause, type: softphone.sip.SipCause }
+    outcomes:
+      - name: failed
+        emits: [softphone.sip.LocalMediaFailed]
+        payload:
+          softphone.sip.LocalMediaFailed:
+            dialog_id: input.dialog_id
+            cause: input.cause
+        summary: >-
+          Negotiation did not produce media. The dialog is not moved here — `CloseDialog` ends it and
+          `softphone.control.FailCall` is what tells the call, so a media failure never arrives as a
+          SIP cause.
+    refs:
+      - sipx:docs/specs/browser-sdk.md#L352
+    naming: { wire: fail-local-media, display: Fail local media }
+
+  # `session_id` and `reason` are inputs the caller already holds, and they are here so that the
+  # event can carry them: `sip.SipDialogClosed -> media.TerminateSession` in `components.yaml` maps
+  # only from this event's fields, and without them the session would outlive its dialog with
+  # nothing able to end it.
+  - name: softphone.sip.CloseDialog
+    input:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: cause, type: softphone.sip.SipCause }
+      - { name: reason, type: softphone.media.TerminationReason }
+    outcomes:
+      - name: closed
+        moves: softphone.sip.SipDialog.close
+        instance: dialog_id
+        emits: [softphone.sip.SipDialogClosed]
+        payload:
+          softphone.sip.SipDialogClosed:
+            dialog_id: input.dialog_id
+            session_id: input.session_id
+            cause: input.cause
+            reason: input.reason
+      - { name: wrong-state, wrong_state: true, error: softphone.sip.SipDialogStateConflict }
+    naming: { wire: close-dialog, display: Close dialog }
+
+events:
+  - name: softphone.sip.RegistrationRequested
+    fields:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: aor, type: softphone.sip.AddressOfRecord }
+      - { name: transport, type: softphone.sip.SignallingTransport }
+      - { name: expires, type: Duration }
+  - name: softphone.sip.RegistrationConfirmed
+    fields:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+  - name: softphone.sip.RegistrationFailed
+    fields:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: cause, type: softphone.sip.SipCause }
+  - name: softphone.sip.RegistrationEnded
+    fields:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+  - name: softphone.sip.RegistrationRefreshed
+    fields:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: expires, type: Duration }
+  - name: softphone.sip.RegistrationRetried
+    fields:
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+  - name: softphone.sip.LocalMediaRequested
+    fields:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+  - name: softphone.sip.LocalMediaOffered
+    fields:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: sdp, type: softphone.sip.SessionDescription }
+  - name: softphone.sip.RemoteMediaApplied
+    fields:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: sdp, type: softphone.sip.SessionDescription }
+  - name: softphone.sip.LocalMediaFailed
+    fields:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: cause, type: softphone.sip.SipCause }
+  - name: softphone.sip.SipDialogOpened
+    fields:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: registration_id, type: softphone.sip.RegistrationId }
+      - { name: remote_uri, type: softphone.sip.SipUri }
+      - { name: media_security, type: softphone.sip.MediaSecurity }
+  - name: softphone.sip.SipDialogClosed
+    fields:
+      - { name: dialog_id, type: softphone.sip.SipDialogId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: cause, type: softphone.sip.SipCause }
+      - { name: reason, type: softphone.media.TerminationReason }
+
+views:
+  - name: softphone.sip.RegistrationById
+    source: softphone.sip.Registration
+    shape: softphone.sip.RegistrationRow
+    params:
+      - name: registration_id
+        type: softphone.sip.RegistrationId
+    filter: registration_id == param.registration_id
+    consistency: read_your_writes
+    naming: { wire: registration-by-id, display: Registration by id }
+
+  - name: softphone.sip.SipDialogById
+    source: softphone.sip.SipDialog
+    shape: softphone.sip.SipDialogRow
+    params:
+      - name: dialog_id
+        type: softphone.sip.SipDialogId
+    filter: dialog_id == param.dialog_id
+    consistency: read_your_writes
+    naming: { wire: sip-dialog-by-id, display: SIP dialog by id }

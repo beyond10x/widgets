@@ -1,0 +1,266 @@
+# One component per domain. A single component owning every domain would validate and would erase
+# the layering from the only place a program can read it.
+#
+# `bindings:` at the foot of this file is what makes the layers react to each other. Before it,
+# `ess generate --kind docs` listed all 37 events under "Events nothing reacts to" and printed "this
+# system declares no bindings: nothing here reacts to anything" — an arriving call could not put
+# itself on screen, no call reached the log, and a terminated session left its dialog open.
+components:
+  - component: media-session
+    summary: Owns the protocol-neutral media session and the signals crossing it.
+    owns:
+      domains:
+        - softphone.media
+    accepts:
+      commands:
+        - softphone.media.OpenSession
+        - softphone.media.ActivateSession
+        - softphone.media.SendSignal
+        - softphone.media.ReceiveSignal
+        - softphone.media.InterruptOutput
+        - softphone.media.TerminateSession
+    publishes:
+      events:
+        - softphone.media.SessionOpened
+        - softphone.media.SessionActivated
+        - softphone.media.SignalSent
+        - softphone.media.SignalReceived
+        - softphone.media.OutputInterrupted
+        - softphone.media.SessionTerminated
+    reached_by: in_process
+
+  - component: phone-control
+    summary: Owns the call surface a human or an agent drives identically.
+    owns:
+      domains:
+        - softphone.control
+    accepts:
+      commands:
+        - softphone.control.ConfigureEndpoint
+        - softphone.control.Dial
+        - softphone.control.OfferCall
+        - softphone.control.RingCall
+        - softphone.control.Answer
+        - softphone.control.ConfirmAnswer
+        - softphone.control.Reject
+        - softphone.control.HangUp
+        - softphone.control.MediaConnected
+        - softphone.control.AttachMedia
+        - softphone.control.FailCall
+        - softphone.control.SendDigits
+        - softphone.control.SetMuted
+    publishes:
+      events:
+        - softphone.control.EndpointConfigured
+        - softphone.control.CallDialled
+        - softphone.control.CallOffered
+        - softphone.control.CallRinging
+        - softphone.control.CallAnswered
+        - softphone.control.CallConfirmed
+        - softphone.control.CallRejected
+        - softphone.control.CallHungUp
+        - softphone.control.CallEstablished
+        - softphone.control.MediaAttached
+        - softphone.control.CallFailed
+        - softphone.control.DigitsSent
+        - softphone.control.MuteChanged
+    reached_by: in_process
+
+  - component: sip-binding
+    summary: Owns the SIP registration and the dialogs carrying media sessions over it.
+    owns:
+      domains:
+        - softphone.sip
+    accepts:
+      commands:
+        - softphone.sip.Register
+        - softphone.sip.ConfirmRegistration
+        - softphone.sip.FailRegistration
+        - softphone.sip.RefreshRegistration
+        - softphone.sip.RetryRegistration
+        - softphone.sip.Unregister
+        - softphone.sip.OpenDialog
+        - softphone.sip.RequestLocalMedia
+        - softphone.sip.OfferLocalMedia
+        - softphone.sip.ApplyRemoteMedia
+        - softphone.sip.FailLocalMedia
+        - softphone.sip.CloseDialog
+    publishes:
+      events:
+        - softphone.sip.RegistrationRequested
+        - softphone.sip.RegistrationConfirmed
+        - softphone.sip.RegistrationFailed
+        - softphone.sip.RegistrationEnded
+        - softphone.sip.RegistrationRefreshed
+        - softphone.sip.RegistrationRetried
+        - softphone.sip.SipDialogOpened
+        - softphone.sip.LocalMediaRequested
+        - softphone.sip.LocalMediaOffered
+        - softphone.sip.RemoteMediaApplied
+        - softphone.sip.LocalMediaFailed
+        - softphone.sip.SipDialogClosed
+    reached_by: in_process
+
+  - component: local-binding
+    summary: Owns the local-audio binding, the second carrier the media layer is proved against.
+    owns:
+      domains:
+        - softphone.local
+    accepts:
+      commands:
+        - softphone.local.AttachLoopback
+        - softphone.local.DetachLoopback
+    publishes:
+      events:
+        - softphone.local.LoopbackAttached
+        - softphone.local.LoopbackDetached
+    reached_by: in_process
+
+  - component: call-history
+    summary: Owns the durable record of every finished call.
+    owns:
+      domains:
+        - softphone.history
+    accepts:
+      commands:
+        - softphone.history.RecordCall
+        - softphone.history.AttributeRecord
+        - softphone.history.DeleteRecord
+    publishes:
+      events:
+        - softphone.history.CallRecorded
+        - softphone.history.RecordAttributed
+        - softphone.history.RecordDeleted
+    reached_by: in_process
+
+  - component: phone-directory
+    summary: Owns the phonebook.
+    owns:
+      domains:
+        - softphone.directory
+    accepts:
+      commands:
+        - softphone.directory.AddContact
+        - softphone.directory.RenameContact
+        - softphone.directory.AddAddress
+        - softphone.directory.RemoveAddress
+        - softphone.directory.DeleteContact
+    publishes:
+      events:
+        - softphone.directory.ContactAdded
+        - softphone.directory.ContactRenamed
+        - softphone.directory.ContactAddressAdded
+        - softphone.directory.ContactAddressRemoved
+        - softphone.directory.ContactDeleted
+    reached_by: in_process
+
+  - component: phone-console
+    summary: Owns what is on screen and what a gesture means.
+    owns:
+      domains:
+        - softphone.presentation
+    accepts:
+      commands:
+        - softphone.presentation.OpenKeypad
+        - softphone.presentation.PressKey
+        - softphone.presentation.ClearEntry
+        - softphone.presentation.ShowCall
+        - softphone.presentation.AttributeTile
+        - softphone.presentation.DismissCall
+    publishes:
+      events:
+        - softphone.presentation.KeypadOpened
+        - softphone.presentation.KeyPressed
+        - softphone.presentation.EntryCleared
+        - softphone.presentation.CallShown
+        - softphone.presentation.TileAttributed
+        - softphone.presentation.CallDismissed
+    reached_by: in_process
+
+# Seven reactions. `delivery` and `on_failure` are required words, and the reason is the billing
+# example's: "a binding that can fail silently is the difference between specifying a system and
+# specifying a demo, and the way that difference disappears is a default nobody read."
+#
+# `retry` on all seven because every target command is idempotent in the sense `at_least_once`
+# requires: showing a tile twice for one call is a duplicate row a reader can see, and terminating a
+# session already terminated answers `wrong-state`. Nothing here loses work silently, and nothing
+# escalates, because there is no person to escalate to in a browser-only deployment.
+#
+# Three bindings that were wanted and are not here, with the reason:
+#   * `control.CallAnswered -> media.ActivateSession` — `ActivateSession` needs a `session_id` and
+#     `CallAnswered` carries a call. Forcing a session id into `Answer` would make a human supply
+#     something only the kernel knows.
+#   * name resolution on a tile — a lookup, not a mapping. `presentation.AttributeTile` is the verb.
+#   * `presentation.KeyPressed -> control.Dial` — a keypress is not a decision to dial, and a
+#     binding cannot know which one was.
+bindings:
+  - id: show-outbound-call
+    summary: A call being placed puts itself on screen.
+    when:  { event: softphone.control.CallDialled }
+    invoke: { command: softphone.presentation.ShowCall }
+    mapping:
+      call_id: event.call_id
+    delivery: at_least_once
+    on_failure: retry
+
+  # The one that was missing most: `softphone.presentation` grants only `Human`, and `ShowCall` was
+  # in that grant alone — so an incoming call needed a person to ask for the tile that would have
+  # told them about it.
+  - id: show-incoming-call
+    summary: An arriving call puts itself on screen.
+    when:  { event: softphone.control.CallOffered }
+    invoke: { command: softphone.presentation.ShowCall }
+    mapping:
+      call_id: event.call_id
+    delivery: at_least_once
+    on_failure: retry
+
+  - id: record-hung-up-call
+    summary: A call the user ended reaches the log.
+    when:  { event: softphone.control.CallHungUp }
+    invoke: { command: softphone.history.RecordCall }
+    mapping:
+      call_id: event.call_id
+    delivery: at_least_once
+    on_failure: retry
+
+  - id: record-rejected-call
+    summary: A call the user declined reaches the log.
+    when:  { event: softphone.control.CallRejected }
+    invoke: { command: softphone.history.RecordCall }
+    mapping:
+      call_id: event.call_id
+    delivery: at_least_once
+    on_failure: retry
+
+  - id: record-failed-call
+    summary: A call the network ended reaches the log.
+    when:  { event: softphone.control.CallFailed }
+    invoke: { command: softphone.history.RecordCall }
+    mapping:
+      call_id: event.call_id
+    delivery: at_least_once
+    on_failure: retry
+
+  # What `owns` used to claim. Flipping bridges 2 and 3 to `references` dropped the guarantee that a
+  # dialog cannot outlive its session; these two are what hold it now, and being bindings rather than
+  # rules they are visible in the interaction graph.
+  - id: end-session-with-dialog
+    summary: Closing the dialog terminates the session it carried.
+    when:  { event: softphone.sip.SipDialogClosed }
+    invoke: { command: softphone.media.TerminateSession }
+    mapping:
+      session_id: event.session_id
+      reason: event.reason
+    delivery: at_least_once
+    on_failure: retry
+
+  - id: end-session-with-loopback
+    summary: Detaching the loopback terminates the session it carried.
+    when:  { event: softphone.local.LoopbackDetached }
+    invoke: { command: softphone.media.TerminateSession }
+    mapping:
+      session_id: event.session_id
+      reason: event.reason
+    delivery: at_least_once
+    on_failure: retry

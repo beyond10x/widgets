@@ -1,0 +1,48 @@
+version: '3'
+
+vars:
+  SPEC: widgets/phone/ess
+
+tasks:
+  default:
+    cmds: [task: check]
+
+  validate:
+    desc: Validate the specification.
+    cmds:
+      - ess validate --path {{.SPEC}}
+
+  docs:
+    desc: Regenerate the committed markdown documentation from the specification.
+    cmds:
+      - rm -rf docs
+      - ess generate generate --path {{.SPEC}} --kind docs --out .
+      - task: plan
+
+  plan:
+    desc: Regenerate the obligations page the documentation links.
+    cmds:
+      - ess generate synthesize --path {{.SPEC}} --target rust --out .build/rust
+      - cp .build/rust/PLAN.md docs/obligations.md
+
+  site:
+    desc: Render the browsable HTML site, with the obligations page included.
+    cmds:
+      - ess generate synthesize --path {{.SPEC}} --target rust --out .build/rust
+      - >-
+        ess generate generate --path {{.SPEC}} --kind site --out site
+        --include plan/obligations=.build/rust/PLAN.md
+
+  drift:
+    desc: Fail if the committed documentation is not what the specification determines.
+    cmds:
+      - rm -rf .build/docs && mkdir -p .build/docs
+      - ess generate generate --path {{.SPEC}} --kind docs --out .build/docs
+      - diff -r --exclude=obligations.md .build/docs/docs docs
+
+  check:
+    desc: Everything a change has to pass.
+    cmds:
+      - task: validate
+      - task: drift
+      - ess compile --path {{.SPEC}} --format json > /dev/null

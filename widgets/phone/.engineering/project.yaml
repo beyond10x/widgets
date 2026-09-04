@@ -1,0 +1,11 @@
+version: aep.project/1
+
+# Written by `protocol reverse init`. It points; it does not duplicate — a rule restated
+# here would be a second copy with no way to say which one is in force. Principles and
+# profiles of this project's own go under `principles/` and `profiles/` beside this file.
+protocol: adp/1
+profile: development.standard
+protocols: git+https://github.com/beyond10x/aep.git#0f457ca0c3166ab2e1dba0e8d90c85d8de2bf4c2
+
+summary: >-
+  Browser softphone reference app built on the codewandler/sipx browser SDK

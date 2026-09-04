@@ -1,0 +1,233 @@
+domain: softphone.history
+
+# What happened. Its own domain rather than a view over ended `softphone.control.Call`s, for three
+# reasons:
+#
+# 1. A record outlives its call. `owns` means the far side cannot survive its owner, so a live call
+#    cannot own its history entry — the record has to stand alone and carry the id.
+# 2. It speaks the neutral vocabulary. `termination` is `softphone.control.EndCause` — six words,
+#    none of them SIP's — because this is a log of *calls* and not of media sessions. It was
+#    `softphone.media.TerminationReason` for a while, which was the wrong layer: a call that was
+#    declined has an end cause and never had a media session at all.
+#
+#    `answered_at` is `Optional` and is what makes a missed call derivable: a record with no
+#    `answered_at` and `Refused` or `Timeout` is a call nobody took. Without it, a missed call, a
+#    declined call and a 486 from the far end were the same row.
+# 3. Retention is a different question from call control, and answering it inside
+#    `softphone.control` would give the control surface a second job.
+#
+# `remote` is copied rather than referenced: a record of a call to a contact that has since been
+# deleted still says what was dialled.
+summary: >-
+  One durable record per finished call, in the neutral termination vocabulary, optionally attributed
+  to a contact. Deleted one record at a time; there is no bulk erase.
+
+naming:
+  wire: history
+  display: Call history
+
+types:
+  - name: softphone.history.CallRecordId
+    kind: newtype
+    of: Uuid
+
+  - name: softphone.history.CallRecordRow
+    kind: struct
+    fields:
+      - name: record_id
+        type: softphone.history.CallRecordId
+      - name: call_id
+        type: softphone.control.CallId
+      - name: contact_id
+        type: Optional<softphone.directory.ContactId>
+      - name: direction
+        type: softphone.control.CallDirection
+      - name: remote
+        type: softphone.control.RemoteAddress
+      - name: started_at
+        type: Timestamp
+      - name: ended_at
+        type: Timestamp
+      - name: answered_at
+        type: Optional<Timestamp>
+      - name: termination
+        type: softphone.control.EndCause
+      - name: status
+        type: Optional<softphone.control.RejectStatus>
+      - name: state
+        type: softphone.history.CallRecord.State
+
+entities:
+  - name: softphone.history.CallRecord
+    identity:
+      name: record_id
+      type: softphone.history.CallRecordId
+    fields:
+      # Bare, not `Optional`. Every record was made from a call, so the id is always there; that the
+      # `Call` entity may be long gone is what `references` already says, and needs no absence to
+      # express it. It was `Optional` until the three bindings that invoke `RecordCall` turned out
+      # to map a bare `CallId` out of their events: ESS validates that widening and the Rust emitter
+      # does not wrap it, so the generated system stopped compiling. See
+      # `upstream-blocker:ess-mapping-does-not-widen-optional`.
+      - name: call_id
+        type: softphone.control.CallId
+      - name: contact_id
+        type: Optional<softphone.directory.ContactId>
+      - name: direction
+        type: softphone.control.CallDirection
+      - name: remote
+        type: softphone.control.RemoteAddress
+      - name: started_at
+        type: Timestamp
+      - name: ended_at
+        type: Timestamp
+      # Absent on a call nobody took, which is what makes a missed call a query rather than a guess.
+      - name: answered_at
+        type: Optional<Timestamp>
+      - name: termination
+        type: softphone.control.EndCause
+      # The SIP status, where the far end sent one. Optional because a local hangup has none.
+      - name: status
+        type: Optional<softphone.control.RejectStatus>
+    invariants:
+      - ended_at >= started_at
+    # Bridges 6 and 7. Both `references` and both `Optional`: the record outlives the call it came
+    # from, and a call to a number nobody has saved has no contact. Two relations on two distinct
+    # fields, which is what the one-relation-per-field rule requires.
+    relations:
+      - name: call
+        kind: references
+        target: softphone.control.Call
+        cardinality: one
+        via: call_id
+      - name: contact
+        kind: references
+        target: softphone.directory.Contact
+        cardinality: one
+        via: contact_id
+    lifecycle:
+      initial: Recorded
+      states: [Recorded, Deleted]
+      terminal: [Deleted]
+      transitions:
+        - name: delete
+          from: [Recorded]
+          to: Deleted
+
+actors:
+  # Writing a record is the phone's, not a caller's: a record somebody can mint by hand is not a
+  # record of anything.
+  - name: softphone.history.HistoryHost
+    may:
+      - softphone.history.RecordCall
+    naming:
+      display: History host
+
+  - name: softphone.history.Human
+    may:
+      - softphone.history.AttributeRecord
+      - softphone.history.DeleteRecord
+    naming:
+      display: Human
+
+errors:
+  - name: softphone.history.CallRecordStateConflict
+    summary: The record is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.history.CallRecord.State
+
+commands:
+  # Takes the call and nothing else. Everything else a record holds is read rather than passed:
+  # `direction` and `remote` from the call the id names, `started_at` and `ended_at` from the clock,
+  # `termination` from the reason the call ended with. A clock is not an input, and the model says so
+  # by staying quiet rather than by naming a source that does not exist — the same silence
+  # `billing.invoice.CreateInvoice` keeps about `issued_at`.
+  #
+  # It also has to be shaped this way to be reachable at all: three bindings in `components.yaml`
+  # invoke it from `CallHungUp`, `CallRejected` and `CallFailed`, and a binding maps only from the
+  # triggering event's fields. Those events carry a call id. They cannot carry a timestamp.
+  - name: softphone.history.RecordCall
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+    outcomes:
+      - name: recorded
+        creates: softphone.history.CallRecord
+        instance: record_id
+        emits: [softphone.history.CallRecorded]
+        sets:
+          call_id: input.call_id
+        payload:
+          softphone.history.CallRecorded:
+            call_id: input.call_id
+        summary: >-
+          Written once the call is terminal. `contact_id` is absent here; attribution is a separate
+          command, because who a number belongs to can change after the call.
+    naming: { wire: record-call, display: Record call }
+
+  - name: softphone.history.AttributeRecord
+    input:
+      - { name: record_id, type: softphone.history.CallRecordId }
+      - { name: contact_id, type: Optional<softphone.directory.ContactId> }
+    outcomes:
+      - name: attributed
+        updates: softphone.history.CallRecord
+        instance: record_id
+        emits: [softphone.history.RecordAttributed]
+        sets:
+          contact_id: input.contact_id
+        payload:
+          softphone.history.RecordAttributed:
+            record_id: input.record_id
+            contact_id: input.contact_id
+        summary: An absent `contact_id` clears the attribution; `remote` is never changed.
+    naming: { wire: attribute-record, display: Attribute record }
+
+  # One record. There is no `ClearHistory`: erasing an unbounded set on one press is a different
+  # decision and does not arrive by implication.
+  - name: softphone.history.DeleteRecord
+    input:
+      - { name: record_id, type: softphone.history.CallRecordId }
+    outcomes:
+      - name: deleted
+        moves: softphone.history.CallRecord.delete
+        instance: record_id
+        emits: [softphone.history.RecordDeleted]
+        payload:
+          softphone.history.RecordDeleted:
+            record_id: input.record_id
+      - { name: wrong-state, wrong_state: true, error: softphone.history.CallRecordStateConflict }
+    naming: { wire: delete-record, display: Delete record }
+
+events:
+  - name: softphone.history.CallRecorded
+    fields:
+      - { name: record_id, type: softphone.history.CallRecordId }
+      - { name: call_id, type: softphone.control.CallId }
+  - name: softphone.history.RecordAttributed
+    fields:
+      - { name: record_id, type: softphone.history.CallRecordId }
+      - { name: contact_id, type: Optional<softphone.directory.ContactId> }
+  - name: softphone.history.RecordDeleted
+    fields:
+      - { name: record_id, type: softphone.history.CallRecordId }
+
+views:
+  - name: softphone.history.CallRecordById
+    source: softphone.history.CallRecord
+    shape: softphone.history.CallRecordRow
+    params:
+      - name: record_id
+        type: softphone.history.CallRecordId
+    filter: record_id == param.record_id
+    consistency: read_your_writes
+    naming: { wire: call-record-by-id, display: Call record by id }
+
+  - name: softphone.history.RecentCalls
+    source: softphone.history.CallRecord
+    shape: softphone.history.CallRecordRow
+    filter: state == Recorded
+    order_by:
+      - ended_at desc
+    consistency: read_your_writes
+    naming: { wire: recent-calls, display: Recent calls }
