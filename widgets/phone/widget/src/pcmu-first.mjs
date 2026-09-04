@@ -123,6 +123,96 @@ export function unanswerable(sdp) {
   if (new Set(formats).size !== formats.length) {
     return "the offer lists a payload number twice, which the profile refuses";
   }
+
+  return null;
+}
+
+/**
+ * The same description with every candidate the server cannot check removed.
+ *
+ * **Without this, no Chrome offer can be answered at all.** Chrome gathers ICE-TCP candidates
+ * alongside its UDP ones — six of each on a machine with several interfaces — and
+ * `sipx_sdp::browser_audio::profile_candidates` refuses the whole description when any single
+ * candidate fails to parse:
+ *
+ * ```rust
+ * .map(Candidate::parse).collect::<Option<_>>().ok_or(ProfileError::IceRequired)?
+ * ```
+ *
+ * `Candidate::parse` answers `None` for a transport other than UDP, so one `typ host tcptype
+ * active` line turns the offer into `IceRequired`. Measured 2026-09-05: a Chrome 150 offer with
+ * 6 UDP and 6 TCP host candidates was refused; the same offer with the TCP lines removed was
+ * answered.
+ *
+ * sipx's own `ice::Transport` documents the behaviour this restores — "a candidate naming anything
+ * else parses as far as this type and is then dropped by `Candidate::parse`, rather than failing
+ * the description. A peer offering an ICE-TCP candidate alongside UDP ones is offering something
+ * usable" — so the page is doing here what the far side intends and does not do.
+ * `story:the-profile-refuses-an-offer-carrying-an-ice-tcp-candidate` is the upstream fix.
+ *
+ * It is also the right thing to send whatever upstream does: the server checks over UDP only, so a
+ * TCP candidate on this wire is an address nothing will ever try.
+ *
+ * @throws when nothing usable is left, because an offer with no candidate is not one to send.
+ */
+export function udpCandidatesOnly(sdp) {
+  const lines = sdp.split(/(?<=\n)/);
+  let kept = 0;
+  const carried = lines.filter((line) => {
+    if (!line.startsWith("a=candidate:")) return true;
+    // RFC 8839 §5.1: `foundation component transport priority address port typ …`. The transport is
+    // the third token of the attribute's value.
+    const transport = line.slice("a=candidate:".length).trim().split(" ")[2];
+    const usable = transport !== undefined && transport.toLowerCase() === "udp";
+    if (usable) kept += 1;
+    return usable;
+  });
+  if (kept === 0) {
+    throw new Error(
+      "this offer carries no UDP candidate, so there is no address the server could check",
+    );
+  }
+  return carried.join("");
+}
+
+/**
+ * Why the server could not check this offer's ICE, or `null` if it can.
+ *
+ * The third question, and separate from [`unanswerable`] for a reason that shows up in the
+ * fixtures: vocabulary is decided on the offer `createOffer` returned, and candidates only exist
+ * after gathering. One function asked of both would refuse every pre-gathering offer for having no
+ * candidate, which is not a defect in the offer.
+ *
+ * `offer.mjs` runs `udpCandidatesOnly` before this, so what is asked here is whether what survived
+ * is still checkable. Every rule is `profile_candidates()` at `browser_audio.rs:755-797`.
+ */
+export function uncheckable(sdp) {
+  const candidates = sdp
+    .split(/(?<=\n)/)
+    .filter((line) => line.startsWith("a=candidate:"))
+    .map((line) => line.slice("a=candidate:".length).trim().split(" "));
+  if (candidates.length === 0) {
+    return "the offer carries no ICE candidate, and the profile requires at least one";
+  }
+  const foreign = candidates.filter((parts) => parts[2]?.toLowerCase() !== "udp");
+  if (foreign.length > 0) {
+    const transports = [...new Set(foreign.map((parts) => parts[2]))].join(", ");
+    return (
+      `the offer carries ${foreign.length} candidate(s) over ${transports}, and the profile ` +
+      "refuses a description containing one"
+    );
+  }
+  const kinds = candidates.map((parts) => parts[parts.indexOf("typ") + 1]);
+  const unusable = [...new Set(kinds.filter((kind) => kind !== "host" && kind !== "srflx"))];
+  if (unusable.length > 0) {
+    return (
+      `the offer carries ${unusable.join(", ")} candidate(s), and the profile takes only host ` +
+      "and srflx"
+    );
+  }
+  if (candidates.length > 32) {
+    return `the offer carries ${candidates.length} candidates and the profile takes at most 32`;
+  }
   return null;
 }
 

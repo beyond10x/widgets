@@ -15,7 +15,7 @@
 // it cannot.
 
 import { createPcmuFirstOffer } from "./offer.mjs";
-import { unanswerable } from "./pcmu-first.mjs";
+import { unanswerable, uncheckable } from "./pcmu-first.mjs";
 import { Kernel, published, type Observation } from "./kernel";
 import { Link, type Inbound } from "./transport";
 
@@ -115,7 +115,9 @@ export class Phone {
     if (this.#holding) throw new Error("this phone is already holding a call");
 
     const { connection, stream, sdp } = await createPcmuFirstOffer(configuration);
-    const refusal = unanswerable(sdp);
+    // Both questions, because they fail differently: a vocabulary this server has no answer for
+    // is the browser's, and an ICE generation it cannot check is the offer's own shape.
+    const refusal = unanswerable(sdp) ?? uncheckable(sdp);
     if (refusal) {
       this.#letGo(connection, stream);
       throw new Error(`this browser's offer cannot be answered: ${refusal}`);

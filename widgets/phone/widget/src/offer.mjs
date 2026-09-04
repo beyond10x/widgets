@@ -17,7 +17,7 @@
 //
 // Browser-targeted ESM with no build step, the same as `player/skin.js`.
 
-import { pcmuFirst } from "./pcmu-first.mjs";
+import { pcmuFirst, udpCandidatesOnly } from "./pcmu-first.mjs";
 
 /**
  * An audio-only offer with PCMU first and its candidates gathered — with the connection it
@@ -44,7 +44,16 @@ export async function createPcmuFirstOffer(configuration = {}) {
     const { sdp } = await connection.createOffer();
     await connection.setLocalDescription({ type: "offer", sdp: pcmuFirst(sdp) });
     await gathered(connection);
-    return { connection, stream, sdp: connection.localDescription.sdp };
+    // Filtered on the way out rather than at `setLocalDescription`, because gathering happens
+    // after that call and Chrome writes its own candidates into `localDescription` regardless of
+    // what was set. What leaves the page is therefore not byte-identical to `localDescription`,
+    // and that is deliberate: the server checks over UDP only, and one ICE-TCP line refuses the
+    // whole description. `udpCandidatesOnly` carries the measurement.
+    return {
+      connection,
+      stream,
+      sdp: udpCandidatesOnly(connection.localDescription.sdp),
+    };
   } catch (error) {
     for (const track of stream.getTracks()) track.stop();
     connection?.close();

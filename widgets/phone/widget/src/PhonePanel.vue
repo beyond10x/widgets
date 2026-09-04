@@ -31,20 +31,34 @@ const props = withDefaults(
     label?: string;
     /** `RTCPeerConnection` configuration — `{iceServers}` for STUN. */
     configuration?: RTCConfiguration;
+    /** What the dial field starts with. A host that knows where this phone calls sets it. */
+    destination?: string;
   }>(),
   {
     endpoint: "ws://127.0.0.1:8780",
     label: "Devcenter",
     configuration: () => ({}),
+    destination: "",
   },
 );
 
 const phone = shallowRef<Phone | null>(null);
 const observation = ref<Observation | null>(null);
 const said = ref<string>("");
-const destination = ref<string>("");
+const destination = ref<string>(props.destination);
 const entry = ref<string>("");
 const failed = ref<string>("");
+
+// Resolved once the module is open and the endpoint configured, or once that has failed.
+//
+// Exposed rather than kept private because a host that places a call without a person clicking has
+// to know when there is something to place it with. The alternative — a fixed delay — is what this
+// replaces: 400 ms was enough for a warm module and not for a cold one, so the harness sometimes
+// dialled before `phone` existed and then did nothing at all, silently.
+let settle: () => void = () => {};
+const ready = new Promise<void>((resolve) => {
+  settle = resolve;
+});
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"] as const;
 
@@ -78,6 +92,8 @@ onMounted(async () => {
     observation.value = it.observe();
   } catch (error) {
     failed.value = String(error);
+  } finally {
+    settle();
   }
 });
 
@@ -99,6 +115,8 @@ const dial = () =>
     if (!to) throw new Error("nothing to dial");
     await phone.value?.dial(to, props.configuration);
   });
+defineExpose({ dial, ready });
+
 const press = (key: string) => {
   entry.value += key;
   if (live.value) void attempt(() => phone.value?.sendDigits(key));
