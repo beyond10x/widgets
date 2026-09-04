@@ -12,7 +12,9 @@
 //! chose, and every fact leaves as a command the page's own system already accepts.
 
 use std::net::{IpAddr, SocketAddr};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use sipx_media::dtls::openssl::Identity;
 use sipx_sdp::ice::Credentials;
@@ -22,7 +24,7 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 use crate::bridge::Bridged;
 use crate::browser::{answer_offer, BridgeRefused, BrowserLeg};
 use crate::sip::{Destination, LegFact, LegFailed, SipLeg, DIGIT_DURATION};
-use crate::wire::{BridgeCause, FromBrowser, Id, TerminationReason, ToBrowser};
+use crate::wire::{BridgeCause, EndCause, FromBrowser, Id, TerminationReason, ToBrowser};
 
 /// Where this server is, and who it calls through.
 #[derive(Debug, Clone)]
@@ -86,6 +88,33 @@ impl OpenFailed {
             reason,
         }
     }
+
+    /// The `softphone.control.FailCall` this failure reaches the page as.
+    ///
+    /// Beside [`Self::fail_bridge`] rather than at the call site, so both commands a failed open
+    /// produces come from one enumeration. `main.rs` sent `EndCause::Media` for everything except
+    /// a far-leg failure, which said a refused offer, an undialable destination and a certificate
+    /// this server could not generate were all the same thing to a page — and `EndCause` has six
+    /// words precisely so that they are not.
+    #[must_use]
+    pub fn fail_call(&self, call_id: &Id) -> ToBrowser {
+        let cause = match self {
+            // The far leg reported its own class; this is that class and not a second reading.
+            Self::FarLeg(leg) => leg.cause,
+            // This server would not have the offer — a profile boundary, or a codec pair it cannot
+            // bridge. `Refused` is the word for a refusal, whoever made it.
+            Self::Browser(_) => EndCause::Refused,
+            // The media path could not be built on this side: no port, no certificate.
+            Self::NoMediaPort(_) | Self::NoIdentity => EndCause::Media,
+            // Nothing was ever dialled, so nothing refused or timed out. An address that is not a
+            // URI is a signalling-layer fault, which is what `Sip` is for.
+            Self::NotDialable(_) => EndCause::Sip,
+        };
+        ToBrowser::FailCall {
+            call_id: call_id.clone(),
+            cause,
+        }
+    }
 }
 
 /// Everything holding one bridged call up.
@@ -142,7 +171,11 @@ impl Phone {
             .map_err(|_| OpenFailed::NotDialable(destination.to_owned()))?;
 
         let (local, ice) = leg
-            .local(self.config.media_address, ice_credentials(), 1)
+            .local(
+                self.config.media_address,
+                ice_credentials(),
+                fresh_session_id(),
+            )
             .await?;
         let accepted = answer_offer(offer, &local)?;
         say(ToBrowser::ConfirmBridge {
@@ -213,12 +246,38 @@ pub async fn apply(message: &FromBrowser, live: &mut Live) {
             }
         }
         FromBrowser::Mute { muted, .. } => {
-            live.bridge.set_browser_muted(*muted);
+            let _ = live.bridge.set_browser_muted(*muted);
         }
         FromBrowser::Hold { held, .. } => {
-            live.bridge.set_held(*held, &live.call);
+            // The previous value is not wanted: the page sent the new one, and this server holds
+            // no phone state to reconcile it against.
+            let _ = live.bridge.set_held(*held, &live.call);
         }
     }
+}
+
+/// A fresh SDP session identifier for one bridge.
+///
+/// RFC 4566 §5.2 makes `<username> <sess-id> <nettype> <addrtype> <unicast-address>` the session's
+/// globally unique identifier. This server advertises one address for every phone it serves, so
+/// the session id is the only part of that tuple that can differ — and it was the constant `1`, so
+/// two concurrent bridges authored byte-identical `o=` lines and nothing downstream could tell the
+/// two sessions apart.
+///
+/// A clock seed plus a counter, rather than either alone. The counter makes two bridges in one
+/// process distinct by construction, which a random draw only makes distinct with high
+/// probability; the seed makes a bridge distinct from one this server authored before it was last
+/// restarted, which a counter from zero does not. §5.2 suggests an NTP timestamp for exactly the
+/// second half of that.
+fn fresh_session_id() -> u64 {
+    static SEED: OnceLock<u64> = OnceLock::new();
+    static ISSUED: AtomicU64 = AtomicU64::new(0);
+    let seed = *SEED.get_or_init(|| {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_or(0, |since| since.as_nanos() as u64)
+    });
+    seed.wrapping_add(ISSUED.fetch_add(1, Ordering::Relaxed))
 }
 
 /// Fresh ICE credentials for one generation — RFC 8839 §5.4 wants them random.

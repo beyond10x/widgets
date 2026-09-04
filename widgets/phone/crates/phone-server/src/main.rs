@@ -178,6 +178,10 @@ async fn serve(stream: TcpStream, phone: Phone) -> Result<(), Box<dyn std::error
 ///
 /// Two commands and not one: the bridge is gone, and so is the call the page dialled. A page told
 /// only about the bridge would be left with a `Call` in `Requested` that nothing will ever move.
+///
+/// Both classifications are [`OpenFailed`]'s, not this function's. It used to decide the call's
+/// class here and got it wrong for four of the five variants — every one that was not a far-leg
+/// failure came out as `Media`.
 fn report(
     say: &UnboundedSender<ToBrowser>,
     failure: &OpenFailed,
@@ -185,18 +189,6 @@ fn report(
     session_id: &str,
     call_id: &str,
 ) {
-    if let OpenFailed::FarLeg(leg) = failure {
-        let _ = say.send(ToBrowser::FailCall {
-            call_id: call_id.to_owned(),
-            cause: leg.cause,
-        });
-    } else {
-        // The far leg was never reached, so the class is this server's refusal rather than a
-        // signalling one the page could act on differently.
-        let _ = say.send(ToBrowser::FailCall {
-            call_id: call_id.to_owned(),
-            cause: phone_server::wire::EndCause::Media,
-        });
-    }
+    let _ = say.send(failure.fail_call(&call_id.to_owned()));
     let _ = say.send(failure.fail_bridge(&bridge_id.to_owned(), &session_id.to_owned()));
 }

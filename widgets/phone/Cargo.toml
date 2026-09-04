@@ -45,10 +45,15 @@ softphone-behaviour = { path = "crates/softphone-behaviour" }
 # service needs, and a registry pin is reproducible for anyone who checks the repository out.
 #
 # `dtls` on `sipx-media` is not optional for us: the browser leg is DTLS-SRTP, and
-# `MediaPort::start_browser_audio` is `#[cfg(feature = "dtls")]`. `opus` is enabled because a
-# browser's offer puts Opus first and `browser_audio::answer` preserves the offered order, so the
-# browser leg negotiates Opus while the SIP leg is G.711 — `sipx_media::Bridge` transcodes across
-# that pair, and `Codec::Opus` does not exist without the feature.
+# `MediaPort::start_browser_audio` is `#[cfg(feature = "dtls")]`.
+#
+# `opus` is enabled to **name** the codec, not to run it. A browser's offer puts Opus first and
+# `browser_audio::answer` preserves the offered order, so that is the pair this server is asked for
+# — and `sipx_media::Bridge` moves buffers between legs without converting the sample rate, so
+# `browser::bridgeable` refuses it. Refusing it precisely still needs the variant to exist:
+# `Codec::Opus` is absent without the feature, and `Accepted::codec` would then decline the offer
+# as an incomplete codec set instead of saying which codec at which rate and what to offer instead.
+# (This comment said the pair "transcodes" until correction round 1 measured what that does.)
 sipx-call = "=1.0.1"
 sipx-media = { version = "=1.0.1", features = ["dtls", "opus"] }
 sipx-sdp = "=1.0.1"

@@ -188,6 +188,12 @@ impl SipLeg {
     }
 
     /// Options for one outbound call: G.711, no ICE, the plain SIP leg.
+    ///
+    /// `DialOptions::new`'s default `MediaPolicy` is G.711 and nothing here changes it, so this
+    /// leg's audio is always 8 kHz. That is load-bearing rather than incidental:
+    /// `browser::SIP_LEG_AUDIO_RATE` is the same number, and `browser::bridgeable` refuses any
+    /// browser leg that disagrees with it. Changing the codec here without changing that constant
+    /// would make the two legs disagree about the rate and the bridge would not notice.
     #[must_use]
     pub fn options(destination: &Destination) -> DialOptions {
         DialOptions::new(destination.from.clone(), destination.media_address)
@@ -205,8 +211,17 @@ pub fn end_cause(cause: &sipx_call::EndCause) -> EndCause {
     match cause {
         sipx_call::EndCause::LocalHangup => EndCause::Local,
         sipx_call::EndCause::RemoteBye | sipx_call::EndCause::RemoteCancel => EndCause::Remote,
-        sipx_call::EndCause::Rejected { .. } => EndCause::Refused,
         sipx_call::EndCause::Timeout => EndCause::Timeout,
+        // `Rejected { status }` had an arm here mapping it to `Refused`, and that read sipx's
+        // variant backwards. Its own documentation is explicit that it means **this side refusing
+        // an invitation**, not a far end refusing an attempt of ours — and it adds that the
+        // variant "has no producer at this layer", structurally: a `Call` does not exist until an
+        // INVITE has already succeeded, so by the time there is a call to end there is nothing
+        // left to refuse. This server places outbound calls and answers none, so no path reaches
+        // it twice over. The arm is gone rather than corrected: a mapping nothing can exercise is
+        // a claim nothing can check, and if sipx ever gives it a producer the correct class is
+        // `Local`.
+        //
         // A cause sipx adds later is signalling's until somebody classifies it. `Sip` rather than
         // a silent `Remote`, because guessing whose fault it was is the one thing a log cannot
         // recover from.

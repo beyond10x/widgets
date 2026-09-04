@@ -9,9 +9,11 @@
 
 use std::net::{IpAddr, Ipv4Addr};
 
-use phone_server::browser::{answer_offer, Refusal};
+use phone_server::browser::{answer_offer, bridgeable, Refusal};
 use phone_server::wire::{BridgeCause, TerminationReason};
-use sipx_sdp::browser_audio::{validate, BrowserAudioLocal, BrowserAudioRole, ProfileError};
+use sipx_sdp::browser_audio::{
+    validate, validate_answer, BrowserAudioLocal, BrowserAudioRole, ProfileError,
+};
 use sipx_sdp::fingerprint::{Fingerprint, HashFunc, SetupCapabilities};
 use sipx_sdp::ice::{Candidate, Credentials};
 
@@ -74,6 +76,22 @@ fn browser_offer() -> String {
     ]
     .join("\r\n")
         + "\r\n"
+}
+
+/// The same offer with PCMU ahead of Opus in the `m=` line — the shape this server can bridge.
+///
+/// Nothing else changes: every codec the profile requires is still present with its own `rtpmap`,
+/// so this is a reordering and not a weakening.
+fn pcmu_first_browser_offer() -> String {
+    let offer = browser_offer().replace(
+        "UDP/TLS/RTP/SAVPF 111 0 8 13 101",
+        "UDP/TLS/RTP/SAVPF 0 8 111 13 101",
+    );
+    assert!(
+        offer.contains("SAVPF 0 8 111"),
+        "the fixture's m= line was reordered"
+    );
+    offer
 }
 
 /// The offer with one line removed or replaced — how a weakened offer is built for these cases.
@@ -146,15 +164,16 @@ fn a_browser_offer_is_answered_on_the_profile() {
 }
 
 #[test]
-fn a_browser_leg_negotiates_opus_which_is_why_the_bridge_transcodes() {
-    // This is the measurement behind the `opus` feature in `widgets/phone/Cargo.toml`, and it is
-    // here rather than in a comment because the comment would otherwise be the only evidence.
+fn a_browser_offer_negotiates_opus_which_is_why_the_media_seam_refuses_it() {
+    // This case carried the name `…_which_is_why_the_bridge_transcodes` and the claim that the
+    // pair is transcoded. It is not: correction round 1 established that `sipx_media::Bridge`
+    // transcodes *without rate conversion*, so the pair is refused instead. The measurement it was
+    // written for is unchanged and is still worth having — it is what says the refusal is on the
+    // ordinary path and not on an edge case.
     //
-    // The profile requires Opus in the vocabulary, `browser_audio::answer` preserves the *offered*
-    // order, and a browser puts Opus first. So the browser leg runs Opus while the SIP leg is
-    // G.711, `sipx_media::Bridge` transcodes across that pair, and `Codec::Opus` does not exist
-    // without the feature. If a future offer ordering makes this PCMU, the bridge becomes
-    // pass-through and the feature is arguable — and this case is where that shows up.
+    // The profile requires Opus in the vocabulary and `browser_audio::answer` preserves the
+    // *offered* order, so a browser that puts Opus first gets an Opus leg — against a G.711 SIP
+    // leg, at a different clock. `browser::bridgeable` is what declines it.
     let accepted = answer_offer(&browser_offer(), &local()).expect("the offer is answered");
     let (codec, payload) = accepted
         .codec()
@@ -163,6 +182,71 @@ fn a_browser_leg_negotiates_opus_which_is_why_the_bridge_transcodes() {
     assert_eq!(
         payload, 111,
         "on the dynamic number the two sides agreed on"
+    );
+    assert_eq!(
+        phone_server::browser::audio_rate(codec),
+        48_000,
+        "and its audio runs at 48 kHz, six times the SIP leg's"
+    );
+    bridgeable(codec).expect_err("so the media seam will not run it");
+}
+
+/// The way through, and it is the page's to take: an offer that lists PCMU **before** Opus.
+///
+/// This is one of the two measurements correction round 1's branch decision rests on, and it is a
+/// case rather than a sentence in a comment for that reason. Opus stays in the vocabulary, which is
+/// all `docs/specs/webrtc-audio.md` §1 asks of it; what changes is which payload the exchange
+/// selects, and both sides select it from the offer's order.
+#[test]
+fn a_pcmu_first_offer_is_the_shape_this_server_can_bridge() {
+    let accepted =
+        answer_offer(&pcmu_first_browser_offer(), &local()).expect("still on the profile");
+    let (codec, payload) = accepted.codec().expect("PCMU is a codec every build has");
+    assert_eq!(codec, sipx_media::Codec::Pcmu);
+    assert_eq!(payload, 0);
+    bridgeable(codec).expect("one clock on both legs, so this server bridges it");
+
+    // The answer is one the profile accepts back, PCMU-first, with Opus still offered.
+    let parsed = sipx_sdp::parse(&accepted.answer).expect("the answer is SDP");
+    let checked = validate(&parsed, BrowserAudioRole::Answerer).expect("still on the profile");
+    assert_eq!(checked.selected_audio_payload, 0);
+    assert_eq!(
+        checked.payloads.opus, 111,
+        "Opus is present in the vocabulary, which is what the profile requires of it"
+    );
+}
+
+/// And why this server cannot take that way through on the page's behalf.
+///
+/// The second measurement the branch decision rests on. An answer reordered to put PCMU first
+/// against an Opus-first offer is refused by the profile's own `validate_answer`, because RFC 3264
+/// offer/answer makes the answer's format order the offer's. So codec selection belongs to whoever
+/// authors the offer — `story:browser-media-adapter` — and the only thing this server can honestly
+/// do with an Opus-first offer is decline to run it.
+#[test]
+fn an_answer_cannot_select_pcmu_against_an_opus_first_offer() {
+    let offered = sipx_sdp::parse(&browser_offer()).expect("the offer is SDP");
+    let answer = answer_offer(&browser_offer(), &local())
+        .expect("the offer is answered")
+        .answer;
+    let reordered = answer.replace(
+        "UDP/TLS/RTP/SAVPF 111 0 8 13 101",
+        "UDP/TLS/RTP/SAVPF 0 8 111 13 101",
+    );
+    assert_ne!(reordered, answer, "the m= line was actually reordered");
+
+    let parsed = sipx_sdp::parse(&reordered).expect("the reordered answer is still SDP");
+    assert_eq!(
+        validate(&parsed, BrowserAudioRole::Answerer)
+            .expect("and on its own it looks admissible")
+            .selected_audio_payload,
+        0,
+        "read alone, a PCMU-first answer selects PCMU — which is what makes this tempting"
+    );
+    assert_eq!(
+        validate_answer(&offered, &parsed, SetupCapabilities::both()).err(),
+        Some(ProfileError::CodecSetIncomplete),
+        "but against its own offer the profile refuses it, so the answerer has no say"
     );
 }
 
