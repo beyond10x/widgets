@@ -1,0 +1,92 @@
+# The neutral layer's two refusals. A session goes `Requested -> Live -> Terminated`, and each move
+# is then asked for a second time from the state it already reached: `establish` from `Live` and
+# `terminate` from `Terminated`.
+#
+# Worth writing because a carrier retries. A bridge that reconnects over the same session, or a
+# signalling side that reports the far end twice, issues exactly these — and the answer has to be a
+# refusal naming the state rather than a second `SessionActivated` the whole media path would act on.
+type: ess-scenario/1
+domain: softphone.media
+scenario: refusals-on-a-repeated-session-move
+summary: A session already Live refuses a second activation, and a terminated one a second termination.
+
+arrange:
+  - instance: session
+    entity: softphone.media.MediaSession
+
+timeline:
+  - at: 2026-09-05T08:00:00Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'sess-4c19'
+      binding: Sip
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:erin@example.test'
+        trust: Untrusted
+    outcome: opened
+    # The struct-valued half of an event payload, which nothing here asserted before: the session
+    # is published carrying the profile and the participant it was opened with, whole. Worth stating
+    # because a struct is where a comparison by rendering goes wrong — the suite writes these keys
+    # sorted and the wire writes them in declaration order, and the two are the same value.
+    events:
+      - event: softphone.media.SessionOpened
+        payload:
+          session_ref: 'sess-4c19'
+          binding: Sip
+          profile:
+            sample_format: PcmS16Le
+            sample_rate_hz: 8000
+            channels: 1
+            packet_time_ms: 20
+            frame_bytes: 320
+          participant:
+            reference: 'sip:erin@example.test'
+            trust: Untrusted
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  - at: 2026-09-05T08:00:01Z
+    command: softphone.media.ActivateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session} }
+    outcome: activated
+    events:
+      - event: softphone.media.SessionActivated
+    # Falsifiable, unlike the `no_events:` after a refusal: `published` is non-empty here, and
+    # establishing a session must not terminate it.
+    no_events: [softphone.media.SessionTerminated]
+
+  - at: 2026-09-05T08:00:02Z
+    command: softphone.media.ActivateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session} }
+    outcome: wrong-state
+    error:
+      name: softphone.media.MediaSessionStateConflict
+      fields: { state: Live }
+    no_events: [softphone.media.SessionActivated]
+
+  - at: 2026-09-05T08:00:24Z
+    command: softphone.media.TerminateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session}, reason: RemoteHangup }
+    outcome: terminated
+    events:
+      - event: softphone.media.SessionTerminated
+        payload: { reason: RemoteHangup }
+
+  - at: 2026-09-05T08:00:25Z
+    command: softphone.media.TerminateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session}, reason: Completed }
+    outcome: wrong-state
+    error:
+      name: softphone.media.MediaSessionStateConflict
+      fields: { state: Terminated }
+    no_events: [softphone.media.SessionTerminated]

@@ -1,0 +1,81 @@
+# The other half of "the refusal left it alone", for a field that is not a state.
+#
+# `a-refusal-leaves-the-*-where-it-was.yaml` proves the row is still there and still in the state
+# the refusal named. Neither asks anything of the rest of the row, so a refusal that restored the
+# entity and rewrote a field of it on the way back answers identically and reads identically. The
+# session's `profile` is the field where that matters most: the type's invariants fix it at 8 kHz,
+# mono, 20 ms, 320 bytes, and every reader of the media path takes those four numbers on trust.
+#
+# So this file states the whole row, not just its state: after the refused second activation the
+# session is still `Live` and still carries the profile it was opened with.
+type: ess-scenario/1
+domain: softphone.media
+scenario: adversary-a-refused-activation-leaves-the-profile-alone
+summary: A refused second activation leaves the live session's profile as it was opened.
+
+arrange:
+  - instance: session
+    entity: softphone.media.MediaSession
+
+timeline:
+  - at: 2026-09-07T08:00:00Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'sess-ad01'
+      binding: Sip
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:frank@example.test'
+        trust: Untrusted
+    outcome: opened
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  - at: 2026-09-07T08:00:01Z
+    command: softphone.media.ActivateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session} }
+    outcome: activated
+    events:
+      - event: softphone.media.SessionActivated
+
+  - at: 2026-09-07T08:00:02Z
+    command: softphone.media.ActivateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session} }
+    outcome: wrong-state
+    error:
+      name: softphone.media.MediaSessionStateConflict
+      fields: { state: Live }
+    no_events: [softphone.media.SessionActivated]
+
+# The state first, which is the claim the two existing files already make, and then the field they
+# do not. `participant` is here too: it is the other structured field the row projects, and a
+# refusal that rewrote the far end's trust would be as invisible as one that rewrote the profile.
+assert:
+  - view: softphone.media.MediaSessionById
+    params: {session_id: {$instance: session}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.media.MediaSessionById
+    params: {session_id: {$instance: session}}
+    contains: {state: Live, session_ref: 'sess-ad01', binding: Sip}
+  - view: softphone.media.MediaSessionById
+    params: {session_id: {$instance: session}}
+    contains:
+      participant:
+        reference: 'sip:frank@example.test'
+        trust: Untrusted
+  - view: softphone.media.MediaSessionById
+    params: {session_id: {$instance: session}}
+    contains:
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
