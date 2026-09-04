@@ -37,7 +37,17 @@ topology:
       requires:
         - browser: dom
 
+    # Off the browser. The page has no SIP stack; the server it bridges to holds this leg, so the
+    # two facilities this workload used to claim moved to `bridge-binding` below, where they are
+    # true.
     sip-binding:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - network: sip-signalling
+        - network: rtp-media
+
+    bridge-binding:
       replicas: { min: 1 }
       stateless: false
       requires:

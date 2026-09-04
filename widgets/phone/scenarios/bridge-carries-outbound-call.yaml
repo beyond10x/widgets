@@ -1,0 +1,158 @@
+# The path this phone actually takes to reach a telephone: a neutral session opened over the
+# `Bridge` binding, an offer sent to the server that holds the SIP leg, the answer that comes back,
+# and a call that only becomes `Active` once media is up.
+#
+# Nothing here names SIP. The far leg is the server's, and the page's evidence that it exists is the
+# answer on this bridge.
+type: ess-scenario/1
+domain: softphone.bridge
+scenario: bridge-carries-outbound-call
+summary: A media session over the bridge binding carries a dialled call, answered, then hung up.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: session
+    entity: softphone.media.MediaSession
+  - instance: bridge
+    entity: softphone.bridge.BridgeSession
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-05T09:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input:
+      label: Devcenter
+      default_binding: Bridge
+    outcome: configured
+    events:
+      - event: softphone.control.EndpointConfigured
+        payload:
+          label: Devcenter
+          default_binding: Bridge
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-05T09:00:02Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'bridge-4c1e'
+      binding: Bridge
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:1001@asterisk.dev.test'
+        trust: Untrusted
+    outcome: opened
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  # The page has the offer before it has anywhere to send it: `RTCPeerConnection` produced it, and
+  # the bridge is what carries it.
+  - at: 2026-09-05T09:00:03Z
+    command: softphone.bridge.ConnectBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      session_id: {$instance: session}
+      endpoint: 'wss://phone.dev.test/phone'
+      offer: 'v=0 o=- 0 0 IN IP4 0.0.0.0'
+    outcome: connecting
+    events:
+      - event: softphone.bridge.BridgeConnecting
+        payload:
+          endpoint: 'wss://phone.dev.test/phone'
+    capture: {instance: bridge, event: softphone.bridge.BridgeConnecting, field: bridge_id}
+
+  - at: 2026-09-05T09:00:04Z
+    command: softphone.control.Dial
+    actor: softphone.control.Human
+    input:
+      endpoint_id: {$instance: phone}
+      remote: 'sip:1001@asterisk.dev.test'
+    outcome: dialled
+    capture: {instance: call, event: softphone.control.CallDialled, field: call_id}
+
+  # Only the kernel may say the answer arrived; the page cannot assert a fact about the connection.
+  # `activate-session-with-bridge` reacts to this and moves the session to `Live`.
+  - at: 2026-09-05T09:00:05Z
+    command: softphone.bridge.ConfirmBridge
+    actor: softphone.bridge.Kernel
+    input:
+      bridge_id: {$instance: bridge}
+      session_id: {$instance: session}
+      answer: 'v=0 o=- 0 0 IN IP4 203.0.113.7'
+    outcome: confirmed
+
+  - at: 2026-09-05T09:00:07Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: ringing
+
+  - at: 2026-09-05T09:00:11Z
+    command: softphone.control.ConfirmAnswer
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: confirmed
+
+  - at: 2026-09-05T09:00:12Z
+    command: softphone.control.AttachMedia
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+      session_id: {$instance: session}
+    outcome: attached
+
+  - at: 2026-09-05T09:00:13Z
+    command: softphone.control.MediaConnected
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: established
+
+  # Held is a field, not a state: the call stays `Active` across both of these.
+  - at: 2026-09-05T09:00:30Z
+    command: softphone.control.SetHeld
+    actor: softphone.control.Human
+    input:
+      call_id: {$instance: call}
+      held: true
+    outcome: changed
+    events:
+      - event: softphone.control.HoldChanged
+        payload:
+          held: true
+
+  - at: 2026-09-05T09:00:38Z
+    command: softphone.control.SetHeld
+    actor: softphone.control.Human
+    input:
+      call_id: {$instance: call}
+      held: false
+    outcome: changed
+
+  - at: 2026-09-05T09:01:04Z
+    command: softphone.control.HangUp
+    actor: softphone.control.Human
+    input:
+      call_id: {$instance: call}
+    outcome: hung-up
+
+  # The page took the bridge down, so the cause is `Local`, and the neutral reason the media layer
+  # is told is `Completed`. `end-session-with-bridge` terminates the session.
+  - at: 2026-09-05T09:01:05Z
+    command: softphone.bridge.CloseBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      bridge_id: {$instance: bridge}
+      session_id: {$instance: session}
+      cause: Local
+      reason: Completed
+    outcome: closed

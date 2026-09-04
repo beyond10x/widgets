@@ -83,6 +83,8 @@ types:
         type: Optional<softphone.media.MediaSessionId>
       - name: muted
         type: Boolean
+      - name: held
+        type: Boolean
       - name: state
         type: softphone.control.Call.State
 
@@ -116,6 +118,11 @@ entities:
       - name: session_id
         type: Optional<softphone.media.MediaSessionId>
       - name: muted
+        type: Boolean
+      # Holding is local: the far end keeps the leg, this side stops sending and rendering. It is a
+      # field rather than a lifecycle state because a held call is still `Active` — every command a
+      # call in `Active` accepts, a held one accepts too.
+      - name: held
         type: Boolean
     # A call that is `Active` has media, and before this the model said so only in a comment. The
     # same implication shape as `softphone.media.MediaSession.termination`: nothing is claimed until
@@ -170,6 +177,7 @@ actors:
       - softphone.control.HangUp
       - softphone.control.SendDigits
       - softphone.control.SetMuted
+      - softphone.control.SetHeld
     naming:
       display: Human
 
@@ -182,6 +190,7 @@ actors:
       - softphone.control.HangUp
       - softphone.control.SendDigits
       - softphone.control.SetMuted
+      - softphone.control.SetHeld
     naming:
       display: Agent
 
@@ -238,6 +247,7 @@ commands:
           remote: input.remote
           direction: Outbound
           muted: "false"
+          held: "false"
         payload:
           softphone.control.CallDialled:
             endpoint_id: input.endpoint_id
@@ -259,6 +269,7 @@ commands:
           remote: input.remote
           direction: Inbound
           muted: "false"
+          held: "false"
         payload:
           softphone.control.CallOffered:
             endpoint_id: input.endpoint_id
@@ -437,6 +448,25 @@ commands:
             muted: input.muted
     naming: { wire: set-muted, display: Set muted }
 
+  # Hold, in the shape `SetMuted` established: one command carrying the new value, not a `Hold` and
+  # a `Resume` that can disagree about what the current one is.
+  - name: softphone.control.SetHeld
+    input:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: held, type: Boolean }
+    outcomes:
+      - name: changed
+        updates: softphone.control.Call
+        instance: call_id
+        emits: [softphone.control.HoldChanged]
+        sets:
+          held: input.held
+        payload:
+          softphone.control.HoldChanged:
+            call_id: input.call_id
+            held: input.held
+    naming: { wire: set-held, display: Set held }
+
 events:
   - name: softphone.control.EndpointConfigured
     fields:
@@ -488,6 +518,10 @@ events:
     fields:
       - { name: call_id, type: softphone.control.CallId }
       - { name: muted, type: Boolean }
+  - name: softphone.control.HoldChanged
+    fields:
+      - { name: call_id, type: softphone.control.CallId }
+      - { name: held, type: Boolean }
 
 views:
   - name: softphone.control.EndpointById

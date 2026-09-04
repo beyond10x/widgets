@@ -1,0 +1,271 @@
+domain: softphone.bridge
+
+# The third carrier of a media session, and the one this phone actually opens.
+#
+# A browser owns `RTCPeerConnection`, ICE, DTLS-SRTP, capture and render, and it does not own a SIP
+# stack. So the page negotiates one audio leg against a server it names, and that server holds the
+# SIP leg — `softphone.sip`, running off the browser, which `topology.yaml` now says. This domain is
+# the page's half: an endpoint, an offer, the answer that came back, and the one reason it ended.
+#
+# It names no protocol of its own beyond SDP, and it names `softphone.sip` nowhere. `SessionDescription`
+# is declared here rather than reused from `softphone.sip` on purpose: two carriers of the same neutral
+# session must not depend on each other, and a shared type between them would be exactly that
+# dependency. The duplication is the boundary.
+#
+# `ConnectBridge` takes the session id rather than minting one, which is the same order
+# `softphone.sip.OpenDialog` uses: the neutral session exists first, and a carrier is attached to it.
+summary: >-
+  One media bridge from this phone to the server that holds its SIP leg: where it points, the offer
+  it sent, the answer it got and why it closed. No SIP construct appears here.
+
+naming:
+  wire: bridge
+  display: Media bridge
+
+types:
+  - name: softphone.bridge.BridgeId
+    kind: newtype
+    of: Uuid
+
+  # Where the page connected. Opaque: a `wss://` origin is a deployment fact, and parsing one here
+  # would put a transport rule in a domain that has no transport.
+  - name: softphone.bridge.ServerEndpoint
+    kind: newtype
+    of: String
+
+  # An SDP body, offer or answer, exactly as the browser produced or received it. Opaque for the
+  # reason the predicate language gives: there is no grammar here to check one against.
+  - name: softphone.bridge.SessionDescription
+    kind: newtype
+    of: String
+
+  # Why the bridge is gone. Four classes, none of them SIP's: the page closed it, the server closed
+  # it, the connection died, or the server would not have it.
+  - name: softphone.bridge.BridgeCause
+    kind: enum
+    variants: [Local, Remote, Transport, Refused]
+
+  - name: softphone.bridge.BridgeSessionRow
+    kind: struct
+    fields:
+      - name: bridge_id
+        type: softphone.bridge.BridgeId
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: endpoint
+        type: softphone.bridge.ServerEndpoint
+      - name: local_sdp
+        type: softphone.bridge.SessionDescription
+      - name: remote_sdp
+        type: Optional<softphone.bridge.SessionDescription>
+      - name: cause
+        type: Optional<softphone.bridge.BridgeCause>
+      - name: state
+        type: softphone.bridge.BridgeSession.State
+
+entities:
+  - name: softphone.bridge.BridgeSession
+    identity:
+      name: bridge_id
+      type: softphone.bridge.BridgeId
+    fields:
+      - name: session_id
+        type: softphone.media.MediaSessionId
+      - name: endpoint
+        type: softphone.bridge.ServerEndpoint
+      - name: local_sdp
+        type: softphone.bridge.SessionDescription
+      - name: remote_sdp
+        type: Optional<softphone.bridge.SessionDescription>
+      - name: cause
+        type: Optional<softphone.bridge.BridgeCause>
+    # Two implications, in the shape `softphone.media.MediaSession.termination` uses. A bridge is not
+    # `Live` until an answer arrived — one offer, one answer, and no media before the second — and a
+    # closed bridge says why.
+    invariants:
+      - any:
+          - not: state == Live
+          - defined(remote_sdp)
+      - any:
+          - not: state == Closed
+          - defined(cause)
+    # Bridge 4, and `references` for the reason bridges 2 and 3 are: the media session outlives its
+    # carrier, and a page that reconnects gets a second bridge over the same session.
+    relations:
+      - name: session
+        kind: references
+        target: softphone.media.MediaSession
+        cardinality: one
+        via: session_id
+    lifecycle:
+      initial: Connecting
+      states: [Connecting, Live, Closed]
+      terminal: [Closed]
+      transitions:
+        - name: establish
+          from: [Connecting]
+          to: Live
+        - name: close
+          from: [Connecting, Live]
+          to: Closed
+
+actors:
+  # The page. It may point a bridge somewhere and take it down; it may not assert that the far side
+  # accepted it.
+  - name: softphone.bridge.BridgeHost
+    may:
+      - softphone.bridge.ConnectBridge
+      - softphone.bridge.CloseBridge
+    naming:
+      display: Bridge host
+
+  # The answer and the failure are facts arriving over the connection, so they are granted here and
+  # nowhere else — the same split `softphone.control.Kernel` draws.
+  - name: softphone.bridge.Kernel
+    may:
+      - softphone.bridge.ConfirmBridge
+      - softphone.bridge.FailBridge
+    naming:
+      display: Signalling kernel
+
+errors:
+  - name: softphone.bridge.BridgeStateConflict
+    summary: The bridge is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.bridge.BridgeSession.State
+
+commands:
+  - name: softphone.bridge.ConnectBridge
+    input:
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: endpoint, type: softphone.bridge.ServerEndpoint }
+      - { name: offer, type: softphone.bridge.SessionDescription }
+    outcomes:
+      - name: connecting
+        creates: softphone.bridge.BridgeSession
+        instance: bridge_id
+        emits: [softphone.bridge.BridgeConnecting]
+        sets:
+          session_id: input.session_id
+          endpoint: input.endpoint
+          local_sdp: input.offer
+        payload:
+          softphone.bridge.BridgeConnecting:
+            session_id: input.session_id
+            endpoint: input.endpoint
+            offer: input.offer
+        summary: >-
+          The only outcome that creates a `BridgeSession`, which is what keeps the `Bridge`
+          discriminator on `softphone.media.MediaSession` honest.
+    naming: { wire: connect-bridge, display: Connect bridge }
+
+  - name: softphone.bridge.ConfirmBridge
+    input:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: answer, type: softphone.bridge.SessionDescription }
+    outcomes:
+      - name: confirmed
+        moves: softphone.bridge.BridgeSession.establish
+        instance: bridge_id
+        emits: [softphone.bridge.BridgeConfirmed]
+        sets:
+          remote_sdp: input.answer
+        payload:
+          softphone.bridge.BridgeConfirmed:
+            bridge_id: input.bridge_id
+            session_id: input.session_id
+            answer: input.answer
+      - { name: wrong-state, wrong_state: true, error: softphone.bridge.BridgeStateConflict }
+    naming: { wire: confirm-bridge, display: Confirm bridge }
+
+  - name: softphone.bridge.FailBridge
+    input:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: cause, type: softphone.bridge.BridgeCause }
+      - { name: reason, type: softphone.media.TerminationReason }
+    outcomes:
+      - name: failed
+        moves: softphone.bridge.BridgeSession.close
+        instance: bridge_id
+        emits: [softphone.bridge.BridgeFailed]
+        sets:
+          cause: input.cause
+        payload:
+          softphone.bridge.BridgeFailed:
+            bridge_id: input.bridge_id
+            session_id: input.session_id
+            cause: input.cause
+            reason: input.reason
+        summary: >-
+          A bridge that never came up and one that died mid-call are the same move with a different
+          `cause`; the neutral reason is what the media layer is told.
+      - { name: wrong-state, wrong_state: true, error: softphone.bridge.BridgeStateConflict }
+    naming: { wire: fail-bridge, display: Fail bridge }
+
+  - name: softphone.bridge.CloseBridge
+    input:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: cause, type: softphone.bridge.BridgeCause }
+      - { name: reason, type: softphone.media.TerminationReason }
+    outcomes:
+      - name: closed
+        moves: softphone.bridge.BridgeSession.close
+        instance: bridge_id
+        emits: [softphone.bridge.BridgeClosed]
+        sets:
+          cause: input.cause
+        payload:
+          softphone.bridge.BridgeClosed:
+            bridge_id: input.bridge_id
+            session_id: input.session_id
+            cause: input.cause
+            reason: input.reason
+      - { name: wrong-state, wrong_state: true, error: softphone.bridge.BridgeStateConflict }
+    naming: { wire: close-bridge, display: Close bridge }
+
+events:
+  - name: softphone.bridge.BridgeConnecting
+    fields:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: endpoint, type: softphone.bridge.ServerEndpoint }
+      - { name: offer, type: softphone.bridge.SessionDescription }
+  - name: softphone.bridge.BridgeConfirmed
+    fields:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: answer, type: softphone.bridge.SessionDescription }
+  - name: softphone.bridge.BridgeFailed
+    fields:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: cause, type: softphone.bridge.BridgeCause }
+      - { name: reason, type: softphone.media.TerminationReason }
+  - name: softphone.bridge.BridgeClosed
+    fields:
+      - { name: bridge_id, type: softphone.bridge.BridgeId }
+      - { name: session_id, type: softphone.media.MediaSessionId }
+      - { name: cause, type: softphone.bridge.BridgeCause }
+      - { name: reason, type: softphone.media.TerminationReason }
+
+views:
+  - name: softphone.bridge.BridgeById
+    source: softphone.bridge.BridgeSession
+    shape: softphone.bridge.BridgeSessionRow
+    params:
+      - name: bridge_id
+        type: softphone.bridge.BridgeId
+    filter: bridge_id == param.bridge_id
+    consistency: read_your_writes
+    naming: { wire: bridge-by-id, display: Bridge by id }
+
+  - name: softphone.bridge.LiveBridges
+    source: softphone.bridge.BridgeSession
+    shape: softphone.bridge.BridgeSessionRow
+    filter: state == Live
+    consistency: read_your_writes
+    naming: { wire: live-bridges, display: Live bridges }

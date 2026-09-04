@@ -23,6 +23,6 @@ SOFTWARE.
 --
 The licence of `assets/mermaid.min.js`, redistributed with this site.
 generated from softphone v1
-model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
-contract digest ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643
+model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
 do not edit: regenerate with `ess generate`

@@ -18,6 +18,7 @@ domains:
   - softphone.media
   - softphone.control
   - softphone.sip
+  - softphone.bridge
   - softphone.local
   - softphone.directory
   - softphone.history

@@ -40,12 +40,17 @@ timeline:
 
   # A keypress is not audio, so it cannot travel the frame path. This is the write direction of the
   # port's signal seam, and it changes no field of the session — hence no subject on the outcome.
+  #
+  # `{ kind: dtmf, value: '5' }` is the spelling the web wire decodes. `{ kind: dtmf, dtmf: '5' }`
+  # reads better and `ess conform author` accepts it — it accepts any object here — and then the
+  # module refuses it at `input.signal.value`. See
+  # `upstream-blocker:ess-conform-author-does-not-check-a-union-member`.
   - at: 2026-09-04T22:00:09Z
     command: softphone.media.SendSignal
     actor: softphone.media.SessionHost
     input:
       session_id: {$instance: session}
-      signal: { kind: dtmf, dtmf: '5' }
+      signal: { kind: dtmf, value: '5' }
     outcome: sent
 
   - at: 2026-09-04T22:00:31Z

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+  contract digest 322b091c4af910d4501985517e55f15d349162196735c979779f5ed2fd5c153a
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media bridge · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-bridge.html" aria-current="page">Media bridge</a>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Media bridge</h1>
+<p>One media bridge from this phone to the server that holds its SIP leg: where it points, the offer it sent, the answer it got and why it closed. No SIP construct appears here.</p>
+<p><code>softphone.bridge</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="bridgecause"><code>BridgeCause</code></h3>
+<p><code>softphone.bridge.BridgeCause</code> is one of <code>Local</code>, <code>Remote</code>, <code>Transport</code> and <code>Refused</code>.</p>
+<h3 id="bridgeid"><code>BridgeId</code></h3>
+<p><code>softphone.bridge.BridgeId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="bridgesessionrow"><code>BridgeSessionRow</code></h3>
+<p><code>softphone.bridge.BridgeSessionRow</code> is a record of seven fields:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>endpoint</code> — <code>softphone.bridge.ServerEndpoint</code></li>
+<li><code>local_sdp</code> — <code>softphone.bridge.SessionDescription</code></li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.bridge.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>cause</code> — <code>Optional&lt;softphone.bridge.BridgeCause&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.bridge.BridgeSession.State</code></li>
+</ul>
+<h3 id="serverendpoint"><code>ServerEndpoint</code></h3>
+<p><code>softphone.bridge.ServerEndpoint</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="sessiondescription"><code>SessionDescription</code></h3>
+<p><code>softphone.bridge.SessionDescription</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<p>One of the types above is reached by nothing else in this system: <code>softphone.bridge.BridgeSessionRow</code>. No entity, view, command, event, error or crossing names it, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="bridgesession"><code>BridgeSession</code></h3>
+<p><code>softphone.bridge.BridgeSession</code>.</p>
+<p>An instance is identified by <code>bridge_id</code>, a <code>softphone.bridge.BridgeId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>endpoint</code> — <code>softphone.bridge.ServerEndpoint</code></li>
+<li><code>local_sdp</code> — <code>softphone.bridge.SessionDescription</code></li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.bridge.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>cause</code> — <code>Optional&lt;softphone.bridge.BridgeCause&gt;</code>, which may be absent</li>
+</ul>
+<p>It references at most one <a href="softphone-media.html#mediasession"><code>softphone.media.MediaSession</code></a>, as <code>session</code>, carried by <code>BridgeSession.session_id</code>.</p>
+<p>Every instance satisfies <code>(not (state == Live) or defined(remote_sdp))</code> and <code>(not (state == Closed) or defined(cause))</code> — a predicate over this entity&#39;s own fields, checked against them rather than stored as a sentence, so an invariant reading something the entity does not have is refused instead of documented.</p>
+<p>Its state is a <code>softphone.bridge.BridgeSession.State</code>, one of <code>Closed</code>, <code>Connecting</code> and <code>Live</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Connecting</code>. <code>Closed</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Connecting
+    Connecting --&gt; Live: establish (ConfirmBridge)
+    Connecting --&gt; Closed: close (CloseBridge, FailBridge)
+    Live --&gt; Closed: close (CloseBridge, FailBridge)
+    Closed --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>establish</code> — taken by <code>softphone.bridge.ConfirmBridge</code> on its <code>confirmed</code> outcome</li>
+<li><code>close</code> — taken by <code>softphone.bridge.CloseBridge</code> on its <code>closed</code> outcome and <code>softphone.bridge.FailBridge</code> on its <code>failed</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.bridge.ConnectBridge</code> on its <code>connecting</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Closed</code> may not become <code>Connecting</code></li>
+<li><code>Closed</code> may not become <code>Live</code></li>
+<li><code>Live</code> may not become <code>Connecting</code></li>
+</ul>
+<p>Two views project it: <a href="#bridgebyid"><code>BridgeById</code></a> and <a href="#livebridges"><code>LiveBridges</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="bridgebyid"><code>BridgeById</code></h3>
+<p><code>softphone.bridge.BridgeById</code>, shown to a person as &quot;Bridge by id&quot; and called <code>bridge-by-id</code> on the wire.</p>
+<p>It reads <a href="#bridgesession"><code>BridgeSession</code></a>.</p>
+<p>It contains the instances where <code>bridge_id == param.bridge_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>endpoint</code> — <code>softphone.bridge.ServerEndpoint</code></li>
+<li><code>local_sdp</code> — <code>softphone.bridge.SessionDescription</code></li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.bridge.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>cause</code> — <code>Optional&lt;softphone.bridge.BridgeCause&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.bridge.BridgeSession.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="livebridges"><code>LiveBridges</code></h3>
+<p><code>softphone.bridge.LiveBridges</code>, shown to a person as &quot;Live bridges&quot; and called <code>live-bridges</code> on the wire.</p>
+<p>It reads <a href="#bridgesession"><code>BridgeSession</code></a>.</p>
+<p>It contains the instances where <code>state == Live</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>endpoint</code> — <code>softphone.bridge.ServerEndpoint</code></li>
+<li><code>local_sdp</code> — <code>softphone.bridge.SessionDescription</code></li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.bridge.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>cause</code> — <code>Optional&lt;softphone.bridge.BridgeCause&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.bridge.BridgeSession.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="closebridge"><code>CloseBridge</code></h3>
+<p><code>softphone.bridge.CloseBridge</code>, shown to a person as &quot;Close bridge&quot; and called <code>close-bridge</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>cause</code> — <code>softphone.bridge.BridgeCause</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>closed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.bridge.BridgeSession</code> from <code>Connecting</code> and <code>Live</code> to <code>Closed</code>, along the declared move <code>close</code>. The instance is the one named by the input field <code>bridge_id</code>. It emits <code>softphone.bridge.BridgeClosed</code>. It sets <code>cause</code> from <code>input.cause</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.bridge.BridgeSession</code> in <code>Closed</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.bridge.BridgeStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="confirmbridge"><code>ConfirmBridge</code></h3>
+<p><code>softphone.bridge.ConfirmBridge</code>, shown to a person as &quot;Confirm bridge&quot; and called <code>confirm-bridge</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>answer</code> — <code>softphone.bridge.SessionDescription</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>confirmed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.bridge.BridgeSession</code> from <code>Connecting</code> to <code>Live</code>, along the declared move <code>establish</code>. The instance is the one named by the input field <code>bridge_id</code>. It emits <code>softphone.bridge.BridgeConfirmed</code>. It sets <code>remote_sdp</code> from <code>input.answer</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.bridge.BridgeSession</code> in <code>Closed</code> and <code>Live</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.bridge.BridgeStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="connectbridge"><code>ConnectBridge</code></h3>
+<p><code>softphone.bridge.ConnectBridge</code>, shown to a person as &quot;Connect bridge&quot; and called <code>connect-bridge</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>endpoint</code> — <code>softphone.bridge.ServerEndpoint</code></li>
+<li><code>offer</code> — <code>softphone.bridge.SessionDescription</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>connecting</code></strong> — The only outcome that creates a `BridgeSession`, which is what keeps the `Bridge` discriminator on `softphone.media.MediaSession` honest. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.bridge.BridgeSession</code>, which starts in <code>Connecting</code>. The new instance&#39;s identity is published as <code>bridge_id</code> on <code>softphone.bridge.BridgeConnecting</code>. It emits <code>softphone.bridge.BridgeConnecting</code>. It sets <code>session_id</code> from <code>input.session_id</code>, <code>endpoint</code> from <code>input.endpoint</code> and <code>local_sdp</code> from <code>input.offer</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="failbridge"><code>FailBridge</code></h3>
+<p><code>softphone.bridge.FailBridge</code>, shown to a person as &quot;Fail bridge&quot; and called <code>fail-bridge</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>cause</code> — <code>softphone.bridge.BridgeCause</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>failed</code></strong> — A bridge that never came up and one that died mid-call are the same move with a different `cause`; the neutral reason is what the media layer is told. The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.bridge.BridgeSession</code> from <code>Connecting</code> and <code>Live</code> to <code>Closed</code>, along the declared move <code>close</code>. The instance is the one named by the input field <code>bridge_id</code>. It emits <code>softphone.bridge.BridgeFailed</code>. It sets <code>cause</code> from <code>input.cause</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.bridge.BridgeSession</code> in <code>Closed</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.bridge.BridgeStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h2 id="events">Events</h2>
+<h3 id="bridgeclosed"><code>BridgeClosed</code></h3>
+<p><code>softphone.bridge.BridgeClosed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>cause</code> — <code>softphone.bridge.BridgeCause</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>Emitted by <code>softphone.bridge.CloseBridge</code> on its <code>closed</code> outcome.</p>
+<p><code>end-session-with-bridge</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="bridgeconfirmed"><code>BridgeConfirmed</code></h3>
+<p><code>softphone.bridge.BridgeConfirmed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>answer</code> — <code>softphone.bridge.SessionDescription</code></li>
+</ul>
+<p>Emitted by <code>softphone.bridge.ConfirmBridge</code> on its <code>confirmed</code> outcome.</p>
+<p><code>activate-session-with-bridge</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="bridgeconnecting"><code>BridgeConnecting</code></h3>
+<p><code>softphone.bridge.BridgeConnecting</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>endpoint</code> — <code>softphone.bridge.ServerEndpoint</code></li>
+<li><code>offer</code> — <code>softphone.bridge.SessionDescription</code></li>
+</ul>
+<p>Emitted by <code>softphone.bridge.ConnectBridge</code> on its <code>connecting</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="bridgefailed"><code>BridgeFailed</code></h3>
+<p><code>softphone.bridge.BridgeFailed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>bridge_id</code> — <code>softphone.bridge.BridgeId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>cause</code> — <code>softphone.bridge.BridgeCause</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>Emitted by <code>softphone.bridge.FailBridge</code> on its <code>failed</code> outcome.</p>
+<p><code>end-session-with-failed-bridge</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="bridgestateconflict"><code>BridgeStateConflict</code></h3>
+<p>The bridge is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.bridge.BridgeSession.State</code></li>
+</ul>
+<p>Reported by <code>softphone.bridge.CloseBridge</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.bridge.ConfirmBridge</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.bridge.FailBridge</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="bridgehost"><code>BridgeHost</code></h3>
+<p><code>softphone.bridge.BridgeHost</code>, shown to a person as &quot;Bridge host&quot;.</p>
+<p>It may invoke <a href="#closebridge"><code>CloseBridge</code></a> and <a href="#connectbridge"><code>ConnectBridge</code></a>.</p>
+<h3 id="kernel"><code>Kernel</code></h3>
+<p><code>softphone.bridge.Kernel</code>, shown to a person as &quot;Signalling kernel&quot;.</p>
+<p>It may invoke <a href="#confirmbridge"><code>ConfirmBridge</code></a> and <a href="#failbridge"><code>FailBridge</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6</code> · contract digest <code>322b091c4af910d4501985517e55f15d349162196735c979779f5ed2fd5c153a</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

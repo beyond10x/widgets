@@ -4,7 +4,7 @@
 -->
 # softphone v1 — scenarios
 
-9 scenario(s), compiled from the documents an author wrote. Serve this directory and open `index.html`; a browser will not instantiate a module from a `file://` URL.
+11 scenario(s), compiled from the documents an author wrote. Serve this directory and open `index.html`; a browser will not instantiate a module from a `file://` URL.
 
 ```console
 $ python3 -m http.server

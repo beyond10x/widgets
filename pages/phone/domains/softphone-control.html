@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!--
   generated from softphone v1
-  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
-  contract digest 913760e973be00acd471682b61f976e01adb4da95f8c410d040f7c82c85b7f98
+  model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+  contract digest afbd01470748c21c67ec5dba6dd8fa1fb206b075be1209159c3d458870286723
   do not edit: regenerate with `ess generate`
 -->
 <html lang="en">
@@ -22,6 +22,7 @@
 <a href="../index.html">softphone v1</a>
 <a href="../crossings.html">Type crossings</a>
 <div class="group">domains</div>
+<a class="nested" href="softphone-bridge.html">Media bridge</a>
 <a class="nested" href="softphone-control.html" aria-current="page">Phone control</a>
 <a class="nested" href="softphone-directory.html">Phonebook</a>
 <a class="nested" href="softphone-history.html">Call history</a>
@@ -46,7 +47,7 @@
 <h3 id="callid"><code>CallId</code></h3>
 <p><code>softphone.control.CallId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
 <h3 id="callrow"><code>CallRow</code></h3>
-<p><code>softphone.control.CallRow</code> is a record of seven fields:</p>
+<p><code>softphone.control.CallRow</code> is a record of eight fields:</p>
 <ul>
 <li><code>call_id</code> — <code>softphone.control.CallId</code></li>
 <li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
@@ -54,6 +55,7 @@
 <li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
 <li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
 <li><code>muted</code> — <code>Boolean</code></li>
+<li><code>held</code> — <code>Boolean</code></li>
 <li><code>state</code> — <code>softphone.control.Call.State</code></li>
 </ul>
 <h3 id="digitstring"><code>DigitString</code></h3>
@@ -87,6 +89,7 @@
 <li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
 <li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
 <li><code>muted</code> — <code>Boolean</code></li>
+<li><code>held</code> — <code>Boolean</code></li>
 </ul>
 <p>It references at most one <a href="softphone-media.html#mediasession"><code>softphone.media.MediaSession</code></a>, as <code>media</code>, carried by <code>Call.session_id</code>.</p>
 <p>Every instance satisfies <code>(not (state == Active) or defined(session_id))</code> — a predicate over this entity&#39;s own fields, checked against them rather than stored as a sentence, so an invariant reading something the entity does not have is refused instead of documented.</p>
@@ -159,6 +162,7 @@
 <li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
 <li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
 <li><code>muted</code> — <code>Boolean</code></li>
+<li><code>held</code> — <code>Boolean</code></li>
 <li><code>state</code> — <code>softphone.control.Call.State</code></li>
 </ul>
 <p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
@@ -176,6 +180,7 @@
 <li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
 <li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
 <li><code>muted</code> — <code>Boolean</code></li>
+<li><code>held</code> — <code>Boolean</code></li>
 <li><code>state</code> — <code>softphone.control.Call.State</code></li>
 </ul>
 <p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
@@ -240,7 +245,7 @@
 <li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
 </ul>
 <p>It has one outcome.</p>
-<p><strong><code>dialled</code></strong> — The call is Requested and Outbound; no media exists yet, so `session_id` is absent. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.Call</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>call_id</code> on <code>softphone.control.CallDialled</code>. It emits <code>softphone.control.CallDialled</code>. It sets <code>endpoint_id</code> from <code>input.endpoint_id</code>, <code>direction</code> from <code>&quot;Outbound&quot;</code>, <code>remote</code> from <code>input.remote</code> and <code>muted</code> from <code>&quot;false&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>dialled</code></strong> — The call is Requested and Outbound; no media exists yet, so `session_id` is absent. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.Call</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>call_id</code> on <code>softphone.control.CallDialled</code>. It emits <code>softphone.control.CallDialled</code>. It sets <code>endpoint_id</code> from <code>input.endpoint_id</code>, <code>direction</code> from <code>&quot;Outbound&quot;</code>, <code>remote</code> from <code>input.remote</code>, <code>muted</code> from <code>&quot;false&quot;</code> and <code>held</code> from <code>&quot;false&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
 <h3 id="failcall"><code>FailCall</code></h3>
 <p><code>softphone.control.FailCall</code>, shown to a person as &quot;Fail call&quot; and called <code>fail-call</code> on the wire.</p>
 <p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L365</code>.</p>
@@ -279,7 +284,7 @@
 <li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
 </ul>
 <p>It has one outcome.</p>
-<p><strong><code>offered</code></strong> — An inbound call the signalling side reports; the direction is Inbound. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.Call</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>call_id</code> on <code>softphone.control.CallOffered</code>. It emits <code>softphone.control.CallOffered</code>. It sets <code>endpoint_id</code> from <code>input.endpoint_id</code>, <code>direction</code> from <code>&quot;Inbound&quot;</code>, <code>remote</code> from <code>input.remote</code> and <code>muted</code> from <code>&quot;false&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>offered</code></strong> — An inbound call the signalling side reports; the direction is Inbound. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.Call</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>call_id</code> on <code>softphone.control.CallOffered</code>. It emits <code>softphone.control.CallOffered</code>. It sets <code>endpoint_id</code> from <code>input.endpoint_id</code>, <code>direction</code> from <code>&quot;Inbound&quot;</code>, <code>remote</code> from <code>input.remote</code>, <code>muted</code> from <code>&quot;false&quot;</code> and <code>held</code> from <code>&quot;false&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
 <h3 id="reject"><code>Reject</code></h3>
 <p><code>softphone.control.Reject</code>, shown to a person as &quot;Reject&quot; and called <code>reject</code> on the wire.</p>
 <p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L348</code>.</p>
@@ -309,6 +314,15 @@
 </ul>
 <p>It has one outcome.</p>
 <p><strong><code>sent</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.control.DigitsSent</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="setheld"><code>SetHeld</code></h3>
+<p><code>softphone.control.SetHeld</code>, shown to a person as &quot;Set held&quot; and called <code>set-held</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>held</code> — <code>Boolean</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>changed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.control.Call</code> without moving it along its lifecycle. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.HoldChanged</code>. It sets <code>held</code> from <code>input.held</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
 <h3 id="setmuted"><code>SetMuted</code></h3>
 <p><code>softphone.control.SetMuted</code>, shown to a person as &quot;Set muted&quot; and called <code>set-muted</code> on the wire.</p>
 <p>It takes:</p>
@@ -416,6 +430,15 @@
 </ul>
 <p>Emitted by <code>softphone.control.ConfigureEndpoint</code> on its <code>configured</code> outcome.</p>
 <p>Nothing in this system reacts to it.</p>
+<h3 id="holdchanged"><code>HoldChanged</code></h3>
+<p><code>softphone.control.HoldChanged</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>held</code> — <code>Boolean</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.SetHeld</code> on its <code>changed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
 <h3 id="mediaattached"><code>MediaAttached</code></h3>
 <p><code>softphone.control.MediaAttached</code>.</p>
 <p>It carries:</p>
@@ -451,10 +474,10 @@
 <p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
 <h3 id="agent"><code>Agent</code></h3>
 <p><code>softphone.control.Agent</code>, shown to a person as &quot;Agent&quot;.</p>
-<p>It may invoke <a href="#answer"><code>Answer</code></a>, <a href="#configureendpoint"><code>ConfigureEndpoint</code></a>, <a href="#dial"><code>Dial</code></a>, <a href="#hangup"><code>HangUp</code></a>, <a href="#reject"><code>Reject</code></a>, <a href="#senddigits"><code>SendDigits</code></a> and <a href="#setmuted"><code>SetMuted</code></a>.</p>
+<p>It may invoke <a href="#answer"><code>Answer</code></a>, <a href="#configureendpoint"><code>ConfigureEndpoint</code></a>, <a href="#dial"><code>Dial</code></a>, <a href="#hangup"><code>HangUp</code></a>, <a href="#reject"><code>Reject</code></a>, <a href="#senddigits"><code>SendDigits</code></a>, <a href="#setheld"><code>SetHeld</code></a> and <a href="#setmuted"><code>SetMuted</code></a>.</p>
 <h3 id="human"><code>Human</code></h3>
 <p><code>softphone.control.Human</code>, shown to a person as &quot;Human&quot;.</p>
-<p>It may invoke <a href="#answer"><code>Answer</code></a>, <a href="#configureendpoint"><code>ConfigureEndpoint</code></a>, <a href="#dial"><code>Dial</code></a>, <a href="#hangup"><code>HangUp</code></a>, <a href="#reject"><code>Reject</code></a>, <a href="#senddigits"><code>SendDigits</code></a> and <a href="#setmuted"><code>SetMuted</code></a>.</p>
+<p>It may invoke <a href="#answer"><code>Answer</code></a>, <a href="#configureendpoint"><code>ConfigureEndpoint</code></a>, <a href="#dial"><code>Dial</code></a>, <a href="#hangup"><code>HangUp</code></a>, <a href="#reject"><code>Reject</code></a>, <a href="#senddigits"><code>SendDigits</code></a>, <a href="#setheld"><code>SetHeld</code></a> and <a href="#setmuted"><code>SetMuted</code></a>.</p>
 <h3 id="kernel"><code>Kernel</code></h3>
 <p><code>softphone.control.Kernel</code>, shown to a person as &quot;Signalling kernel&quot;.</p>
 <p>It may invoke <a href="#attachmedia"><code>AttachMedia</code></a>, <a href="#confirmanswer"><code>ConfirmAnswer</code></a>, <a href="#failcall"><code>FailCall</code></a>, <a href="#mediaconnected"><code>MediaConnected</code></a>, <a href="#offercall"><code>OfferCall</code></a> and <a href="#ringcall"><code>RingCall</code></a>.</p>
@@ -462,7 +485,7 @@
 </ul>
 </article>
 <footer class="provenance">
-Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>913760e973be00acd471682b61f976e01adb4da95f8c410d040f7c82c85b7f98</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+Generated from softphone v1 · model digest <code>3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6</code> · contract digest <code>afbd01470748c21c67ec5dba6dd8fa1fb206b075be1209159c3d458870286723</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
 </footer>
 </main>
 </div>

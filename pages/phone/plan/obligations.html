@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!--
   generated from softphone v1
-  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
-  contract digest ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643
+  model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+  contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
   do not edit: regenerate with `ess generate`
 -->
 <html lang="en">
@@ -22,6 +22,7 @@
 <a href="../index.html">softphone v1</a>
 <a href="../crossings.html">Type crossings</a>
 <div class="group">domains</div>
+<a class="nested" href="../domains/softphone-bridge.html">Media bridge</a>
 <a class="nested" href="../domains/softphone-control.html">Phone control</a>
 <a class="nested" href="../domains/softphone-directory.html">Phonebook</a>
 <a class="nested" href="../domains/softphone-history.html">Call history</a>
@@ -40,13 +41,19 @@
 <h1>plan/obligations</h1>
 <h2 id="synthesis-plan---softphone-v1">Synthesis plan — softphone v1</h2>
 <p>Scope: <code>component-skeletons</code>, planned by <code>ess-synth</code>. Regenerate with <code>ess synthesize</code>.</p>
-<p>307 capabilities: <strong>221 generated</strong>, <strong>68 obligations</strong>, <strong>18 refused</strong>. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.</p>
+<p>344 capabilities: <strong>248 generated</strong>, <strong>75 obligations</strong>, <strong>21 refused</strong>. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.</p>
 <h2 id="generated">Generated</h2>
 <table>
 <thead>
 <tr><th>capability</th><th>source</th></tr>
 </thead>
 <tbody>
+<tr><td>domain type</td><td><code>softphone.bridge.BridgeCause</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.bridge.BridgeId</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.bridge.BridgeSession.State</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.bridge.BridgeSessionRow</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.bridge.ServerEndpoint</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.bridge.SessionDescription</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.control.Call.State</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.control.CallDirection</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.control.CallId</code></td></tr>
@@ -105,6 +112,7 @@
 <tr><td>domain type</td><td><code>softphone.sip.SipDialogId</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.sip.SipDialogRow</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.sip.SipUri</code></td></tr>
+<tr><td>entity lifecycle</td><td><code>softphone.bridge.BridgeSession</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.control.Call</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.control.PhoneEndpoint</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.directory.Contact</code></td></tr>
@@ -117,6 +125,10 @@
 <tr><td>entity lifecycle</td><td><code>softphone.presentation.Keypad</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.sip.Registration</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.sip.SipDialog</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.bridge.CloseBridge</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.bridge.ConfirmBridge</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.bridge.ConnectBridge</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.bridge.FailBridge</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.control.Answer</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.control.AttachMedia</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.control.ConfigureEndpoint</code></td></tr>
@@ -129,6 +141,7 @@
 <tr><td>command contract</td><td><code>softphone.control.Reject</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.control.RingCall</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.control.SendDigits</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.control.SetHeld</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.control.SetMuted</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.directory.AddAddress</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.directory.AddContact</code></td></tr>
@@ -169,6 +182,10 @@
 <tr><td>command contract</td><td><code>softphone.sip.RequestLocalMedia</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.sip.RetryRegistration</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.sip.Unregister</code></td></tr>
+<tr><td>event type</td><td><code>softphone.bridge.BridgeClosed</code></td></tr>
+<tr><td>event type</td><td><code>softphone.bridge.BridgeConfirmed</code></td></tr>
+<tr><td>event type</td><td><code>softphone.bridge.BridgeConnecting</code></td></tr>
+<tr><td>event type</td><td><code>softphone.bridge.BridgeFailed</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.CallAnswered</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.CallConfirmed</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.CallDialled</code></td></tr>
@@ -180,6 +197,7 @@
 <tr><td>event type</td><td><code>softphone.control.CallRinging</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.DigitsSent</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.EndpointConfigured</code></td></tr>
+<tr><td>event type</td><td><code>softphone.control.HoldChanged</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.MediaAttached</code></td></tr>
 <tr><td>event type</td><td><code>softphone.control.MuteChanged</code></td></tr>
 <tr><td>event type</td><td><code>softphone.directory.ContactAdded</code></td></tr>
@@ -221,6 +239,7 @@
 <tr><td>event type</td><td><code>softphone.sip.RemoteMediaApplied</code></td></tr>
 <tr><td>event type</td><td><code>softphone.sip.SipDialogClosed</code></td></tr>
 <tr><td>event type</td><td><code>softphone.sip.SipDialogOpened</code></td></tr>
+<tr><td>error type</td><td><code>softphone.bridge.BridgeStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.control.CallStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.directory.ContactAddressStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.directory.ContactStateConflict</code></td></tr>
@@ -231,6 +250,8 @@
 <tr><td>error type</td><td><code>softphone.presentation.ConsoleStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.sip.RegistrationStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.sip.SipDialogStateConflict</code></td></tr>
+<tr><td>view type</td><td><code>softphone.bridge.BridgeById</code></td></tr>
+<tr><td>view type</td><td><code>softphone.bridge.LiveBridges</code></td></tr>
 <tr><td>view type</td><td><code>softphone.control.ActiveCalls</code></td></tr>
 <tr><td>view type</td><td><code>softphone.control.CallById</code></td></tr>
 <tr><td>view type</td><td><code>softphone.control.EndpointById</code></td></tr>
@@ -247,8 +268,14 @@
 <tr><td>view type</td><td><code>softphone.presentation.KeypadById</code></td></tr>
 <tr><td>view type</td><td><code>softphone.sip.RegistrationById</code></td></tr>
 <tr><td>view type</td><td><code>softphone.sip.SipDialogById</code></td></tr>
+<tr><td>binding transformation</td><td><code>activate-session-with-bridge</code></td></tr>
+<tr><td>binding delivery</td><td><code>activate-session-with-bridge</code></td></tr>
+<tr><td>binding transformation</td><td><code>end-session-with-bridge</code></td></tr>
+<tr><td>binding delivery</td><td><code>end-session-with-bridge</code></td></tr>
 <tr><td>binding transformation</td><td><code>end-session-with-dialog</code></td></tr>
 <tr><td>binding delivery</td><td><code>end-session-with-dialog</code></td></tr>
+<tr><td>binding transformation</td><td><code>end-session-with-failed-bridge</code></td></tr>
+<tr><td>binding delivery</td><td><code>end-session-with-failed-bridge</code></td></tr>
 <tr><td>binding transformation</td><td><code>end-session-with-loopback</code></td></tr>
 <tr><td>binding delivery</td><td><code>end-session-with-loopback</code></td></tr>
 <tr><td>binding transformation</td><td><code>record-failed-call</code></td></tr>
@@ -261,6 +288,7 @@
 <tr><td>binding delivery</td><td><code>show-incoming-call</code></td></tr>
 <tr><td>binding transformation</td><td><code>show-outbound-call</code></td></tr>
 <tr><td>binding delivery</td><td><code>show-outbound-call</code></td></tr>
+<tr><td>component port</td><td><code>bridge-binding</code></td></tr>
 <tr><td>component port</td><td><code>call-history</code></td></tr>
 <tr><td>component port</td><td><code>local-binding</code></td></tr>
 <tr><td>component port</td><td><code>media-session</code></td></tr>
@@ -276,6 +304,10 @@
 <tr><th>capability</th><th>source</th><th>why not generated</th><th>contract</th></tr>
 </thead>
 <tbody>
+<tr><td>command behaviour</td><td><code>softphone.bridge.CloseBridge</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.bridge.CloseBridge</code> input, decide and enact exactly one outcome — <code>closed</code> otherwise, takes <code>close</code> of <code>softphone.bridge.BridgeSession</code>, emits <code>softphone.bridge.BridgeClosed</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.bridge.BridgeStateConflict</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.bridge.ConfirmBridge</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.bridge.ConfirmBridge</code> input, decide and enact exactly one outcome — <code>confirmed</code> otherwise, takes <code>establish</code> of <code>softphone.bridge.BridgeSession</code>, emits <code>softphone.bridge.BridgeConfirmed</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.bridge.BridgeStateConflict</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.bridge.ConnectBridge</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.bridge.ConnectBridge</code> input, decide and enact exactly one outcome — <code>connecting</code> otherwise, creates <code>softphone.bridge.BridgeSession</code>, emits <code>softphone.bridge.BridgeConnecting</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.bridge.FailBridge</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.bridge.FailBridge</code> input, decide and enact exactly one outcome — <code>failed</code> otherwise, takes <code>close</code> of <code>softphone.bridge.BridgeSession</code>, emits <code>softphone.bridge.BridgeFailed</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.bridge.BridgeStateConflict</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.control.Answer</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.Answer</code> input, decide and enact exactly one outcome — <code>answered</code> otherwise, takes <code>accept</code> of <code>softphone.control.Call</code>, emits <code>softphone.control.CallAnswered</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.control.CallStateConflict</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.control.AttachMedia</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.AttachMedia</code> input, decide and enact exactly one outcome — <code>attached</code> otherwise, updates <code>softphone.control.Call</code>, emits <code>softphone.control.MediaAttached</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.control.ConfigureEndpoint</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.ConfigureEndpoint</code> input, decide and enact exactly one outcome — <code>configured</code> otherwise, creates <code>softphone.control.PhoneEndpoint</code>, emits <code>softphone.control.EndpointConfigured</code></td></tr>
@@ -288,6 +320,7 @@
 <tr><td>command behaviour</td><td><code>softphone.control.Reject</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.Reject</code> input, decide and enact exactly one outcome — <code>rejected</code> otherwise, takes <code>end</code> of <code>softphone.control.Call</code>, emits <code>softphone.control.CallRejected</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.control.CallStateConflict</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.control.RingCall</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.RingCall</code> input, decide and enact exactly one outcome — <code>ringing</code> otherwise, takes <code>ring</code> of <code>softphone.control.Call</code>, emits <code>softphone.control.CallRinging</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.control.CallStateConflict</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.control.SendDigits</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.SendDigits</code> input, decide and enact exactly one outcome — <code>sent</code> otherwise, emits <code>softphone.control.DigitsSent</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.control.SetHeld</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.SetHeld</code> input, decide and enact exactly one outcome — <code>changed</code> otherwise, updates <code>softphone.control.Call</code>, emits <code>softphone.control.HoldChanged</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.control.SetMuted</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.control.SetMuted</code> input, decide and enact exactly one outcome — <code>changed</code> otherwise, updates <code>softphone.control.Call</code>, emits <code>softphone.control.MuteChanged</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.directory.AddAddress</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.directory.AddAddress</code> input, decide and enact exactly one outcome — <code>added</code> otherwise, creates <code>softphone.directory.ContactAddress</code>, emits <code>softphone.directory.ContactAddressAdded</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.directory.AddContact</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.directory.AddContact</code> input, decide and enact exactly one outcome — <code>added</code> otherwise, creates <code>softphone.directory.Contact</code>, emits <code>softphone.directory.ContactAdded</code></td></tr>
@@ -328,6 +361,8 @@
 <tr><td>command behaviour</td><td><code>softphone.sip.RequestLocalMedia</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.sip.RequestLocalMedia</code> input, decide and enact exactly one outcome — <code>requested</code> otherwise, emits <code>softphone.sip.LocalMediaRequested</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.sip.RetryRegistration</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.sip.RetryRegistration</code> input, decide and enact exactly one outcome — <code>retried</code> otherwise, takes <code>retry</code> of <code>softphone.sip.Registration</code>, emits <code>softphone.sip.RegistrationRetried</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.sip.RegistrationStateConflict</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.sip.Unregister</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.sip.Unregister</code> input, decide and enact exactly one outcome — <code>ended</code> otherwise, takes <code>end</code> of <code>softphone.sip.Registration</code>, emits <code>softphone.sip.RegistrationEnded</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.sip.RegistrationStateConflict</code></td></tr>
+<tr><td>view query</td><td><code>softphone.bridge.BridgeById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.bridge.BridgeById</code> with rows projected from <code>softphone.bridge.BridgeSession</code> at <code>read_your_writes</code> consistency, containing instances where <code>bridge_id == param.bridge_id</code></td></tr>
+<tr><td>view query</td><td><code>softphone.bridge.LiveBridges</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.bridge.LiveBridges</code> with rows projected from <code>softphone.bridge.BridgeSession</code> at <code>read_your_writes</code> consistency, containing instances where <code>state == Live</code></td></tr>
 <tr><td>view query</td><td><code>softphone.control.ActiveCalls</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.control.ActiveCalls</code> with rows projected from <code>softphone.control.Call</code> at <code>read_your_writes</code> consistency, containing instances where <code>state == Active</code></td></tr>
 <tr><td>view query</td><td><code>softphone.control.CallById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.control.CallById</code> with rows projected from <code>softphone.control.Call</code> at <code>read_your_writes</code> consistency, containing instances where <code>call_id == param.call_id</code></td></tr>
 <tr><td>view query</td><td><code>softphone.control.EndpointById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.control.EndpointById</code> with rows projected from <code>softphone.control.PhoneEndpoint</code> at <code>read_your_writes</code> consistency, containing instances where <code>endpoint_id == param.endpoint_id</code></td></tr>
@@ -352,8 +387,10 @@
 <tr><th>capability</th><th>source</th><th>stage</th><th>why</th></tr>
 </thead>
 <tbody>
-<tr><td>actor grants</td><td><code>softphone.control.Agent</code></td><td>planning</td><td>may invoke <code>softphone.control.Answer</code>, <code>softphone.control.ConfigureEndpoint</code>, <code>softphone.control.Dial</code>, <code>softphone.control.HangUp</code>, <code>softphone.control.Reject</code>, <code>softphone.control.SendDigits</code>, <code>softphone.control.SetMuted</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
-<tr><td>actor grants</td><td><code>softphone.control.Human</code></td><td>planning</td><td>may invoke <code>softphone.control.Answer</code>, <code>softphone.control.ConfigureEndpoint</code>, <code>softphone.control.Dial</code>, <code>softphone.control.HangUp</code>, <code>softphone.control.Reject</code>, <code>softphone.control.SendDigits</code>, <code>softphone.control.SetMuted</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>actor grants</td><td><code>softphone.bridge.BridgeHost</code></td><td>planning</td><td>may invoke <code>softphone.bridge.CloseBridge</code>, <code>softphone.bridge.ConnectBridge</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>actor grants</td><td><code>softphone.bridge.Kernel</code></td><td>planning</td><td>may invoke <code>softphone.bridge.ConfirmBridge</code>, <code>softphone.bridge.FailBridge</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>actor grants</td><td><code>softphone.control.Agent</code></td><td>planning</td><td>may invoke <code>softphone.control.Answer</code>, <code>softphone.control.ConfigureEndpoint</code>, <code>softphone.control.Dial</code>, <code>softphone.control.HangUp</code>, <code>softphone.control.Reject</code>, <code>softphone.control.SendDigits</code>, <code>softphone.control.SetHeld</code>, <code>softphone.control.SetMuted</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>actor grants</td><td><code>softphone.control.Human</code></td><td>planning</td><td>may invoke <code>softphone.control.Answer</code>, <code>softphone.control.ConfigureEndpoint</code>, <code>softphone.control.Dial</code>, <code>softphone.control.HangUp</code>, <code>softphone.control.Reject</code>, <code>softphone.control.SendDigits</code>, <code>softphone.control.SetHeld</code>, <code>softphone.control.SetMuted</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.control.Kernel</code></td><td>planning</td><td>may invoke <code>softphone.control.AttachMedia</code>, <code>softphone.control.ConfirmAnswer</code>, <code>softphone.control.FailCall</code>, <code>softphone.control.MediaConnected</code>, <code>softphone.control.OfferCall</code>, <code>softphone.control.RingCall</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.directory.Human</code></td><td>planning</td><td>may invoke <code>softphone.directory.AddAddress</code>, <code>softphone.directory.AddContact</code>, <code>softphone.directory.DeleteContact</code>, <code>softphone.directory.RemoveAddress</code>, <code>softphone.directory.RenameContact</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.history.HistoryHost</code></td><td>planning</td><td>may invoke <code>softphone.history.RecordCall</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
@@ -363,6 +400,7 @@
 <tr><td>actor grants</td><td><code>softphone.presentation.Human</code></td><td>planning</td><td>may invoke <code>softphone.presentation.AttributeTile</code>, <code>softphone.presentation.ClearEntry</code>, <code>softphone.presentation.DismissCall</code>, <code>softphone.presentation.EnterCall</code>, <code>softphone.presentation.EnterDialing</code>, <code>softphone.presentation.EnterIncoming</code>, <code>softphone.presentation.LeaveCall</code>, <code>softphone.presentation.OpenConsole</code>, <code>softphone.presentation.OpenKeypad</code>, <code>softphone.presentation.PressKey</code>, <code>softphone.presentation.ShowCall</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.sip.Kernel</code></td><td>planning</td><td>may invoke <code>softphone.sip.ApplyRemoteMedia</code>, <code>softphone.sip.CloseDialog</code>, <code>softphone.sip.ConfirmRegistration</code>, <code>softphone.sip.FailRegistration</code>, <code>softphone.sip.RequestLocalMedia</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.sip.SipHost</code></td><td>planning</td><td>may invoke <code>softphone.sip.CloseDialog</code>, <code>softphone.sip.FailLocalMedia</code>, <code>softphone.sip.OfferLocalMedia</code>, <code>softphone.sip.OpenDialog</code>, <code>softphone.sip.RefreshRegistration</code>, <code>softphone.sip.Register</code>, <code>softphone.sip.RetryRegistration</code>, <code>softphone.sip.Unregister</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>workload</td><td><code>bridge-binding</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 <tr><td>workload</td><td><code>call-history</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 <tr><td>workload</td><td><code>local-binding</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 <tr><td>workload</td><td><code>media-session</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
@@ -374,7 +412,7 @@
 </table>
 </article>
 <footer class="provenance">
-Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+Generated from softphone v1 · model digest <code>3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6</code> · contract digest <code>b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
 </footer>
 </main>
 </div>

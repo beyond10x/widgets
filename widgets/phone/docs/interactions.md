@@ -1,7 +1,7 @@
 <!--
 generated from softphone v1
-model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
-contract digest ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643
+model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
 do not edit: regenerate with `ess generate`
 -->
 
@@ -10,6 +10,67 @@ do not edit: regenerate with `ess generate`
 A binding is the only way an event in one context causes a command in another. Each one states how many times the command may run and what happens when it does not, because a binding that can fail quietly is the difference between specifying a system and specifying a demo.
 
 [Back to the index](index.md).
+
+## `activate-session-with-bridge`
+
+A bridge that came up activates the session it carries.
+
+`softphone.bridge.BridgeConfirmed` causes [`softphone.media.ActivateSession`](domains/softphone-media.md#activatesession).
+
+```mermaid
+flowchart LR
+    event["softphone.bridge.BridgeConfirmed"]
+    command["softphone.media.ActivateSession"]
+    event -->|"activate-session-with-bridge"| command
+    outcome0["activated"]
+    command --> outcome0
+    emit0_0["softphone.media.SessionActivated"]
+    outcome0 --> emit0_0
+    outcome1["wrong-state"]
+    command --> outcome1
+    error1["softphone.media.MediaSessionStateConflict"]
+    outcome1 --> error1
+    error1 --> failure["retried by the transport"]
+```
+
+Delivered **at least once**, so `softphone.media.ActivateSession` must be idempotent: the same event arriving twice must not do the work twice. "Exactly once" is what everyone believes they have until a retry proves otherwise, which is why this is written down rather than assumed.
+
+When it fails it is **retried**, on whatever schedule the transport provides. Nothing here says how many times, so nothing here says when it stops. A retry publishes nothing of its own, because it is already observable: it is another invocation of the command.
+
+It fills the command's input like this:
+
+- `session_id` (`softphone.media.MediaSessionId`) ← the event's `session_id` (`softphone.media.MediaSessionId`).
+
+## `end-session-with-bridge`
+
+Closing the bridge terminates the session it carried.
+
+`softphone.bridge.BridgeClosed` causes [`softphone.media.TerminateSession`](domains/softphone-media.md#terminatesession).
+
+```mermaid
+flowchart LR
+    event["softphone.bridge.BridgeClosed"]
+    command["softphone.media.TerminateSession"]
+    event -->|"end-session-with-bridge"| command
+    outcome0["terminated"]
+    command --> outcome0
+    emit0_0["softphone.media.SessionTerminated"]
+    outcome0 --> emit0_0
+    outcome1["wrong-state"]
+    command --> outcome1
+    error1["softphone.media.MediaSessionStateConflict"]
+    outcome1 --> error1
+    error1 --> failure["retried by the transport"]
+```
+
+Delivered **at least once**, so `softphone.media.TerminateSession` must be idempotent: the same event arriving twice must not do the work twice. "Exactly once" is what everyone believes they have until a retry proves otherwise, which is why this is written down rather than assumed.
+
+When it fails it is **retried**, on whatever schedule the transport provides. Nothing here says how many times, so nothing here says when it stops. A retry publishes nothing of its own, because it is already observable: it is another invocation of the command.
+
+It fills the command's input like this:
+
+- `session_id` (`softphone.media.MediaSessionId`) ← the event's `session_id` (`softphone.media.MediaSessionId`).
+- `reason` (`softphone.media.TerminationReason`) ← the event's `reason` (`softphone.media.TerminationReason`).
 
 ## `end-session-with-dialog`
 
@@ -22,6 +83,37 @@ flowchart LR
     event["softphone.sip.SipDialogClosed"]
     command["softphone.media.TerminateSession"]
     event -->|"end-session-with-dialog"| command
+    outcome0["terminated"]
+    command --> outcome0
+    emit0_0["softphone.media.SessionTerminated"]
+    outcome0 --> emit0_0
+    outcome1["wrong-state"]
+    command --> outcome1
+    error1["softphone.media.MediaSessionStateConflict"]
+    outcome1 --> error1
+    error1 --> failure["retried by the transport"]
+```
+
+Delivered **at least once**, so `softphone.media.TerminateSession` must be idempotent: the same event arriving twice must not do the work twice. "Exactly once" is what everyone believes they have until a retry proves otherwise, which is why this is written down rather than assumed.
+
+When it fails it is **retried**, on whatever schedule the transport provides. Nothing here says how many times, so nothing here says when it stops. A retry publishes nothing of its own, because it is already observable: it is another invocation of the command.
+
+It fills the command's input like this:
+
+- `session_id` (`softphone.media.MediaSessionId`) ← the event's `session_id` (`softphone.media.MediaSessionId`).
+- `reason` (`softphone.media.TerminationReason`) ← the event's `reason` (`softphone.media.TerminationReason`).
+
+## `end-session-with-failed-bridge`
+
+A bridge that failed terminates the session it carried.
+
+`softphone.bridge.BridgeFailed` causes [`softphone.media.TerminateSession`](domains/softphone-media.md#terminatesession).
+
+```mermaid
+flowchart LR
+    event["softphone.bridge.BridgeFailed"]
+    command["softphone.media.TerminateSession"]
+    event -->|"end-session-with-failed-bridge"| command
     outcome0["terminated"]
     command --> outcome0
     emit0_0["softphone.media.SessionTerminated"]
@@ -202,12 +294,14 @@ It fills the command's input like this:
 
 Legal, and worth seeing. An event with no reader inside the system is either a deliberate boundary — something outside consumes it — or a binding somebody forgot, and only a person can tell which.
 
+- `softphone.bridge.BridgeConnecting`
 - `softphone.control.CallAnswered`
 - `softphone.control.CallConfirmed`
 - `softphone.control.CallEstablished`
 - `softphone.control.CallRinging`
 - `softphone.control.DigitsSent`
 - `softphone.control.EndpointConfigured`
+- `softphone.control.HoldChanged`
 - `softphone.control.MediaAttached`
 - `softphone.control.MuteChanged`
 - `softphone.directory.ContactAdded`
@@ -251,4 +345,4 @@ Legal, and worth seeing. An event with no reader inside the system is either a d
 
 ---
 
-Generated from softphone v1 · model digest `aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf` · contract digest `ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643`. Do not edit this file; change the specification and regenerate it with `ess generate`.
+Generated from softphone v1 · model digest `3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6` · contract digest `b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a`. Do not edit this file; change the specification and regenerate it with `ess generate`.

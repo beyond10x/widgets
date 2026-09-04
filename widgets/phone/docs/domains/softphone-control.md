@@ -1,7 +1,7 @@
 <!--
 generated from softphone v1
-model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
-contract digest 913760e973be00acd471682b61f976e01adb4da95f8c410d040f7c82c85b7f98
+model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+contract digest afbd01470748c21c67ec5dba6dd8fa1fb206b075be1209159c3d458870286723
 do not edit: regenerate with `ess generate`
 -->
 
@@ -23,7 +23,7 @@ Calls this phone is placing or receiving, and the commands a human or an agent i
 
 ### `CallRow`
 
-`softphone.control.CallRow` is a record of seven fields:
+`softphone.control.CallRow` is a record of eight fields:
 
 - `call_id` — `softphone.control.CallId`
 - `endpoint_id` — `softphone.control.EndpointId`
@@ -31,6 +31,7 @@ Calls this phone is placing or receiving, and the commands a human or an agent i
 - `remote` — `softphone.control.RemoteAddress`
 - `session_id` — `Optional<softphone.media.MediaSessionId>`, which may be absent
 - `muted` — `Boolean`
+- `held` — `Boolean`
 - `state` — `softphone.control.Call.State`
 
 ### `DigitString`
@@ -81,6 +82,7 @@ It holds:
 - `remote` — `softphone.control.RemoteAddress`
 - `session_id` — `Optional<softphone.media.MediaSessionId>`, which may be absent
 - `muted` — `Boolean`
+- `held` — `Boolean`
 
 It references at most one [`softphone.media.MediaSession`](softphone-media.md#mediasession), as `media`, carried by `Call.session_id`.
 
@@ -181,6 +183,7 @@ It exposes:
 - `remote` — `softphone.control.RemoteAddress`
 - `session_id` — `Optional<softphone.media.MediaSessionId>`, which may be absent
 - `muted` — `Boolean`
+- `held` — `Boolean`
 - `state` — `softphone.control.Call.State`
 
 It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.
@@ -205,6 +208,7 @@ It exposes:
 - `remote` — `softphone.control.RemoteAddress`
 - `session_id` — `Optional<softphone.media.MediaSessionId>`, which may be absent
 - `muted` — `Boolean`
+- `held` — `Boolean`
 - `state` — `softphone.control.Call.State`
 
 It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.
@@ -301,7 +305,7 @@ It takes:
 
 It has one outcome.
 
-**`dialled`** — The call is Requested and Outbound; no media exists yet, so `session_id` is absent. The default branch, taken when no other outcome's condition matched. It creates a `softphone.control.Call`, which starts in `Requested`. The new instance's identity is published as `call_id` on `softphone.control.CallDialled`. It emits `softphone.control.CallDialled`. It sets `endpoint_id` from `input.endpoint_id`, `direction` from `"Outbound"`, `remote` from `input.remote` and `muted` from `"false"`. A test reaches it by constructing an input that satisfies no other outcome's condition.
+**`dialled`** — The call is Requested and Outbound; no media exists yet, so `session_id` is absent. The default branch, taken when no other outcome's condition matched. It creates a `softphone.control.Call`, which starts in `Requested`. The new instance's identity is published as `call_id` on `softphone.control.CallDialled`. It emits `softphone.control.CallDialled`. It sets `endpoint_id` from `input.endpoint_id`, `direction` from `"Outbound"`, `remote` from `input.remote`, `muted` from `"false"` and `held` from `"false"`. A test reaches it by constructing an input that satisfies no other outcome's condition.
 
 ### `FailCall`
 
@@ -361,7 +365,7 @@ It takes:
 
 It has one outcome.
 
-**`offered`** — An inbound call the signalling side reports; the direction is Inbound. The default branch, taken when no other outcome's condition matched. It creates a `softphone.control.Call`, which starts in `Requested`. The new instance's identity is published as `call_id` on `softphone.control.CallOffered`. It emits `softphone.control.CallOffered`. It sets `endpoint_id` from `input.endpoint_id`, `direction` from `"Inbound"`, `remote` from `input.remote` and `muted` from `"false"`. A test reaches it by constructing an input that satisfies no other outcome's condition.
+**`offered`** — An inbound call the signalling side reports; the direction is Inbound. The default branch, taken when no other outcome's condition matched. It creates a `softphone.control.Call`, which starts in `Requested`. The new instance's identity is published as `call_id` on `softphone.control.CallOffered`. It emits `softphone.control.CallOffered`. It sets `endpoint_id` from `input.endpoint_id`, `direction` from `"Inbound"`, `remote` from `input.remote`, `muted` from `"false"` and `held` from `"false"`. A test reaches it by constructing an input that satisfies no other outcome's condition.
 
 ### `Reject`
 
@@ -406,6 +410,19 @@ It takes:
 It has one outcome.
 
 **`sent`** — The default branch, taken when no other outcome's condition matched. No entity in this specification changes. It emits `softphone.control.DigitsSent`. A test reaches it by constructing an input that satisfies no other outcome's condition.
+
+### `SetHeld`
+
+`softphone.control.SetHeld`, shown to a person as "Set held" and called `set-held` on the wire.
+
+It takes:
+
+- `call_id` — `softphone.control.CallId`
+- `held` — `Boolean`
+
+It has one outcome.
+
+**`changed`** — The default branch, taken when no other outcome's condition matched. It changes a `softphone.control.Call` without moving it along its lifecycle. The instance is the one named by the input field `call_id`. It emits `softphone.control.HoldChanged`. It sets `held` from `input.held`. A test reaches it by constructing an input that satisfies no other outcome's condition.
 
 ### `SetMuted`
 
@@ -563,6 +580,19 @@ Emitted by `softphone.control.ConfigureEndpoint` on its `configured` outcome.
 
 Nothing in this system reacts to it.
 
+### `HoldChanged`
+
+`softphone.control.HoldChanged`.
+
+It carries:
+
+- `call_id` — `softphone.control.CallId`
+- `held` — `Boolean`
+
+Emitted by `softphone.control.SetHeld` on its `changed` outcome.
+
+Nothing in this system reacts to it.
+
 ### `MediaAttached`
 
 `softphone.control.MediaAttached`.
@@ -619,13 +649,13 @@ An actor is who may ask this context for something. Every grant below points at 
 
 `softphone.control.Agent`, shown to a person as "Agent".
 
-It may invoke [`Answer`](#answer), [`ConfigureEndpoint`](#configureendpoint), [`Dial`](#dial), [`HangUp`](#hangup), [`Reject`](#reject), [`SendDigits`](#senddigits) and [`SetMuted`](#setmuted).
+It may invoke [`Answer`](#answer), [`ConfigureEndpoint`](#configureendpoint), [`Dial`](#dial), [`HangUp`](#hangup), [`Reject`](#reject), [`SendDigits`](#senddigits), [`SetHeld`](#setheld) and [`SetMuted`](#setmuted).
 
 ### `Human`
 
 `softphone.control.Human`, shown to a person as "Human".
 
-It may invoke [`Answer`](#answer), [`ConfigureEndpoint`](#configureendpoint), [`Dial`](#dial), [`HangUp`](#hangup), [`Reject`](#reject), [`SendDigits`](#senddigits) and [`SetMuted`](#setmuted).
+It may invoke [`Answer`](#answer), [`ConfigureEndpoint`](#configureendpoint), [`Dial`](#dial), [`HangUp`](#hangup), [`Reject`](#reject), [`SendDigits`](#senddigits), [`SetHeld`](#setheld) and [`SetMuted`](#setmuted).
 
 ### `Kernel`
 
@@ -636,4 +666,4 @@ It may invoke [`AttachMedia`](#attachmedia), [`ConfirmAnswer`](#confirmanswer), 
 
 ---
 
-Generated from softphone v1 · model digest `aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf` · contract digest `913760e973be00acd471682b61f976e01adb4da95f8c410d040f7c82c85b7f98`. Do not edit this file; change the specification and regenerate it with `ess generate`.
+Generated from softphone v1 · model digest `3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6` · contract digest `afbd01470748c21c67ec5dba6dd8fa1fb206b075be1209159c3d458870286723`. Do not edit this file; change the specification and regenerate it with `ess generate`.

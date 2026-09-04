@@ -42,7 +42,7 @@ types:
   # `upstream-blocker:ess-system-level-type-breaks-synthesis`. Move it when that clears.
   - name: softphone.media.BindingKind
     kind: enum
-    variants: [Sip, Loopback]
+    variants: [Sip, Bridge, Loopback]
 
   - name: softphone.media.MediaSessionId
     kind: newtype

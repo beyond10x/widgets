@@ -1,6 +1,22 @@
 {
   "actors": [
     {
+      "display": "Bridge host",
+      "may": [
+        "softphone.bridge.CloseBridge",
+        "softphone.bridge.ConnectBridge"
+      ],
+      "name": "softphone.bridge.BridgeHost"
+    },
+    {
+      "display": "Signalling kernel",
+      "may": [
+        "softphone.bridge.ConfirmBridge",
+        "softphone.bridge.FailBridge"
+      ],
+      "name": "softphone.bridge.Kernel"
+    },
+    {
       "display": "Agent",
       "may": [
         "softphone.control.Answer",
@@ -9,6 +25,7 @@
         "softphone.control.HangUp",
         "softphone.control.Reject",
         "softphone.control.SendDigits",
+        "softphone.control.SetHeld",
         "softphone.control.SetMuted"
       ],
       "name": "softphone.control.Agent"
@@ -22,6 +39,7 @@
         "softphone.control.HangUp",
         "softphone.control.Reject",
         "softphone.control.SendDigits",
+        "softphone.control.SetHeld",
         "softphone.control.SetMuted"
       ],
       "name": "softphone.control.Human"
@@ -129,11 +147,32 @@
   ],
   "bindings": [
     {
+      "command": "softphone.media.ActivateSession",
+      "delivery": "at_least_once",
+      "event": "softphone.bridge.BridgeConfirmed",
+      "failure": "retry",
+      "name": "activate-session-with-bridge"
+    },
+    {
+      "command": "softphone.media.TerminateSession",
+      "delivery": "at_least_once",
+      "event": "softphone.bridge.BridgeClosed",
+      "failure": "retry",
+      "name": "end-session-with-bridge"
+    },
+    {
       "command": "softphone.media.TerminateSession",
       "delivery": "at_least_once",
       "event": "softphone.sip.SipDialogClosed",
       "failure": "retry",
       "name": "end-session-with-dialog"
+    },
+    {
+      "command": "softphone.media.TerminateSession",
+      "delivery": "at_least_once",
+      "event": "softphone.bridge.BridgeFailed",
+      "failure": "retry",
+      "name": "end-session-with-failed-bridge"
     },
     {
       "command": "softphone.media.TerminateSession",
@@ -179,6 +218,147 @@
     }
   ],
   "commands": [
+    {
+      "display": "Close bridge",
+      "name": "softphone.bridge.CloseBridge",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.bridge.BridgeClosed"
+          ],
+          "name": "closed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "cause",
+              "target": "cause"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.bridge.BridgeSession",
+            "from": [
+              "Connecting",
+              "Live"
+            ],
+            "kind": "moves",
+            "to": "Closed",
+            "transition": "close"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Confirm bridge",
+      "name": "softphone.bridge.ConfirmBridge",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.bridge.BridgeConfirmed"
+          ],
+          "name": "confirmed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "answer",
+              "target": "remote_sdp"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.bridge.BridgeSession",
+            "from": [
+              "Connecting"
+            ],
+            "kind": "moves",
+            "to": "Live",
+            "transition": "establish"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Connect bridge",
+      "name": "softphone.bridge.ConnectBridge",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.bridge.BridgeConnecting"
+          ],
+          "name": "connecting",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "session_id",
+              "target": "session_id"
+            },
+            {
+              "from": "endpoint",
+              "target": "endpoint"
+            },
+            {
+              "from": "offer",
+              "target": "local_sdp"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.bridge.BridgeSession",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Fail bridge",
+      "name": "softphone.bridge.FailBridge",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.bridge.BridgeFailed"
+          ],
+          "name": "failed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "cause",
+              "target": "cause"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.bridge.BridgeSession",
+            "from": [
+              "Connecting",
+              "Live"
+            ],
+            "kind": "moves",
+            "to": "Closed",
+            "transition": "close"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
     {
       "display": "Answer",
       "name": "softphone.control.Answer",
@@ -323,6 +503,10 @@
             {
               "from": null,
               "target": "muted"
+            },
+            {
+              "from": null,
+              "target": "held"
             }
           ],
           "subject": {
@@ -457,6 +641,10 @@
             {
               "from": null,
               "target": "muted"
+            },
+            {
+              "from": null,
+              "target": "held"
             }
           ],
           "subject": {
@@ -544,6 +732,32 @@
           "refuses": true,
           "sets": [],
           "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Set held",
+      "name": "softphone.control.SetHeld",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.HoldChanged"
+          ],
+          "name": "changed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "held",
+              "target": "held"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
         }
       ]
     },
@@ -1652,13 +1866,35 @@
   ],
   "entities": [
     {
+      "display": "BridgeSession",
+      "fields": [
+        "session_id",
+        "endpoint",
+        "local_sdp",
+        "remote_sdp",
+        "cause"
+      ],
+      "identity": "bridge_id",
+      "initial": "Connecting",
+      "name": "softphone.bridge.BridgeSession",
+      "states": [
+        "Closed",
+        "Connecting",
+        "Live"
+      ],
+      "terminal": [
+        "Closed"
+      ]
+    },
+    {
       "display": "Call",
       "fields": [
         "endpoint_id",
         "direction",
         "remote",
         "session_id",
-        "muted"
+        "muted",
+        "held"
       ],
       "identity": "call_id",
       "initial": "Requested",
@@ -1882,6 +2118,42 @@
   "views": [
     {
       "consistency": "read_your_writes",
+      "display": "Bridge by id",
+      "entity": "softphone.bridge.BridgeSession",
+      "fields": [
+        "bridge_id",
+        "session_id",
+        "endpoint",
+        "local_sdp",
+        "remote_sdp",
+        "cause",
+        "state"
+      ],
+      "filter": "bridge_id == param.bridge_id",
+      "name": "softphone.bridge.BridgeById",
+      "params": [
+        "bridge_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Live bridges",
+      "entity": "softphone.bridge.BridgeSession",
+      "fields": [
+        "bridge_id",
+        "session_id",
+        "endpoint",
+        "local_sdp",
+        "remote_sdp",
+        "cause",
+        "state"
+      ],
+      "filter": "state == Live",
+      "name": "softphone.bridge.LiveBridges",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
       "display": "Active calls",
       "entity": "softphone.control.Call",
       "fields": [
@@ -1891,6 +2163,7 @@
         "remote",
         "session_id",
         "muted",
+        "held",
         "state"
       ],
       "filter": "state == Active",
@@ -1908,6 +2181,7 @@
         "remote",
         "session_id",
         "muted",
+        "held",
         "state"
       ],
       "filter": "call_id == param.call_id",

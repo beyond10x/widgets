@@ -1,19 +1,25 @@
 <!--
   generated from softphone v1
-  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
-  contract digest ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643
+  model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
+  contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
   do not edit: regenerate with `ess synthesize`
 -->
 # Synthesis plan — softphone v1
 
 Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synthesize`.
 
-307 capabilities: **221 generated**, **68 obligations**, **18 refused**. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.
+344 capabilities: **248 generated**, **75 obligations**, **21 refused**. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.
 
 ## Generated
 
 | capability | source |
 | --- | --- |
+| domain type | `softphone.bridge.BridgeCause` |
+| domain type | `softphone.bridge.BridgeId` |
+| domain type | `softphone.bridge.BridgeSession.State` |
+| domain type | `softphone.bridge.BridgeSessionRow` |
+| domain type | `softphone.bridge.ServerEndpoint` |
+| domain type | `softphone.bridge.SessionDescription` |
 | domain type | `softphone.control.Call.State` |
 | domain type | `softphone.control.CallDirection` |
 | domain type | `softphone.control.CallId` |
@@ -72,6 +78,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | domain type | `softphone.sip.SipDialogId` |
 | domain type | `softphone.sip.SipDialogRow` |
 | domain type | `softphone.sip.SipUri` |
+| entity lifecycle | `softphone.bridge.BridgeSession` |
 | entity lifecycle | `softphone.control.Call` |
 | entity lifecycle | `softphone.control.PhoneEndpoint` |
 | entity lifecycle | `softphone.directory.Contact` |
@@ -84,6 +91,10 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | entity lifecycle | `softphone.presentation.Keypad` |
 | entity lifecycle | `softphone.sip.Registration` |
 | entity lifecycle | `softphone.sip.SipDialog` |
+| command contract | `softphone.bridge.CloseBridge` |
+| command contract | `softphone.bridge.ConfirmBridge` |
+| command contract | `softphone.bridge.ConnectBridge` |
+| command contract | `softphone.bridge.FailBridge` |
 | command contract | `softphone.control.Answer` |
 | command contract | `softphone.control.AttachMedia` |
 | command contract | `softphone.control.ConfigureEndpoint` |
@@ -96,6 +107,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | command contract | `softphone.control.Reject` |
 | command contract | `softphone.control.RingCall` |
 | command contract | `softphone.control.SendDigits` |
+| command contract | `softphone.control.SetHeld` |
 | command contract | `softphone.control.SetMuted` |
 | command contract | `softphone.directory.AddAddress` |
 | command contract | `softphone.directory.AddContact` |
@@ -136,6 +148,10 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | command contract | `softphone.sip.RequestLocalMedia` |
 | command contract | `softphone.sip.RetryRegistration` |
 | command contract | `softphone.sip.Unregister` |
+| event type | `softphone.bridge.BridgeClosed` |
+| event type | `softphone.bridge.BridgeConfirmed` |
+| event type | `softphone.bridge.BridgeConnecting` |
+| event type | `softphone.bridge.BridgeFailed` |
 | event type | `softphone.control.CallAnswered` |
 | event type | `softphone.control.CallConfirmed` |
 | event type | `softphone.control.CallDialled` |
@@ -147,6 +163,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | event type | `softphone.control.CallRinging` |
 | event type | `softphone.control.DigitsSent` |
 | event type | `softphone.control.EndpointConfigured` |
+| event type | `softphone.control.HoldChanged` |
 | event type | `softphone.control.MediaAttached` |
 | event type | `softphone.control.MuteChanged` |
 | event type | `softphone.directory.ContactAdded` |
@@ -188,6 +205,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | event type | `softphone.sip.RemoteMediaApplied` |
 | event type | `softphone.sip.SipDialogClosed` |
 | event type | `softphone.sip.SipDialogOpened` |
+| error type | `softphone.bridge.BridgeStateConflict` |
 | error type | `softphone.control.CallStateConflict` |
 | error type | `softphone.directory.ContactAddressStateConflict` |
 | error type | `softphone.directory.ContactStateConflict` |
@@ -198,6 +216,8 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | error type | `softphone.presentation.ConsoleStateConflict` |
 | error type | `softphone.sip.RegistrationStateConflict` |
 | error type | `softphone.sip.SipDialogStateConflict` |
+| view type | `softphone.bridge.BridgeById` |
+| view type | `softphone.bridge.LiveBridges` |
 | view type | `softphone.control.ActiveCalls` |
 | view type | `softphone.control.CallById` |
 | view type | `softphone.control.EndpointById` |
@@ -214,8 +234,14 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | view type | `softphone.presentation.KeypadById` |
 | view type | `softphone.sip.RegistrationById` |
 | view type | `softphone.sip.SipDialogById` |
+| binding transformation | `activate-session-with-bridge` |
+| binding delivery | `activate-session-with-bridge` |
+| binding transformation | `end-session-with-bridge` |
+| binding delivery | `end-session-with-bridge` |
 | binding transformation | `end-session-with-dialog` |
 | binding delivery | `end-session-with-dialog` |
+| binding transformation | `end-session-with-failed-bridge` |
+| binding delivery | `end-session-with-failed-bridge` |
 | binding transformation | `end-session-with-loopback` |
 | binding delivery | `end-session-with-loopback` |
 | binding transformation | `record-failed-call` |
@@ -228,6 +254,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | binding delivery | `show-incoming-call` |
 | binding transformation | `show-outbound-call` |
 | binding delivery | `show-outbound-call` |
+| component port | `bridge-binding` |
 | component port | `call-history` |
 | component port | `local-binding` |
 | component port | `media-session` |
@@ -240,6 +267,10 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 
 | capability | source | why not generated | contract |
 | --- | --- | --- | --- |
+| command behaviour | `softphone.bridge.CloseBridge` | the contract is declared; the algorithm is not | given `softphone.bridge.CloseBridge` input, decide and enact exactly one outcome — `closed` otherwise, takes `close` of `softphone.bridge.BridgeSession`, emits `softphone.bridge.BridgeClosed`; `wrong-state` from a state no declared move starts in, error `softphone.bridge.BridgeStateConflict` |
+| command behaviour | `softphone.bridge.ConfirmBridge` | the contract is declared; the algorithm is not | given `softphone.bridge.ConfirmBridge` input, decide and enact exactly one outcome — `confirmed` otherwise, takes `establish` of `softphone.bridge.BridgeSession`, emits `softphone.bridge.BridgeConfirmed`; `wrong-state` from a state no declared move starts in, error `softphone.bridge.BridgeStateConflict` |
+| command behaviour | `softphone.bridge.ConnectBridge` | the contract is declared; the algorithm is not | given `softphone.bridge.ConnectBridge` input, decide and enact exactly one outcome — `connecting` otherwise, creates `softphone.bridge.BridgeSession`, emits `softphone.bridge.BridgeConnecting` |
+| command behaviour | `softphone.bridge.FailBridge` | the contract is declared; the algorithm is not | given `softphone.bridge.FailBridge` input, decide and enact exactly one outcome — `failed` otherwise, takes `close` of `softphone.bridge.BridgeSession`, emits `softphone.bridge.BridgeFailed`; `wrong-state` from a state no declared move starts in, error `softphone.bridge.BridgeStateConflict` |
 | command behaviour | `softphone.control.Answer` | the contract is declared; the algorithm is not | given `softphone.control.Answer` input, decide and enact exactly one outcome — `answered` otherwise, takes `accept` of `softphone.control.Call`, emits `softphone.control.CallAnswered`; `wrong-state` from a state no declared move starts in, error `softphone.control.CallStateConflict` |
 | command behaviour | `softphone.control.AttachMedia` | the contract is declared; the algorithm is not | given `softphone.control.AttachMedia` input, decide and enact exactly one outcome — `attached` otherwise, updates `softphone.control.Call`, emits `softphone.control.MediaAttached` |
 | command behaviour | `softphone.control.ConfigureEndpoint` | the contract is declared; the algorithm is not | given `softphone.control.ConfigureEndpoint` input, decide and enact exactly one outcome — `configured` otherwise, creates `softphone.control.PhoneEndpoint`, emits `softphone.control.EndpointConfigured` |
@@ -252,6 +283,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | command behaviour | `softphone.control.Reject` | the contract is declared; the algorithm is not | given `softphone.control.Reject` input, decide and enact exactly one outcome — `rejected` otherwise, takes `end` of `softphone.control.Call`, emits `softphone.control.CallRejected`; `wrong-state` from a state no declared move starts in, error `softphone.control.CallStateConflict` |
 | command behaviour | `softphone.control.RingCall` | the contract is declared; the algorithm is not | given `softphone.control.RingCall` input, decide and enact exactly one outcome — `ringing` otherwise, takes `ring` of `softphone.control.Call`, emits `softphone.control.CallRinging`; `wrong-state` from a state no declared move starts in, error `softphone.control.CallStateConflict` |
 | command behaviour | `softphone.control.SendDigits` | the contract is declared; the algorithm is not | given `softphone.control.SendDigits` input, decide and enact exactly one outcome — `sent` otherwise, emits `softphone.control.DigitsSent` |
+| command behaviour | `softphone.control.SetHeld` | the contract is declared; the algorithm is not | given `softphone.control.SetHeld` input, decide and enact exactly one outcome — `changed` otherwise, updates `softphone.control.Call`, emits `softphone.control.HoldChanged` |
 | command behaviour | `softphone.control.SetMuted` | the contract is declared; the algorithm is not | given `softphone.control.SetMuted` input, decide and enact exactly one outcome — `changed` otherwise, updates `softphone.control.Call`, emits `softphone.control.MuteChanged` |
 | command behaviour | `softphone.directory.AddAddress` | the contract is declared; the algorithm is not | given `softphone.directory.AddAddress` input, decide and enact exactly one outcome — `added` otherwise, creates `softphone.directory.ContactAddress`, emits `softphone.directory.ContactAddressAdded` |
 | command behaviour | `softphone.directory.AddContact` | the contract is declared; the algorithm is not | given `softphone.directory.AddContact` input, decide and enact exactly one outcome — `added` otherwise, creates `softphone.directory.Contact`, emits `softphone.directory.ContactAdded` |
@@ -292,6 +324,8 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | command behaviour | `softphone.sip.RequestLocalMedia` | the contract is declared; the algorithm is not | given `softphone.sip.RequestLocalMedia` input, decide and enact exactly one outcome — `requested` otherwise, emits `softphone.sip.LocalMediaRequested` |
 | command behaviour | `softphone.sip.RetryRegistration` | the contract is declared; the algorithm is not | given `softphone.sip.RetryRegistration` input, decide and enact exactly one outcome — `retried` otherwise, takes `retry` of `softphone.sip.Registration`, emits `softphone.sip.RegistrationRetried`; `wrong-state` from a state no declared move starts in, error `softphone.sip.RegistrationStateConflict` |
 | command behaviour | `softphone.sip.Unregister` | the contract is declared; the algorithm is not | given `softphone.sip.Unregister` input, decide and enact exactly one outcome — `ended` otherwise, takes `end` of `softphone.sip.Registration`, emits `softphone.sip.RegistrationEnded`; `wrong-state` from a state no declared move starts in, error `softphone.sip.RegistrationStateConflict` |
+| view query | `softphone.bridge.BridgeById` | how the projection is kept current is a storage decision | a query answering `softphone.bridge.BridgeById` with rows projected from `softphone.bridge.BridgeSession` at `read_your_writes` consistency, containing instances where `bridge_id == param.bridge_id` |
+| view query | `softphone.bridge.LiveBridges` | how the projection is kept current is a storage decision | a query answering `softphone.bridge.LiveBridges` with rows projected from `softphone.bridge.BridgeSession` at `read_your_writes` consistency, containing instances where `state == Live` |
 | view query | `softphone.control.ActiveCalls` | how the projection is kept current is a storage decision | a query answering `softphone.control.ActiveCalls` with rows projected from `softphone.control.Call` at `read_your_writes` consistency, containing instances where `state == Active` |
 | view query | `softphone.control.CallById` | how the projection is kept current is a storage decision | a query answering `softphone.control.CallById` with rows projected from `softphone.control.Call` at `read_your_writes` consistency, containing instances where `call_id == param.call_id` |
 | view query | `softphone.control.EndpointById` | how the projection is kept current is a storage decision | a query answering `softphone.control.EndpointById` with rows projected from `softphone.control.PhoneEndpoint` at `read_your_writes` consistency, containing instances where `endpoint_id == param.endpoint_id` |
@@ -313,8 +347,10 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 
 | capability | source | stage | why |
 | --- | --- | --- | --- |
-| actor grants | `softphone.control.Agent` | planning | may invoke `softphone.control.Answer`, `softphone.control.ConfigureEndpoint`, `softphone.control.Dial`, `softphone.control.HangUp`, `softphone.control.Reject`, `softphone.control.SendDigits`, `softphone.control.SetMuted`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
-| actor grants | `softphone.control.Human` | planning | may invoke `softphone.control.Answer`, `softphone.control.ConfigureEndpoint`, `softphone.control.Dial`, `softphone.control.HangUp`, `softphone.control.Reject`, `softphone.control.SendDigits`, `softphone.control.SetMuted`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| actor grants | `softphone.bridge.BridgeHost` | planning | may invoke `softphone.bridge.CloseBridge`, `softphone.bridge.ConnectBridge`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| actor grants | `softphone.bridge.Kernel` | planning | may invoke `softphone.bridge.ConfirmBridge`, `softphone.bridge.FailBridge`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| actor grants | `softphone.control.Agent` | planning | may invoke `softphone.control.Answer`, `softphone.control.ConfigureEndpoint`, `softphone.control.Dial`, `softphone.control.HangUp`, `softphone.control.Reject`, `softphone.control.SendDigits`, `softphone.control.SetHeld`, `softphone.control.SetMuted`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| actor grants | `softphone.control.Human` | planning | may invoke `softphone.control.Answer`, `softphone.control.ConfigureEndpoint`, `softphone.control.Dial`, `softphone.control.HangUp`, `softphone.control.Reject`, `softphone.control.SendDigits`, `softphone.control.SetHeld`, `softphone.control.SetMuted`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.control.Kernel` | planning | may invoke `softphone.control.AttachMedia`, `softphone.control.ConfirmAnswer`, `softphone.control.FailCall`, `softphone.control.MediaConnected`, `softphone.control.OfferCall`, `softphone.control.RingCall`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.directory.Human` | planning | may invoke `softphone.directory.AddAddress`, `softphone.directory.AddContact`, `softphone.directory.DeleteContact`, `softphone.directory.RemoveAddress`, `softphone.directory.RenameContact`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.history.HistoryHost` | planning | may invoke `softphone.history.RecordCall`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
@@ -324,6 +360,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | actor grants | `softphone.presentation.Human` | planning | may invoke `softphone.presentation.AttributeTile`, `softphone.presentation.ClearEntry`, `softphone.presentation.DismissCall`, `softphone.presentation.EnterCall`, `softphone.presentation.EnterDialing`, `softphone.presentation.EnterIncoming`, `softphone.presentation.LeaveCall`, `softphone.presentation.OpenConsole`, `softphone.presentation.OpenKeypad`, `softphone.presentation.PressKey`, `softphone.presentation.ShowCall`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.sip.Kernel` | planning | may invoke `softphone.sip.ApplyRemoteMedia`, `softphone.sip.CloseDialog`, `softphone.sip.ConfirmRegistration`, `softphone.sip.FailRegistration`, `softphone.sip.RequestLocalMedia`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.sip.SipHost` | planning | may invoke `softphone.sip.CloseDialog`, `softphone.sip.FailLocalMedia`, `softphone.sip.OfferLocalMedia`, `softphone.sip.OpenDialog`, `softphone.sip.RefreshRegistration`, `softphone.sip.Register`, `softphone.sip.RetryRegistration`, `softphone.sip.Unregister`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| workload | `bridge-binding` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
 | workload | `call-history` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
 | workload | `local-binding` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
 | workload | `media-session` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |

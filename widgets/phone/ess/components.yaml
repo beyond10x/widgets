@@ -49,6 +49,7 @@ components:
         - softphone.control.FailCall
         - softphone.control.SendDigits
         - softphone.control.SetMuted
+        - softphone.control.SetHeld
     publishes:
       events:
         - softphone.control.EndpointConfigured
@@ -64,6 +65,7 @@ components:
         - softphone.control.CallFailed
         - softphone.control.DigitsSent
         - softphone.control.MuteChanged
+        - softphone.control.HoldChanged
     reached_by: in_process
 
   - component: sip-binding
@@ -99,6 +101,25 @@ components:
         - softphone.sip.RemoteMediaApplied
         - softphone.sip.LocalMediaFailed
         - softphone.sip.SipDialogClosed
+    reached_by: in_process
+
+  - component: bridge-binding
+    summary: Owns the bridge from this page to the server that holds its SIP leg.
+    owns:
+      domains:
+        - softphone.bridge
+    accepts:
+      commands:
+        - softphone.bridge.ConnectBridge
+        - softphone.bridge.ConfirmBridge
+        - softphone.bridge.FailBridge
+        - softphone.bridge.CloseBridge
+    publishes:
+      events:
+        - softphone.bridge.BridgeConnecting
+        - softphone.bridge.BridgeConfirmed
+        - softphone.bridge.BridgeFailed
+        - softphone.bridge.BridgeClosed
     reached_by: in_process
 
   - component: local-binding
@@ -258,6 +279,38 @@ bindings:
   - id: end-session-with-loopback
     summary: Detaching the loopback terminates the session it carried.
     when:  { event: softphone.local.LoopbackDetached }
+    invoke: { command: softphone.media.TerminateSession }
+    mapping:
+      session_id: event.session_id
+      reason: event.reason
+    delivery: at_least_once
+    on_failure: retry
+
+  # The bridge's answer is the first fact that says media can flow, and it is the only event in this
+  # system that carries a session id at the moment that becomes true — which is why the reaction the
+  # `bindings:` comment above rejected for `control.CallAnswered` is legal here.
+  - id: activate-session-with-bridge
+    summary: A bridge that came up activates the session it carries.
+    when:  { event: softphone.bridge.BridgeConfirmed }
+    invoke: { command: softphone.media.ActivateSession }
+    mapping:
+      session_id: event.session_id
+    delivery: at_least_once
+    on_failure: retry
+
+  - id: end-session-with-bridge
+    summary: Closing the bridge terminates the session it carried.
+    when:  { event: softphone.bridge.BridgeClosed }
+    invoke: { command: softphone.media.TerminateSession }
+    mapping:
+      session_id: event.session_id
+      reason: event.reason
+    delivery: at_least_once
+    on_failure: retry
+
+  - id: end-session-with-failed-bridge
+    summary: A bridge that failed terminates the session it carried.
+    when:  { event: softphone.bridge.BridgeFailed }
     invoke: { command: softphone.media.TerminateSession }
     mapping:
       session_id: event.session_id
