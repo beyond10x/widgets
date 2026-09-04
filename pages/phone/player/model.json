@@ -1,0 +1,2158 @@
+{
+  "actors": [
+    {
+      "display": "Agent",
+      "may": [
+        "softphone.control.Answer",
+        "softphone.control.ConfigureEndpoint",
+        "softphone.control.Dial",
+        "softphone.control.HangUp",
+        "softphone.control.Reject",
+        "softphone.control.SendDigits",
+        "softphone.control.SetMuted"
+      ],
+      "name": "softphone.control.Agent"
+    },
+    {
+      "display": "Human",
+      "may": [
+        "softphone.control.Answer",
+        "softphone.control.ConfigureEndpoint",
+        "softphone.control.Dial",
+        "softphone.control.HangUp",
+        "softphone.control.Reject",
+        "softphone.control.SendDigits",
+        "softphone.control.SetMuted"
+      ],
+      "name": "softphone.control.Human"
+    },
+    {
+      "display": "Signalling kernel",
+      "may": [
+        "softphone.control.AttachMedia",
+        "softphone.control.ConfirmAnswer",
+        "softphone.control.FailCall",
+        "softphone.control.MediaConnected",
+        "softphone.control.OfferCall",
+        "softphone.control.RingCall"
+      ],
+      "name": "softphone.control.Kernel"
+    },
+    {
+      "display": "Human",
+      "may": [
+        "softphone.directory.AddAddress",
+        "softphone.directory.AddContact",
+        "softphone.directory.DeleteContact",
+        "softphone.directory.RemoveAddress",
+        "softphone.directory.RenameContact"
+      ],
+      "name": "softphone.directory.Human"
+    },
+    {
+      "display": "History host",
+      "may": [
+        "softphone.history.RecordCall"
+      ],
+      "name": "softphone.history.HistoryHost"
+    },
+    {
+      "display": "Human",
+      "may": [
+        "softphone.history.AttributeRecord",
+        "softphone.history.DeleteRecord"
+      ],
+      "name": "softphone.history.Human"
+    },
+    {
+      "display": "Local host",
+      "may": [
+        "softphone.local.AttachLoopback",
+        "softphone.local.DetachLoopback"
+      ],
+      "name": "softphone.local.LocalHost"
+    },
+    {
+      "display": "Session host",
+      "may": [
+        "softphone.media.ActivateSession",
+        "softphone.media.InterruptOutput",
+        "softphone.media.OpenSession",
+        "softphone.media.ReceiveSignal",
+        "softphone.media.SendSignal",
+        "softphone.media.TerminateSession"
+      ],
+      "name": "softphone.media.SessionHost"
+    },
+    {
+      "display": "Human",
+      "may": [
+        "softphone.presentation.AttributeTile",
+        "softphone.presentation.ClearEntry",
+        "softphone.presentation.DismissCall",
+        "softphone.presentation.EnterCall",
+        "softphone.presentation.EnterDialing",
+        "softphone.presentation.EnterIncoming",
+        "softphone.presentation.LeaveCall",
+        "softphone.presentation.OpenConsole",
+        "softphone.presentation.OpenKeypad",
+        "softphone.presentation.PressKey",
+        "softphone.presentation.ShowCall"
+      ],
+      "name": "softphone.presentation.Human"
+    },
+    {
+      "display": "Signalling kernel",
+      "may": [
+        "softphone.sip.ApplyRemoteMedia",
+        "softphone.sip.CloseDialog",
+        "softphone.sip.ConfirmRegistration",
+        "softphone.sip.FailRegistration",
+        "softphone.sip.RequestLocalMedia"
+      ],
+      "name": "softphone.sip.Kernel"
+    },
+    {
+      "display": "SIP host",
+      "may": [
+        "softphone.sip.CloseDialog",
+        "softphone.sip.FailLocalMedia",
+        "softphone.sip.OfferLocalMedia",
+        "softphone.sip.OpenDialog",
+        "softphone.sip.RefreshRegistration",
+        "softphone.sip.Register",
+        "softphone.sip.RetryRegistration",
+        "softphone.sip.Unregister"
+      ],
+      "name": "softphone.sip.SipHost"
+    }
+  ],
+  "bindings": [
+    {
+      "command": "softphone.media.TerminateSession",
+      "delivery": "at_least_once",
+      "event": "softphone.sip.SipDialogClosed",
+      "failure": "retry",
+      "name": "end-session-with-dialog"
+    },
+    {
+      "command": "softphone.media.TerminateSession",
+      "delivery": "at_least_once",
+      "event": "softphone.local.LoopbackDetached",
+      "failure": "retry",
+      "name": "end-session-with-loopback"
+    },
+    {
+      "command": "softphone.history.RecordCall",
+      "delivery": "at_least_once",
+      "event": "softphone.control.CallFailed",
+      "failure": "retry",
+      "name": "record-failed-call"
+    },
+    {
+      "command": "softphone.history.RecordCall",
+      "delivery": "at_least_once",
+      "event": "softphone.control.CallHungUp",
+      "failure": "retry",
+      "name": "record-hung-up-call"
+    },
+    {
+      "command": "softphone.history.RecordCall",
+      "delivery": "at_least_once",
+      "event": "softphone.control.CallRejected",
+      "failure": "retry",
+      "name": "record-rejected-call"
+    },
+    {
+      "command": "softphone.presentation.ShowCall",
+      "delivery": "at_least_once",
+      "event": "softphone.control.CallOffered",
+      "failure": "retry",
+      "name": "show-incoming-call"
+    },
+    {
+      "command": "softphone.presentation.ShowCall",
+      "delivery": "at_least_once",
+      "event": "softphone.control.CallDialled",
+      "failure": "retry",
+      "name": "show-outbound-call"
+    }
+  ],
+  "commands": [
+    {
+      "display": "Answer",
+      "name": "softphone.control.Answer",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallAnswered"
+          ],
+          "name": "answered",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Requested",
+              "Ringing"
+            ],
+            "kind": "moves",
+            "to": "Answering",
+            "transition": "accept"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Attach media",
+      "name": "softphone.control.AttachMedia",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.MediaAttached"
+          ],
+          "name": "attached",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "session_id",
+              "target": "session_id"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Configure endpoint",
+      "name": "softphone.control.ConfigureEndpoint",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.EndpointConfigured"
+          ],
+          "name": "configured",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "label",
+              "target": "label"
+            },
+            {
+              "from": "default_binding",
+              "target": "default_binding"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.control.PhoneEndpoint",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Confirm answer",
+      "name": "softphone.control.ConfirmAnswer",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallConfirmed"
+          ],
+          "name": "confirmed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Requested",
+              "Ringing"
+            ],
+            "kind": "moves",
+            "to": "Answering",
+            "transition": "accept"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Dial",
+      "name": "softphone.control.Dial",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallDialled"
+          ],
+          "name": "dialled",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "endpoint_id",
+              "target": "endpoint_id"
+            },
+            {
+              "from": null,
+              "target": "direction"
+            },
+            {
+              "from": "remote",
+              "target": "remote"
+            },
+            {
+              "from": null,
+              "target": "muted"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Fail call",
+      "name": "softphone.control.FailCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallFailed"
+          ],
+          "name": "failed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Active",
+              "Answering",
+              "Requested",
+              "Ringing"
+            ],
+            "kind": "moves",
+            "to": "Ended",
+            "transition": "end"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Hang up",
+      "name": "softphone.control.HangUp",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallHungUp"
+          ],
+          "name": "hung-up",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Active",
+              "Answering",
+              "Requested",
+              "Ringing"
+            ],
+            "kind": "moves",
+            "to": "Ended",
+            "transition": "end"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": false,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Media connected",
+      "name": "softphone.control.MediaConnected",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallEstablished"
+          ],
+          "name": "established",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Answering"
+            ],
+            "kind": "moves",
+            "to": "Active",
+            "transition": "activate"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Offer call",
+      "name": "softphone.control.OfferCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallOffered"
+          ],
+          "name": "offered",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "endpoint_id",
+              "target": "endpoint_id"
+            },
+            {
+              "from": null,
+              "target": "direction"
+            },
+            {
+              "from": "remote",
+              "target": "remote"
+            },
+            {
+              "from": null,
+              "target": "muted"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Reject",
+      "name": "softphone.control.Reject",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallRejected"
+          ],
+          "name": "rejected",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Active",
+              "Answering",
+              "Requested",
+              "Ringing"
+            ],
+            "kind": "moves",
+            "to": "Ended",
+            "transition": "end"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Ring call",
+      "name": "softphone.control.RingCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.CallRinging"
+          ],
+          "name": "ringing",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [
+              "Requested"
+            ],
+            "kind": "moves",
+            "to": "Ringing",
+            "transition": "ring"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Send digits",
+      "name": "softphone.control.SendDigits",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.DigitsSent"
+          ],
+          "name": "sent",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Set muted",
+      "name": "softphone.control.SetMuted",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.control.MuteChanged"
+          ],
+          "name": "changed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "muted",
+              "target": "muted"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.control.Call",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Add address",
+      "name": "softphone.directory.AddAddress",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.directory.ContactAddressAdded"
+          ],
+          "name": "added",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "contact_id",
+              "target": "contact_id"
+            },
+            {
+              "from": "address",
+              "target": "address"
+            },
+            {
+              "from": "label",
+              "target": "label"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.directory.ContactAddress",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Add contact",
+      "name": "softphone.directory.AddContact",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.directory.ContactAdded"
+          ],
+          "name": "added",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "display_name",
+              "target": "display_name"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.directory.Contact",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Delete contact",
+      "name": "softphone.directory.DeleteContact",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.directory.ContactDeleted"
+          ],
+          "name": "deleted",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.directory.Contact",
+            "from": [
+              "Active"
+            ],
+            "kind": "moves",
+            "to": "Deleted",
+            "transition": "delete"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Remove address",
+      "name": "softphone.directory.RemoveAddress",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.directory.ContactAddressRemoved"
+          ],
+          "name": "removed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.directory.ContactAddress",
+            "from": [
+              "Active"
+            ],
+            "kind": "moves",
+            "to": "Removed",
+            "transition": "remove"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Rename contact",
+      "name": "softphone.directory.RenameContact",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.directory.ContactRenamed"
+          ],
+          "name": "renamed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "display_name",
+              "target": "display_name"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.directory.Contact",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Attribute record",
+      "name": "softphone.history.AttributeRecord",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.history.RecordAttributed"
+          ],
+          "name": "attributed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "contact_id",
+              "target": "contact_id"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.history.CallRecord",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Delete record",
+      "name": "softphone.history.DeleteRecord",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.history.RecordDeleted"
+          ],
+          "name": "deleted",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.history.CallRecord",
+            "from": [
+              "Recorded"
+            ],
+            "kind": "moves",
+            "to": "Deleted",
+            "transition": "delete"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Record call",
+      "name": "softphone.history.RecordCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.history.CallRecorded"
+          ],
+          "name": "recorded",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "call_id",
+              "target": "call_id"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.history.CallRecord",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Attach loopback",
+      "name": "softphone.local.AttachLoopback",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.local.LoopbackAttached"
+          ],
+          "name": "attached",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "session_id",
+              "target": "session_id"
+            },
+            {
+              "from": "capture",
+              "target": "capture"
+            },
+            {
+              "from": "render",
+              "target": "render"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.local.LoopbackDevice",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Detach loopback",
+      "name": "softphone.local.DetachLoopback",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.local.LoopbackDetached"
+          ],
+          "name": "detached",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.local.LoopbackDevice",
+            "from": [
+              "Attached"
+            ],
+            "kind": "moves",
+            "to": "Detached",
+            "transition": "detach"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Activate session",
+      "name": "softphone.media.ActivateSession",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.media.SessionActivated"
+          ],
+          "name": "activated",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.media.MediaSession",
+            "from": [
+              "Requested"
+            ],
+            "kind": "moves",
+            "to": "Live",
+            "transition": "establish"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Interrupt output",
+      "name": "softphone.media.InterruptOutput",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.media.OutputInterrupted"
+          ],
+          "name": "interrupted",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Open session",
+      "name": "softphone.media.OpenSession",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.media.SessionOpened"
+          ],
+          "name": "opened",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "session_ref",
+              "target": "session_ref"
+            },
+            {
+              "from": "binding",
+              "target": "binding"
+            },
+            {
+              "from": "profile",
+              "target": "profile"
+            },
+            {
+              "from": "participant",
+              "target": "participant"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.media.MediaSession",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Receive signal",
+      "name": "softphone.media.ReceiveSignal",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.media.SignalReceived"
+          ],
+          "name": "received",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Send signal",
+      "name": "softphone.media.SendSignal",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.media.SignalSent"
+          ],
+          "name": "sent",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Terminate session",
+      "name": "softphone.media.TerminateSession",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.media.SessionTerminated"
+          ],
+          "name": "terminated",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "reason",
+              "target": "termination"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.media.MediaSession",
+            "from": [
+              "Live",
+              "Requested"
+            ],
+            "kind": "moves",
+            "to": "Terminated",
+            "transition": "terminate"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Attribute tile",
+      "name": "softphone.presentation.AttributeTile",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.TileAttributed"
+          ],
+          "name": "attributed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "contact_id",
+              "target": "contact_id"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presentation.CallTile",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Clear entry",
+      "name": "softphone.presentation.ClearEntry",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.EntryCleared"
+          ],
+          "name": "cleared",
+          "refuses": true,
+          "sets": [
+            {
+              "from": null,
+              "target": "entry"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presentation.Keypad",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Dismiss call",
+      "name": "softphone.presentation.DismissCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.CallDismissed"
+          ],
+          "name": "dismissed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presentation.CallTile",
+            "from": [
+              "Shown"
+            ],
+            "kind": "moves",
+            "to": "Dismissed",
+            "transition": "dismiss"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Enter call",
+      "name": "softphone.presentation.EnterCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.ConsoleEngaged"
+          ],
+          "name": "engaged",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presentation.Console",
+            "from": [
+              "Dialing",
+              "Incoming"
+            ],
+            "kind": "moves",
+            "to": "InCall",
+            "transition": "engage"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Enter dialing",
+      "name": "softphone.presentation.EnterDialing",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.ConsoleDialing"
+          ],
+          "name": "dialing",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "tile_id",
+              "target": "active_tile"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presentation.Console",
+            "from": [
+              "Idle"
+            ],
+            "kind": "moves",
+            "to": "Dialing",
+            "transition": "dial"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Enter incoming",
+      "name": "softphone.presentation.EnterIncoming",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.ConsoleIncoming"
+          ],
+          "name": "incoming",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "tile_id",
+              "target": "active_tile"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presentation.Console",
+            "from": [
+              "Idle"
+            ],
+            "kind": "moves",
+            "to": "Incoming",
+            "transition": "offer"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Leave call",
+      "name": "softphone.presentation.LeaveCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.ConsoleReleased"
+          ],
+          "name": "released",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presentation.Console",
+            "from": [
+              "Dialing",
+              "InCall",
+              "Incoming"
+            ],
+            "kind": "moves",
+            "to": "Idle",
+            "transition": "release"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Open console",
+      "name": "softphone.presentation.OpenConsole",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.ConsoleOpened"
+          ],
+          "name": "opened",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presentation.Console",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Open keypad",
+      "name": "softphone.presentation.OpenKeypad",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.KeypadOpened"
+          ],
+          "name": "opened",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presentation.Keypad",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Press key",
+      "name": "softphone.presentation.PressKey",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.KeyPressed"
+          ],
+          "name": "pressed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presentation.Keypad",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Show call",
+      "name": "softphone.presentation.ShowCall",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presentation.CallShown"
+          ],
+          "name": "shown",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "call_id",
+              "target": "call_id"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presentation.CallTile",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Apply remote media",
+      "name": "softphone.sip.ApplyRemoteMedia",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RemoteMediaApplied"
+          ],
+          "name": "applied",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "sdp",
+              "target": "remote_sdp"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.sip.SipDialog",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Close dialog",
+      "name": "softphone.sip.CloseDialog",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.SipDialogClosed"
+          ],
+          "name": "closed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.sip.SipDialog",
+            "from": [
+              "Open"
+            ],
+            "kind": "moves",
+            "to": "Closed",
+            "transition": "close"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Confirm registration",
+      "name": "softphone.sip.ConfirmRegistration",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RegistrationConfirmed"
+          ],
+          "name": "confirmed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.sip.Registration",
+            "from": [
+              "Requested"
+            ],
+            "kind": "moves",
+            "to": "Registered",
+            "transition": "confirm"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Fail local media",
+      "name": "softphone.sip.FailLocalMedia",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.LocalMediaFailed"
+          ],
+          "name": "failed",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Fail registration",
+      "name": "softphone.sip.FailRegistration",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RegistrationFailed"
+          ],
+          "name": "failed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.sip.Registration",
+            "from": [
+              "Registered",
+              "Requested"
+            ],
+            "kind": "moves",
+            "to": "Failed",
+            "transition": "fail"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Offer local media",
+      "name": "softphone.sip.OfferLocalMedia",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.LocalMediaOffered"
+          ],
+          "name": "offered",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "sdp",
+              "target": "local_sdp"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.sip.SipDialog",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Open dialog",
+      "name": "softphone.sip.OpenDialog",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.SipDialogOpened"
+          ],
+          "name": "opened",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "session_id",
+              "target": "session_id"
+            },
+            {
+              "from": "registration_id",
+              "target": "registration_id"
+            },
+            {
+              "from": "remote_uri",
+              "target": "remote_uri"
+            },
+            {
+              "from": "media_security",
+              "target": "media_security"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.sip.SipDialog",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Refresh registration",
+      "name": "softphone.sip.RefreshRegistration",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RegistrationRefreshed"
+          ],
+          "name": "refreshed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "expires",
+              "target": "expires"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.sip.Registration",
+            "from": [],
+            "kind": "updates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Register",
+      "name": "softphone.sip.Register",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RegistrationRequested"
+          ],
+          "name": "requested",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "aor",
+              "target": "aor"
+            },
+            {
+              "from": "transport",
+              "target": "transport"
+            },
+            {
+              "from": "expires",
+              "target": "expires"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.sip.Registration",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Request local media",
+      "name": "softphone.sip.RequestLocalMedia",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.LocalMediaRequested"
+          ],
+          "name": "requested",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Retry registration",
+      "name": "softphone.sip.RetryRegistration",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RegistrationRetried"
+          ],
+          "name": "retried",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.sip.Registration",
+            "from": [
+              "Failed"
+            ],
+            "kind": "moves",
+            "to": "Requested",
+            "transition": "retry"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Unregister",
+      "name": "softphone.sip.Unregister",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.sip.RegistrationEnded"
+          ],
+          "name": "ended",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.sip.Registration",
+            "from": [
+              "Registered"
+            ],
+            "kind": "moves",
+            "to": "Ended",
+            "transition": "end"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    }
+  ],
+  "entities": [
+    {
+      "display": "Call",
+      "fields": [
+        "endpoint_id",
+        "direction",
+        "remote",
+        "session_id",
+        "muted"
+      ],
+      "identity": "call_id",
+      "initial": "Requested",
+      "name": "softphone.control.Call",
+      "states": [
+        "Active",
+        "Answering",
+        "Ended",
+        "Requested",
+        "Ringing"
+      ],
+      "terminal": [
+        "Ended"
+      ]
+    },
+    {
+      "display": "PhoneEndpoint",
+      "fields": [
+        "label",
+        "default_binding"
+      ],
+      "identity": "endpoint_id",
+      "initial": "Enabled",
+      "name": "softphone.control.PhoneEndpoint",
+      "states": [
+        "Enabled"
+      ],
+      "terminal": [
+        "Enabled"
+      ]
+    },
+    {
+      "display": "Contact",
+      "fields": [
+        "display_name"
+      ],
+      "identity": "contact_id",
+      "initial": "Active",
+      "name": "softphone.directory.Contact",
+      "states": [
+        "Active",
+        "Deleted"
+      ],
+      "terminal": [
+        "Deleted"
+      ]
+    },
+    {
+      "display": "ContactAddress",
+      "fields": [
+        "contact_id",
+        "address",
+        "label"
+      ],
+      "identity": "address_id",
+      "initial": "Active",
+      "name": "softphone.directory.ContactAddress",
+      "states": [
+        "Active",
+        "Removed"
+      ],
+      "terminal": [
+        "Removed"
+      ]
+    },
+    {
+      "display": "CallRecord",
+      "fields": [
+        "call_id",
+        "contact_id",
+        "direction",
+        "remote",
+        "started_at",
+        "ended_at",
+        "answered_at",
+        "termination",
+        "status"
+      ],
+      "identity": "record_id",
+      "initial": "Recorded",
+      "name": "softphone.history.CallRecord",
+      "states": [
+        "Deleted",
+        "Recorded"
+      ],
+      "terminal": [
+        "Deleted"
+      ]
+    },
+    {
+      "display": "LoopbackDevice",
+      "fields": [
+        "session_id",
+        "capture",
+        "render"
+      ],
+      "identity": "device_id",
+      "initial": "Attached",
+      "name": "softphone.local.LoopbackDevice",
+      "states": [
+        "Attached",
+        "Detached"
+      ],
+      "terminal": [
+        "Detached"
+      ]
+    },
+    {
+      "display": "MediaSession",
+      "fields": [
+        "session_ref",
+        "binding",
+        "profile",
+        "participant",
+        "termination"
+      ],
+      "identity": "session_id",
+      "initial": "Requested",
+      "name": "softphone.media.MediaSession",
+      "states": [
+        "Live",
+        "Requested",
+        "Terminated"
+      ],
+      "terminal": [
+        "Terminated"
+      ]
+    },
+    {
+      "display": "CallTile",
+      "fields": [
+        "call_id",
+        "contact_id"
+      ],
+      "identity": "tile_id",
+      "initial": "Shown",
+      "name": "softphone.presentation.CallTile",
+      "states": [
+        "Dismissed",
+        "Shown"
+      ],
+      "terminal": [
+        "Dismissed"
+      ]
+    },
+    {
+      "display": "Console",
+      "fields": [
+        "active_tile"
+      ],
+      "identity": "console_id",
+      "initial": "Idle",
+      "name": "softphone.presentation.Console",
+      "states": [
+        "Dialing",
+        "Idle",
+        "InCall",
+        "Incoming"
+      ],
+      "terminal": []
+    },
+    {
+      "display": "Keypad",
+      "fields": [
+        "entry"
+      ],
+      "identity": "keypad_id",
+      "initial": "Ready",
+      "name": "softphone.presentation.Keypad",
+      "states": [
+        "Ready"
+      ],
+      "terminal": [
+        "Ready"
+      ]
+    },
+    {
+      "display": "Registration",
+      "fields": [
+        "aor",
+        "transport",
+        "expires"
+      ],
+      "identity": "registration_id",
+      "initial": "Requested",
+      "name": "softphone.sip.Registration",
+      "states": [
+        "Ended",
+        "Failed",
+        "Registered",
+        "Requested"
+      ],
+      "terminal": [
+        "Ended"
+      ]
+    },
+    {
+      "display": "SipDialog",
+      "fields": [
+        "session_id",
+        "registration_id",
+        "remote_uri",
+        "media_security",
+        "local_sdp",
+        "remote_sdp"
+      ],
+      "identity": "dialog_id",
+      "initial": "Open",
+      "name": "softphone.sip.SipDialog",
+      "states": [
+        "Closed",
+        "Open"
+      ],
+      "terminal": [
+        "Closed"
+      ]
+    }
+  ],
+  "system": "softphone",
+  "version": "v1",
+  "views": [
+    {
+      "consistency": "read_your_writes",
+      "display": "Active calls",
+      "entity": "softphone.control.Call",
+      "fields": [
+        "call_id",
+        "endpoint_id",
+        "direction",
+        "remote",
+        "session_id",
+        "muted",
+        "state"
+      ],
+      "filter": "state == Active",
+      "name": "softphone.control.ActiveCalls",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Call by id",
+      "entity": "softphone.control.Call",
+      "fields": [
+        "call_id",
+        "endpoint_id",
+        "direction",
+        "remote",
+        "session_id",
+        "muted",
+        "state"
+      ],
+      "filter": "call_id == param.call_id",
+      "name": "softphone.control.CallById",
+      "params": [
+        "call_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Endpoint by id",
+      "entity": "softphone.control.PhoneEndpoint",
+      "fields": [
+        "endpoint_id",
+        "label",
+        "default_binding",
+        "state"
+      ],
+      "filter": "endpoint_id == param.endpoint_id",
+      "name": "softphone.control.EndpointById",
+      "params": [
+        "endpoint_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Contact addresses",
+      "entity": "softphone.directory.ContactAddress",
+      "fields": [
+        "address_id",
+        "contact_id",
+        "address",
+        "label",
+        "state"
+      ],
+      "filter": "(contact_id == param.contact_id and state == Active)",
+      "name": "softphone.directory.ContactAddresses",
+      "params": [
+        "contact_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Contact by id",
+      "entity": "softphone.directory.Contact",
+      "fields": [
+        "contact_id",
+        "display_name",
+        "state"
+      ],
+      "filter": "contact_id == param.contact_id",
+      "name": "softphone.directory.ContactById",
+      "params": [
+        "contact_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Contacts",
+      "entity": "softphone.directory.Contact",
+      "fields": [
+        "contact_id",
+        "display_name",
+        "state"
+      ],
+      "filter": "state == Active",
+      "name": "softphone.directory.Contacts",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Call record by id",
+      "entity": "softphone.history.CallRecord",
+      "fields": [
+        "record_id",
+        "call_id",
+        "contact_id",
+        "direction",
+        "remote",
+        "started_at",
+        "ended_at",
+        "answered_at",
+        "termination",
+        "status",
+        "state"
+      ],
+      "filter": "record_id == param.record_id",
+      "name": "softphone.history.CallRecordById",
+      "params": [
+        "record_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Recent calls",
+      "entity": "softphone.history.CallRecord",
+      "fields": [
+        "record_id",
+        "call_id",
+        "contact_id",
+        "direction",
+        "remote",
+        "started_at",
+        "ended_at",
+        "answered_at",
+        "termination",
+        "status",
+        "state"
+      ],
+      "filter": "state == Recorded",
+      "name": "softphone.history.RecentCalls",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Loopback device by id",
+      "entity": "softphone.local.LoopbackDevice",
+      "fields": [
+        "device_id",
+        "session_id",
+        "capture",
+        "render",
+        "state"
+      ],
+      "filter": "device_id == param.device_id",
+      "name": "softphone.local.LoopbackDeviceById",
+      "params": [
+        "device_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Live sessions",
+      "entity": "softphone.media.MediaSession",
+      "fields": [
+        "session_id",
+        "session_ref",
+        "binding",
+        "profile",
+        "participant",
+        "termination",
+        "state"
+      ],
+      "filter": "state == Live",
+      "name": "softphone.media.LiveSessions",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Media session by id",
+      "entity": "softphone.media.MediaSession",
+      "fields": [
+        "session_id",
+        "session_ref",
+        "binding",
+        "profile",
+        "participant",
+        "termination",
+        "state"
+      ],
+      "filter": "session_id == param.session_id",
+      "name": "softphone.media.MediaSessionById",
+      "params": [
+        "session_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Call tiles",
+      "entity": "softphone.presentation.CallTile",
+      "fields": [
+        "tile_id",
+        "call_id",
+        "contact_id",
+        "state"
+      ],
+      "filter": "state == Shown",
+      "name": "softphone.presentation.CallTiles",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Console by id",
+      "entity": "softphone.presentation.Console",
+      "fields": [
+        "console_id",
+        "active_tile",
+        "state"
+      ],
+      "filter": "console_id == param.console_id",
+      "name": "softphone.presentation.ConsoleById",
+      "params": [
+        "console_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Keypad by id",
+      "entity": "softphone.presentation.Keypad",
+      "fields": [
+        "keypad_id",
+        "entry",
+        "state"
+      ],
+      "filter": "keypad_id == param.keypad_id",
+      "name": "softphone.presentation.KeypadById",
+      "params": [
+        "keypad_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Registration by id",
+      "entity": "softphone.sip.Registration",
+      "fields": [
+        "registration_id",
+        "aor",
+        "transport",
+        "state"
+      ],
+      "filter": "registration_id == param.registration_id",
+      "name": "softphone.sip.RegistrationById",
+      "params": [
+        "registration_id"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "SIP dialog by id",
+      "entity": "softphone.sip.SipDialog",
+      "fields": [
+        "dialog_id",
+        "session_id",
+        "registration_id",
+        "remote_uri",
+        "media_security",
+        "local_sdp",
+        "remote_sdp",
+        "state"
+      ],
+      "filter": "dialog_id == param.dialog_id",
+      "name": "softphone.sip.SipDialogById",
+      "params": [
+        "dialog_id"
+      ]
+    }
+  ]
+}

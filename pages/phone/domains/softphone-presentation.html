@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest 16d93b7e909e48b298487cb8b0e782977337ad469c661378681341032b1d5320
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone console · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presentation.html" aria-current="page">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Phone console</h1>
+<p>A keypad holding a partially typed address, and one tile per call carrying the contact name to show. The only domain a page reads directly.</p>
+<p><code>softphone.presentation</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="calltileid"><code>CallTileId</code></h3>
+<p><code>softphone.presentation.CallTileId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="calltilerow"><code>CallTileRow</code></h3>
+<p><code>softphone.presentation.CallTileRow</code> is a record of four fields:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.presentation.CallTile.State</code></li>
+</ul>
+<h3 id="consoleid"><code>ConsoleId</code></h3>
+<p><code>softphone.presentation.ConsoleId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="consolerow"><code>ConsoleRow</code></h3>
+<p><code>softphone.presentation.ConsoleRow</code> is a record of three fields:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+<li><code>active_tile</code> — <code>Optional&lt;softphone.presentation.CallTileId&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.presentation.Console.State</code></li>
+</ul>
+<h3 id="keypadid"><code>KeypadId</code></h3>
+<p><code>softphone.presentation.KeypadId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="keypadrow"><code>KeypadRow</code></h3>
+<p><code>softphone.presentation.KeypadRow</code> is a record of three fields:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+<li><code>entry</code> — <code>String</code></li>
+<li><code>state</code> — <code>softphone.presentation.Keypad.State</code></li>
+</ul>
+<p>Three of the types above are reached by nothing else in this system: <code>softphone.presentation.CallTileRow</code>, <code>softphone.presentation.ConsoleRow</code> and <code>softphone.presentation.KeypadRow</code>. No entity, view, command, event, error or crossing names them, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="calltile"><code>CallTile</code></h3>
+<p><code>softphone.presentation.CallTile</code>.</p>
+<p>An instance is identified by <code>tile_id</code>, a <code>softphone.presentation.CallTileId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+</ul>
+<p>It references at most one <a href="softphone-control.html#call"><code>softphone.control.Call</code></a>, as <code>call</code>, carried by <code>CallTile.call_id</code>. It references at most one <a href="softphone-directory.html#contact"><code>softphone.directory.Contact</code></a>, as <code>contact</code>, carried by <code>CallTile.contact_id</code>.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.presentation.CallTile.State</code>, one of <code>Dismissed</code> and <code>Shown</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Shown</code>. <code>Dismissed</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Shown
+    Shown --&gt; Dismissed: dismiss (DismissCall)
+    Dismissed --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>dismiss</code> — taken by <code>softphone.presentation.DismissCall</code> on its <code>dismissed</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.presentation.ShowCall</code> on its <code>shown</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Dismissed</code> may not become <code>Shown</code></li>
+</ul>
+<p>One view projects it: <a href="#calltiles"><code>CallTiles</code></a>.</p>
+<h3 id="console"><code>Console</code></h3>
+<p><code>softphone.presentation.Console</code>.</p>
+<p>An instance is identified by <code>console_id</code>, a <code>softphone.presentation.ConsoleId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>active_tile</code> — <code>Optional&lt;softphone.presentation.CallTileId&gt;</code>, which may be absent</li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.presentation.Console.State</code>, one of <code>Dialing</code>, <code>Idle</code>, <code>InCall</code> and <code>Incoming</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Idle</code>. No state is terminal: nothing in this lifecycle says an instance may stop moving.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Idle
+    Idle --&gt; Dialing: dial (EnterDialing)
+    Idle --&gt; Incoming: offer (EnterIncoming)
+    Dialing --&gt; InCall: engage (EnterCall)
+    Incoming --&gt; InCall: engage (EnterCall)
+    Dialing --&gt; Idle: release (LeaveCall)
+    InCall --&gt; Idle: release (LeaveCall)
+    Incoming --&gt; Idle: release (LeaveCall)</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>dial</code> — taken by <code>softphone.presentation.EnterDialing</code> on its <code>dialing</code> outcome</li>
+<li><code>offer</code> — taken by <code>softphone.presentation.EnterIncoming</code> on its <code>incoming</code> outcome</li>
+<li><code>engage</code> — taken by <code>softphone.presentation.EnterCall</code> on its <code>engaged</code> outcome</li>
+<li><code>release</code> — taken by <code>softphone.presentation.LeaveCall</code> on its <code>released</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.presentation.OpenConsole</code> on its <code>opened</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Dialing</code> may not become <code>Incoming</code></li>
+<li><code>Idle</code> may not become <code>InCall</code></li>
+<li><code>InCall</code> may not become <code>Dialing</code></li>
+<li><code>InCall</code> may not become <code>Incoming</code></li>
+<li><code>Incoming</code> may not become <code>Dialing</code></li>
+</ul>
+<p>One view projects it: <a href="#consolebyid"><code>ConsoleById</code></a>.</p>
+<h3 id="keypad"><code>Keypad</code></h3>
+<p><code>softphone.presentation.Keypad</code>.</p>
+<p>An instance is identified by <code>keypad_id</code>, a <code>softphone.presentation.KeypadId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>entry</code> — <code>String</code></li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.presentation.Keypad.State</code>, one of <code>Ready</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Ready</code>. <code>Ready</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Ready
+    Ready --&gt; [*]</pre>
+<p>It declares no moves, so nothing changes its state once it exists.</p>
+<p>It has one state, so there is no move to permit or to forbid.</p>
+<p>One view projects it: <a href="#keypadbyid"><code>KeypadById</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="calltiles"><code>CallTiles</code></h3>
+<p><code>softphone.presentation.CallTiles</code>, shown to a person as &quot;Call tiles&quot; and called <code>call-tiles</code> on the wire.</p>
+<p>It reads <a href="#calltile"><code>CallTile</code></a>.</p>
+<p>It contains the instances where <code>state == Shown</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.presentation.CallTile.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="consolebyid"><code>ConsoleById</code></h3>
+<p><code>softphone.presentation.ConsoleById</code>, shown to a person as &quot;Console by id&quot; and called <code>console-by-id</code> on the wire.</p>
+<p>It reads <a href="#console"><code>Console</code></a>.</p>
+<p>It contains the instances where <code>console_id == param.console_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+<li><code>active_tile</code> — <code>Optional&lt;softphone.presentation.CallTileId&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.presentation.Console.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="keypadbyid"><code>KeypadById</code></h3>
+<p><code>softphone.presentation.KeypadById</code>, shown to a person as &quot;Keypad by id&quot; and called <code>keypad-by-id</code> on the wire.</p>
+<p>It reads <a href="#keypad"><code>Keypad</code></a>.</p>
+<p>It contains the instances where <code>keypad_id == param.keypad_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+<li><code>entry</code> — <code>String</code></li>
+<li><code>state</code> — <code>softphone.presentation.Keypad.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="attributetile"><code>AttributeTile</code></h3>
+<p><code>softphone.presentation.AttributeTile</code>, shown to a person as &quot;Attribute tile&quot; and called <code>attribute-tile</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>attributed</code></strong> — An absent `contact_id` clears the name and the tile shows the address instead. The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.presentation.CallTile</code> without moving it along its lifecycle. The instance is the one named by the input field <code>tile_id</code>. It emits <code>softphone.presentation.TileAttributed</code>. It sets <code>contact_id</code> from <code>input.contact_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="clearentry"><code>ClearEntry</code></h3>
+<p><code>softphone.presentation.ClearEntry</code>, shown to a person as &quot;Clear entry&quot; and called <code>clear-entry</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>cleared</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.presentation.Keypad</code> without moving it along its lifecycle. The instance is the one named by the input field <code>keypad_id</code>. It emits <code>softphone.presentation.EntryCleared</code>. It sets <code>entry</code> from <code>&quot;&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="dismisscall"><code>DismissCall</code></h3>
+<p><code>softphone.presentation.DismissCall</code>, shown to a person as &quot;Dismiss call&quot; and called <code>dismiss-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>dismissed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presentation.CallTile</code> from <code>Shown</code> to <code>Dismissed</code>, along the declared move <code>dismiss</code>. The instance is the one named by the input field <code>tile_id</code>. It emits <code>softphone.presentation.CallDismissed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presentation.CallTile</code> in <code>Dismissed</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presentation.CallTileStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="entercall"><code>EnterCall</code></h3>
+<p><code>softphone.presentation.EnterCall</code>, shown to a person as &quot;Enter call&quot; and called <code>enter-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>engaged</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presentation.Console</code> from <code>Dialing</code> and <code>Incoming</code> to <code>InCall</code>, along the declared move <code>engage</code>. The instance is the one named by the input field <code>console_id</code>. It emits <code>softphone.presentation.ConsoleEngaged</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presentation.Console</code> in <code>Idle</code> and <code>InCall</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presentation.ConsoleStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="enterdialing"><code>EnterDialing</code></h3>
+<p><code>softphone.presentation.EnterDialing</code>, shown to a person as &quot;Enter dialing&quot; and called <code>enter-dialing</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>dialing</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presentation.Console</code> from <code>Idle</code> to <code>Dialing</code>, along the declared move <code>dial</code>. The instance is the one named by the input field <code>console_id</code>. It emits <code>softphone.presentation.ConsoleDialing</code>. It sets <code>active_tile</code> from <code>input.tile_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presentation.Console</code> in <code>Dialing</code>, <code>InCall</code> and <code>Incoming</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presentation.ConsoleStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="enterincoming"><code>EnterIncoming</code></h3>
+<p><code>softphone.presentation.EnterIncoming</code>, shown to a person as &quot;Enter incoming&quot; and called <code>enter-incoming</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>incoming</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presentation.Console</code> from <code>Idle</code> to <code>Incoming</code>, along the declared move <code>offer</code>. The instance is the one named by the input field <code>console_id</code>. It emits <code>softphone.presentation.ConsoleIncoming</code>. It sets <code>active_tile</code> from <code>input.tile_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presentation.Console</code> in <code>Dialing</code>, <code>InCall</code> and <code>Incoming</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presentation.ConsoleStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="leavecall"><code>LeaveCall</code></h3>
+<p><code>softphone.presentation.LeaveCall</code>, shown to a person as &quot;Leave call&quot; and called <code>leave-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>released</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presentation.Console</code> from <code>Dialing</code>, <code>InCall</code> and <code>Incoming</code> to <code>Idle</code>, along the declared move <code>release</code>. The instance is the one named by the input field <code>console_id</code>. It emits <code>softphone.presentation.ConsoleReleased</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presentation.Console</code> in <code>Idle</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presentation.ConsoleStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="openconsole"><code>OpenConsole</code></h3>
+<p><code>softphone.presentation.OpenConsole</code>, shown to a person as &quot;Open console&quot; and called <code>open-console</code> on the wire.</p>
+<p>It takes no input.</p>
+<p>It has one outcome.</p>
+<p><strong><code>opened</code></strong> — The console starts Idle with no active tile. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.presentation.Console</code>, which starts in <code>Idle</code>. The new instance&#39;s identity is published as <code>console_id</code> on <code>softphone.presentation.ConsoleOpened</code>. It emits <code>softphone.presentation.ConsoleOpened</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="openkeypad"><code>OpenKeypad</code></h3>
+<p><code>softphone.presentation.OpenKeypad</code>, shown to a person as &quot;Open keypad&quot; and called <code>open-keypad</code> on the wire.</p>
+<p>It takes no input.</p>
+<p>It has one outcome.</p>
+<p><strong><code>opened</code></strong> — The entry starts empty. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.presentation.Keypad</code>, which starts in <code>Ready</code>. The new instance&#39;s identity is published as <code>keypad_id</code> on <code>softphone.presentation.KeypadOpened</code>. It emits <code>softphone.presentation.KeypadOpened</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="presskey"><code>PressKey</code></h3>
+<p><code>softphone.presentation.PressKey</code>, shown to a person as &quot;Press key&quot; and called <code>press-key</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+<li><code>key</code> — <code>String</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>pressed</code></strong> — A keypress during a live call is not this command — digits leave through `softphone.control.SendDigits`, which is a different surface and a different grant. The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.presentation.Keypad</code> without moving it along its lifecycle. The instance is the one named by the input field <code>keypad_id</code>. It emits <code>softphone.presentation.KeyPressed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="showcall"><code>ShowCall</code></h3>
+<p><code>softphone.presentation.ShowCall</code>, shown to a person as &quot;Show call&quot; and called <code>show-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>shown</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.presentation.CallTile</code>, which starts in <code>Shown</code>. The new instance&#39;s identity is published as <code>tile_id</code> on <code>softphone.presentation.CallShown</code>. It emits <code>softphone.presentation.CallShown</code>. It sets <code>call_id</code> from <code>input.call_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h2 id="events">Events</h2>
+<h3 id="calldismissed"><code>CallDismissed</code></h3>
+<p><code>softphone.presentation.CallDismissed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.DismissCall</code> on its <code>dismissed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="callshown"><code>CallShown</code></h3>
+<p><code>softphone.presentation.CallShown</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.ShowCall</code> on its <code>shown</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="consoledialing"><code>ConsoleDialing</code></h3>
+<p><code>softphone.presentation.ConsoleDialing</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.EnterDialing</code> on its <code>dialing</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="consoleengaged"><code>ConsoleEngaged</code></h3>
+<p><code>softphone.presentation.ConsoleEngaged</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.EnterCall</code> on its <code>engaged</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="consoleincoming"><code>ConsoleIncoming</code></h3>
+<p><code>softphone.presentation.ConsoleIncoming</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.EnterIncoming</code> on its <code>incoming</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="consoleopened"><code>ConsoleOpened</code></h3>
+<p><code>softphone.presentation.ConsoleOpened</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.OpenConsole</code> on its <code>opened</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="consolereleased"><code>ConsoleReleased</code></h3>
+<p><code>softphone.presentation.ConsoleReleased</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>console_id</code> — <code>softphone.presentation.ConsoleId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.LeaveCall</code> on its <code>released</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="entrycleared"><code>EntryCleared</code></h3>
+<p><code>softphone.presentation.EntryCleared</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.ClearEntry</code> on its <code>cleared</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="keypressed"><code>KeyPressed</code></h3>
+<p><code>softphone.presentation.KeyPressed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+<li><code>key</code> — <code>String</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.PressKey</code> on its <code>pressed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="keypadopened"><code>KeypadOpened</code></h3>
+<p><code>softphone.presentation.KeypadOpened</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>keypad_id</code> — <code>softphone.presentation.KeypadId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presentation.OpenKeypad</code> on its <code>opened</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="tileattributed"><code>TileAttributed</code></h3>
+<p><code>softphone.presentation.TileAttributed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>tile_id</code> — <code>softphone.presentation.CallTileId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+</ul>
+<p>Emitted by <code>softphone.presentation.AttributeTile</code> on its <code>attributed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="calltilestateconflict"><code>CallTileStateConflict</code></h3>
+<p>The tile is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.presentation.CallTile.State</code></li>
+</ul>
+<p>Reported by <code>softphone.presentation.DismissCall</code> on its <code>wrong-state</code> outcome.</p>
+<h3 id="consolestateconflict"><code>ConsoleStateConflict</code></h3>
+<p>The console is not in a mode from which the requested move is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.presentation.Console.State</code></li>
+</ul>
+<p>Reported by <code>softphone.presentation.EnterCall</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.presentation.EnterDialing</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.presentation.EnterIncoming</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.presentation.LeaveCall</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="human"><code>Human</code></h3>
+<p><code>softphone.presentation.Human</code>, shown to a person as &quot;Human&quot;.</p>
+<p>It may invoke <a href="#attributetile"><code>AttributeTile</code></a>, <a href="#clearentry"><code>ClearEntry</code></a>, <a href="#dismisscall"><code>DismissCall</code></a>, <a href="#entercall"><code>EnterCall</code></a>, <a href="#enterdialing"><code>EnterDialing</code></a>, <a href="#enterincoming"><code>EnterIncoming</code></a>, <a href="#leavecall"><code>LeaveCall</code></a>, <a href="#openconsole"><code>OpenConsole</code></a>, <a href="#openkeypad"><code>OpenKeypad</code></a>, <a href="#presskey"><code>PressKey</code></a> and <a href="#showcall"><code>ShowCall</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>16d93b7e909e48b298487cb8b0e782977337ad469c661378681341032b1d5320</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

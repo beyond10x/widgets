@@ -1,0 +1,57 @@
+# The far end gives up while the phone is ringing. Nothing could express this before `FailCall`
+# existed: `HangUp` and `Reject` are the local decisions, the kernel held neither, and a cancelled
+# call rang until somebody hung up a call that was already gone.
+type: ess-scenario/1
+domain: softphone.control
+scenario: inbound-call-missed
+summary: A call arrives, rings, and the caller gives up before it is answered.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T17:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input:
+      label: Desk
+      default_binding: Sip
+    outcome: configured
+    events:
+      - event: softphone.control.EndpointConfigured
+        payload:
+          label: Desk
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T17:00:20Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input:
+      endpoint_id: {$instance: phone}
+      remote: sip:unknown@example.test
+    outcome: offered
+    capture: {instance: call, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-04T17:00:21Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: ringing
+
+  # `Refused` rather than `Local`: the far end decided, not this phone. The record this produces has
+  # no `answered_at`, which is what makes a missed call derivable rather than guessed.
+  - at: 2026-09-04T17:00:38Z
+    command: softphone.control.FailCall
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+      cause: Refused
+    outcome: failed
+    events:
+      - event: softphone.control.CallFailed
+        payload:
+          cause: Refused

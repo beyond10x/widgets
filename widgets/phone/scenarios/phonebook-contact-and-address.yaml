@@ -1,0 +1,58 @@
+# The phonebook, and the thing `owns` does not buy. Deleting a contact moves only the contact:
+# what happens to its addresses is a command outcome, not a property of the relation, and nothing
+# here cascades. The addresses survive their contact, pointing at a `Deleted` one.
+type: ess-scenario/1
+domain: softphone.directory
+scenario: phonebook-contact-and-address
+summary: A contact is added with two addresses, one is removed, and the contact is deleted.
+
+arrange:
+  - instance: contact
+    entity: softphone.directory.Contact
+  - instance: work
+    entity: softphone.directory.ContactAddress
+  - instance: mobile
+    entity: softphone.directory.ContactAddress
+
+timeline:
+  - at: 2026-09-04T23:00:00Z
+    command: softphone.directory.AddContact
+    actor: softphone.directory.Human
+    input: { display_name: Bob Fenwick }
+    outcome: added
+    events:
+      - event: softphone.directory.ContactAdded
+        payload: { display_name: Bob Fenwick }
+    capture: {instance: contact, event: softphone.directory.ContactAdded, field: contact_id}
+
+  - at: 2026-09-04T23:00:20Z
+    command: softphone.directory.AddAddress
+    actor: softphone.directory.Human
+    input:
+      contact_id: {$instance: contact}
+      address: 'sip:bob@example.test'
+      label: Work
+    outcome: added
+    capture: {instance: work, event: softphone.directory.ContactAddressAdded, field: address_id}
+
+  - at: 2026-09-04T23:00:35Z
+    command: softphone.directory.AddAddress
+    actor: softphone.directory.Human
+    input:
+      contact_id: {$instance: contact}
+      address: 'sip:bob.mobile@example.test'
+      label: Mobile
+    outcome: added
+    capture: {instance: mobile, event: softphone.directory.ContactAddressAdded, field: address_id}
+
+  - at: 2026-09-04T23:01:00Z
+    command: softphone.directory.RemoveAddress
+    actor: softphone.directory.Human
+    input: { address_id: {$instance: mobile} }
+    outcome: removed
+
+  - at: 2026-09-04T23:01:30Z
+    command: softphone.directory.DeleteContact
+    actor: softphone.directory.Human
+    input: { contact_id: {$instance: contact} }
+    outcome: deleted

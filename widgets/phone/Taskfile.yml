@@ -1,0 +1,179 @@
+version: '3'
+
+# Everything this application is, built from the one specification under `ess/`.
+#
+# `task build` is the gate to run before pushing: it validates the specification, compiles the
+# authored scenarios against it, emits every documentation kind and every synthesis target, and
+# **builds the three that produce code**. A target that emits and does not compile is not realized,
+# and emitting is the only half `ess` itself checks.
+
+vars:
+  SPEC: ess
+  OUT: .build
+
+tasks:
+  default:
+    cmds: [{ task: check }]
+
+  # ── the specification ───────────────────────────────────────────────────────
+  validate:
+    desc: Validate the specification.
+    cmds:
+      - ess validate --path {{.SPEC}}
+
+  compile:
+    desc: Compile to typed IR, and fail on any diagnostic.
+    cmds:
+      - ess compile --path {{.SPEC}} --format json > /dev/null
+
+  scenarios:
+    desc: Compile the authored scenarios against the model.
+    # Every command, actor, outcome, event, field and lifecycle state a scenario names is resolved
+    # here. A name the model does not declare is refused now rather than at the first run.
+    cmds:
+      - ess conform author --path {{.SPEC}} --scenarios scenarios
+      - mkdir -p {{.OUT}}
+      - ess conform author --path {{.SPEC}} --scenarios scenarios --out {{.OUT}}/suite.json
+
+  # ── documentation ───────────────────────────────────────────────────────────
+  docs:
+    desc: Regenerate the committed markdown documentation and the obligations page.
+    cmds:
+      - rm -rf docs
+      - ess generate generate --path {{.SPEC}} --kind docs --out .
+      - task: obligations
+
+  obligations:
+    desc: Refresh the obligations page from the synthesis plan.
+    cmds:
+      - ess generate synthesize --path {{.SPEC}} --target rust --out {{.OUT}}/rust/softphone
+      - cp {{.OUT}}/rust/softphone/PLAN.md docs/obligations.md
+
+  drift:
+    desc: Fail when the committed documentation is not what the specification determines.
+    cmds:
+      - rm -rf {{.OUT}}/docs && mkdir -p {{.OUT}}/docs
+      - ess generate generate --path {{.SPEC}} --kind docs --out {{.OUT}}/docs
+      - diff -r --exclude=obligations.md {{.OUT}}/docs/docs docs
+
+  site:
+    desc: Render the browsable HTML site with the obligations page included.
+    cmds:
+      - task: obligations
+      - >-
+        ess generate generate --path {{.SPEC}} --kind site --out site
+        --include plan/obligations={{.OUT}}/rust/softphone/PLAN.md
+
+  # ── every projection ────────────────────────────────────────────────────────
+  generate:
+    desc: Emit every documentation and contract kind.
+    cmds:
+      - for: [docs, site, docs-ir, schema, openapi, asyncapi]
+        cmd: ess generate generate --path {{.SPEC}} --kind {{.ITEM}} --out {{.OUT}}/generate/{{.ITEM}}
+
+  synthesize:
+    desc: Emit every synthesis target.
+    # `rust` lands beside `synth/` rather than inside it: the web crate's manifest names the Rust
+    # crates by a path four levels up from its own directory, which is `{{.OUT}}`. That coupling is
+    # the emitter's, stated in its own TARGET.md as a weakening rather than left to be discovered.
+    cmds:
+      - ess generate synthesize --path {{.SPEC}} --target rust --out {{.OUT}}/rust/softphone
+      - for: [go, web, clap]
+        cmd: ess generate synthesize --path {{.SPEC}} --target {{.ITEM}} --out {{.OUT}}/synth/{{.ITEM}}
+
+  # ── and build what emits code ───────────────────────────────────────────────
+  build-rust:
+    deps: [synthesize]
+    cmds:
+      - cd {{.OUT}}/rust/softphone && cargo build --release --quiet
+
+  build-go:
+    deps: [synthesize]
+    cmds:
+      - cd {{.OUT}}/synth/go && go build ./...
+      - cd {{.OUT}}/synth/go && go vet ./...
+
+  build-clap:
+    deps: [synthesize]
+    # The emitted crate sits under `crates/softphone-cli`; there is no workspace root above it.
+    #
+    # It places no command, and that is correct rather than broken: every component here is
+    # `reached_by: in_process`, so the target refuses all 52 commands with "no component declaring
+    # `reached_by: command_line` accepts this command, so no tree places it and there is no word to
+    # type". A browser phone has no command line. It is still built, because an emitted crate that
+    # does not compile is a defect whatever it contains, and `TARGET.md` is worth having as the
+    # record of why the tree is empty.
+    cmds:
+      - cd {{.OUT}}/synth/clap/crates/softphone-cli && cargo build --release --quiet
+
+  build-web:
+    deps: [synthesize]
+    # Needs the wasm target installed: `rustup target add wasm32-unknown-unknown`.
+    cmds:
+      - cd {{.OUT}}/synth/web && cargo build --release --quiet --target wasm32-unknown-unknown
+      - test -f {{.OUT}}/synth/web/target/wasm32-unknown-unknown/release/softphone_web.wasm
+
+  player:
+    desc: Emit the scenario player, with this application's own device surface beside it.
+    # Needs ESS >= 0.17.0 for `verify conform web`.
+    cmds:
+      # Cleared first: `--out` writes into a directory without emptying it, so anything left from a
+      # previous run — or dropped in by hand — would be published as though it were emitted.
+      - rm -rf {{.OUT}}/player
+      - ess verify conform web --path {{.SPEC}} --scenarios scenarios --out {{.OUT}}/player
+      - cp player/skin.js {{.OUT}}/player/skin.js
+
+  serve:
+    desc: Serve the player. A browser will not instantiate a module from a `file://` URL.
+    deps: [player]
+    cmds:
+      - cmd: echo "http://127.0.0.1:8733/index.html"
+      - cd {{.OUT}}/player && python3 -m http.server 8733 --bind 127.0.0.1
+
+  pages:
+    desc: Assemble what GitHub Pages publishes for this application.
+    # The documentation site with its obligations page, and the scenario player under `player/`.
+    # Written into the workspace's `pages/` tree, which the Pages workflow uploads as-is.
+    vars:
+      PAGES: ../../pages/phone
+    deps: [obligations, player]
+    cmds:
+      - rm -rf {{.PAGES}} && mkdir -p {{.PAGES}}
+      - >-
+        ess generate generate --path {{.SPEC}} --kind site --out {{.PAGES}}
+        --include plan/obligations={{.OUT}}/rust/softphone/PLAN.md
+      - cp -r {{.OUT}}/player {{.PAGES}}/player
+
+  pages-drift:
+    desc: Fail when the published tree is not what the specification determines.
+    vars:
+      PAGES: ../../pages/phone
+    cmds:
+      - task: pages
+      - cmd: git -C ../.. diff --quiet -- pages || { echo "pages/ is stale — commit what task pages produced"; exit 1; }
+
+  # ── the gates ───────────────────────────────────────────────────────────────
+  check:
+    desc: The fast gate — specification, scenarios, and committed documentation.
+    cmds:
+      - task: validate
+      - task: compile
+      - task: scenarios
+      - task: drift
+
+  build:
+    desc: Everything. Run this before pushing.
+    cmds:
+      - task: check
+      - task: generate
+      - task: build-rust
+      - task: build-go
+      - task: build-clap
+      - task: build-web
+      - task: player
+      - task: pages
+      - cmd: echo "built — every kind emitted, every code target compiled"
+
+  clean:
+    cmds:
+      - rm -rf {{.OUT}} site

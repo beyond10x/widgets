@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest 913760e973be00acd471682b61f976e01adb4da95f8c410d040f7c82c85b7f98
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone control · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-control.html" aria-current="page">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Phone control</h1>
+<p>Calls this phone is placing or receiving, and the commands a human or an agent issues identically to drive them. No protocol type and no contact appears here.</p>
+<p><code>softphone.control</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="calldirection"><code>CallDirection</code></h3>
+<p><code>softphone.control.CallDirection</code> is one of <code>Outbound</code> and <code>Inbound</code>.</p>
+<h3 id="callid"><code>CallId</code></h3>
+<p><code>softphone.control.CallId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="callrow"><code>CallRow</code></h3>
+<p><code>softphone.control.CallRow</code> is a record of seven fields:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
+<li><code>muted</code> — <code>Boolean</code></li>
+<li><code>state</code> — <code>softphone.control.Call.State</code></li>
+</ul>
+<h3 id="digitstring"><code>DigitString</code></h3>
+<p><code>softphone.control.DigitString</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="endcause"><code>EndCause</code></h3>
+<p><code>softphone.control.EndCause</code> is one of <code>Local</code>, <code>Remote</code>, <code>Refused</code>, <code>Sip</code>, <code>Media</code> and <code>Timeout</code>.</p>
+<h3 id="endpointid"><code>EndpointId</code></h3>
+<p><code>softphone.control.EndpointId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="endpointrow"><code>EndpointRow</code></h3>
+<p><code>softphone.control.EndpointRow</code> is a record of four fields:</p>
+<ul>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>label</code> — <code>String</code></li>
+<li><code>default_binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>state</code> — <code>softphone.control.PhoneEndpoint.State</code></li>
+</ul>
+<h3 id="rejectstatus"><code>RejectStatus</code></h3>
+<p><code>softphone.control.RejectStatus</code> wraps <code>Integer</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="remoteaddress"><code>RemoteAddress</code></h3>
+<p><code>softphone.control.RemoteAddress</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<p>Two of the types above are reached by nothing else in this system: <code>softphone.control.CallRow</code> and <code>softphone.control.EndpointRow</code>. No entity, view, command, event, error or crossing names them, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="call"><code>Call</code></h3>
+<p><code>softphone.control.Call</code>.</p>
+<p>An instance is identified by <code>call_id</code>, a <code>softphone.control.CallId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
+<li><code>muted</code> — <code>Boolean</code></li>
+</ul>
+<p>It references at most one <a href="softphone-media.html#mediasession"><code>softphone.media.MediaSession</code></a>, as <code>media</code>, carried by <code>Call.session_id</code>.</p>
+<p>Every instance satisfies <code>(not (state == Active) or defined(session_id))</code> — a predicate over this entity&#39;s own fields, checked against them rather than stored as a sentence, so an invariant reading something the entity does not have is refused instead of documented.</p>
+<p>Its state is a <code>softphone.control.Call.State</code>, one of <code>Active</code>, <code>Answering</code>, <code>Ended</code>, <code>Requested</code> and <code>Ringing</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Requested</code>. <code>Ended</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Requested
+    Requested --&gt; Ringing: ring (RingCall)
+    Requested --&gt; Answering: accept (Answer, ConfirmAnswer)
+    Ringing --&gt; Answering: accept (Answer, ConfirmAnswer)
+    Answering --&gt; Active: activate (MediaConnected)
+    Active --&gt; Ended: end (FailCall, HangUp, Reject)
+    Answering --&gt; Ended: end (FailCall, HangUp, Reject)
+    Requested --&gt; Ended: end (FailCall, HangUp, Reject)
+    Ringing --&gt; Ended: end (FailCall, HangUp, Reject)
+    Ended --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>ring</code> — taken by <code>softphone.control.RingCall</code> on its <code>ringing</code> outcome</li>
+<li><code>accept</code> — taken by <code>softphone.control.Answer</code> on its <code>answered</code> outcome and <code>softphone.control.ConfirmAnswer</code> on its <code>confirmed</code> outcome</li>
+<li><code>activate</code> — taken by <code>softphone.control.MediaConnected</code> on its <code>established</code> outcome</li>
+<li><code>end</code> — taken by <code>softphone.control.FailCall</code> on its <code>failed</code> outcome, <code>softphone.control.HangUp</code> on its <code>hung-up</code> outcome and <code>softphone.control.Reject</code> on its <code>rejected</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.control.Dial</code> on its <code>dialled</code> outcome and <code>softphone.control.OfferCall</code> on its <code>offered</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Active</code> may not become <code>Answering</code></li>
+<li><code>Active</code> may not become <code>Requested</code></li>
+<li><code>Active</code> may not become <code>Ringing</code></li>
+<li><code>Answering</code> may not become <code>Requested</code></li>
+<li><code>Answering</code> may not become <code>Ringing</code></li>
+<li><code>Ended</code> may not become <code>Active</code></li>
+<li><code>Ended</code> may not become <code>Answering</code></li>
+<li><code>Ended</code> may not become <code>Requested</code></li>
+<li><code>Ended</code> may not become <code>Ringing</code></li>
+<li><code>Requested</code> may not become <code>Active</code></li>
+<li><code>Ringing</code> may not become <code>Active</code></li>
+<li><code>Ringing</code> may not become <code>Requested</code></li>
+</ul>
+<p>Two views project it: <a href="#activecalls"><code>ActiveCalls</code></a> and <a href="#callbyid"><code>CallById</code></a>.</p>
+<h3 id="phoneendpoint"><code>PhoneEndpoint</code></h3>
+<p><code>softphone.control.PhoneEndpoint</code>.</p>
+<p>An instance is identified by <code>endpoint_id</code>, a <code>softphone.control.EndpointId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>label</code> — <code>String</code></li>
+<li><code>default_binding</code> — <code>softphone.media.BindingKind</code></li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.control.PhoneEndpoint.State</code>, one of <code>Enabled</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Enabled</code>. <code>Enabled</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Enabled
+    Enabled --&gt; [*]</pre>
+<p>It declares no moves, so nothing changes its state once it exists.</p>
+<p>It has one state, so there is no move to permit or to forbid.</p>
+<p>One view projects it: <a href="#endpointbyid"><code>EndpointById</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="activecalls"><code>ActiveCalls</code></h3>
+<p><code>softphone.control.ActiveCalls</code>, shown to a person as &quot;Active calls&quot; and called <code>active-calls</code> on the wire.</p>
+<p>It reads <a href="#call"><code>Call</code></a>.</p>
+<p>It contains the instances where <code>state == Active</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
+<li><code>muted</code> — <code>Boolean</code></li>
+<li><code>state</code> — <code>softphone.control.Call.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="callbyid"><code>CallById</code></h3>
+<p><code>softphone.control.CallById</code>, shown to a person as &quot;Call by id&quot; and called <code>call-by-id</code> on the wire.</p>
+<p>It reads <a href="#call"><code>Call</code></a>.</p>
+<p>It contains the instances where <code>call_id == param.call_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>session_id</code> — <code>Optional&lt;softphone.media.MediaSessionId&gt;</code>, which may be absent</li>
+<li><code>muted</code> — <code>Boolean</code></li>
+<li><code>state</code> — <code>softphone.control.Call.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="endpointbyid"><code>EndpointById</code></h3>
+<p><code>softphone.control.EndpointById</code>, shown to a person as &quot;Endpoint by id&quot; and called <code>endpoint-by-id</code> on the wire.</p>
+<p>It reads <a href="#phoneendpoint"><code>PhoneEndpoint</code></a>.</p>
+<p>It contains the instances where <code>endpoint_id == param.endpoint_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>label</code> — <code>String</code></li>
+<li><code>default_binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>state</code> — <code>softphone.control.PhoneEndpoint.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="answer"><code>Answer</code></h3>
+<p><code>softphone.control.Answer</code>, shown to a person as &quot;Answer&quot; and called <code>answer</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>answered</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Requested</code> and <code>Ringing</code> to <code>Answering</code>, along the declared move <code>accept</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallAnswered</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Active</code>, <code>Answering</code> and <code>Ended</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.control.CallStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="attachmedia"><code>AttachMedia</code></h3>
+<p><code>softphone.control.AttachMedia</code>, shown to a person as &quot;Attach media&quot; and called <code>attach-media</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>attached</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.control.Call</code> without moving it along its lifecycle. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.MediaAttached</code>. It sets <code>session_id</code> from <code>input.session_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="configureendpoint"><code>ConfigureEndpoint</code></h3>
+<p><code>softphone.control.ConfigureEndpoint</code>, shown to a person as &quot;Configure endpoint&quot; and called <code>configure-endpoint</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>label</code> — <code>String</code></li>
+<li><code>default_binding</code> — <code>softphone.media.BindingKind</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>configured</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.PhoneEndpoint</code>, which starts in <code>Enabled</code>. The new instance&#39;s identity is published as <code>endpoint_id</code> on <code>softphone.control.EndpointConfigured</code>. It emits <code>softphone.control.EndpointConfigured</code>. It sets <code>label</code> from <code>input.label</code> and <code>default_binding</code> from <code>input.default_binding</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="confirmanswer"><code>ConfirmAnswer</code></h3>
+<p><code>softphone.control.ConfirmAnswer</code>, shown to a person as &quot;Confirm answer&quot; and called <code>confirm-answer</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>confirmed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Requested</code> and <code>Ringing</code> to <code>Answering</code>, along the declared move <code>accept</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallConfirmed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Active</code>, <code>Answering</code> and <code>Ended</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.control.CallStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="dial"><code>Dial</code></h3>
+<p><code>softphone.control.Dial</code>, shown to a person as &quot;Dial&quot; and called <code>dial</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>dialled</code></strong> — The call is Requested and Outbound; no media exists yet, so `session_id` is absent. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.Call</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>call_id</code> on <code>softphone.control.CallDialled</code>. It emits <code>softphone.control.CallDialled</code>. It sets <code>endpoint_id</code> from <code>input.endpoint_id</code>, <code>direction</code> from <code>&quot;Outbound&quot;</code>, <code>remote</code> from <code>input.remote</code> and <code>muted</code> from <code>&quot;false&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="failcall"><code>FailCall</code></h3>
+<p><code>softphone.control.FailCall</code>, shown to a person as &quot;Fail call&quot; and called <code>fail-call</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L365</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>cause</code> — <code>softphone.control.EndCause</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>failed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Active</code>, <code>Answering</code>, <code>Requested</code> and <code>Ringing</code> to <code>Ended</code>, along the declared move <code>end</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallFailed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Ended</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.control.CallStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="hangup"><code>HangUp</code></h3>
+<p><code>softphone.control.HangUp</code>, shown to a person as &quot;Hang up&quot; and called <code>hang-up</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>hung-up</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Active</code>, <code>Answering</code>, <code>Requested</code> and <code>Ringing</code> to <code>Ended</code>, along the declared move <code>end</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallHungUp</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Ended</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="mediaconnected"><code>MediaConnected</code></h3>
+<p><code>softphone.control.MediaConnected</code>, shown to a person as &quot;Media connected&quot; and called <code>media-connected</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L471</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>established</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Answering</code> to <code>Active</code>, along the declared move <code>activate</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallEstablished</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Active</code>, <code>Ended</code>, <code>Requested</code> and <code>Ringing</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.control.CallStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="offercall"><code>OfferCall</code></h3>
+<p><code>softphone.control.OfferCall</code>, shown to a person as &quot;Offer call&quot; and called <code>offer-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>offered</code></strong> — An inbound call the signalling side reports; the direction is Inbound. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.control.Call</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>call_id</code> on <code>softphone.control.CallOffered</code>. It emits <code>softphone.control.CallOffered</code>. It sets <code>endpoint_id</code> from <code>input.endpoint_id</code>, <code>direction</code> from <code>&quot;Inbound&quot;</code>, <code>remote</code> from <code>input.remote</code> and <code>muted</code> from <code>&quot;false&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="reject"><code>Reject</code></h3>
+<p><code>softphone.control.Reject</code>, shown to a person as &quot;Reject&quot; and called <code>reject</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L348</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>status</code> — <code>softphone.control.RejectStatus</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>rejected</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Active</code>, <code>Answering</code>, <code>Requested</code> and <code>Ringing</code> to <code>Ended</code>, along the declared move <code>end</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallRejected</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Ended</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.control.CallStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="ringcall"><code>RingCall</code></h3>
+<p><code>softphone.control.RingCall</code>, shown to a person as &quot;Ring call&quot; and called <code>ring-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>ringing</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.control.Call</code> from <code>Requested</code> to <code>Ringing</code>, along the declared move <code>ring</code>. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.CallRinging</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.control.Call</code> in <code>Active</code>, <code>Answering</code>, <code>Ended</code> and <code>Ringing</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.control.CallStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="senddigits"><code>SendDigits</code></h3>
+<p><code>softphone.control.SendDigits</code>, shown to a person as &quot;Send digits&quot; and called <code>send-digits</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>digits</code> — <code>softphone.control.DigitString</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>sent</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.control.DigitsSent</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="setmuted"><code>SetMuted</code></h3>
+<p><code>softphone.control.SetMuted</code>, shown to a person as &quot;Set muted&quot; and called <code>set-muted</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>muted</code> — <code>Boolean</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>changed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.control.Call</code> without moving it along its lifecycle. The instance is the one named by the input field <code>call_id</code>. It emits <code>softphone.control.MuteChanged</code>. It sets <code>muted</code> from <code>input.muted</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h2 id="events">Events</h2>
+<h3 id="callanswered"><code>CallAnswered</code></h3>
+<p><code>softphone.control.CallAnswered</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.Answer</code> on its <code>answered</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="callconfirmed"><code>CallConfirmed</code></h3>
+<p><code>softphone.control.CallConfirmed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.ConfirmAnswer</code> on its <code>confirmed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="calldialled"><code>CallDialled</code></h3>
+<p><code>softphone.control.CallDialled</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.Dial</code> on its <code>dialled</code> outcome.</p>
+<p><code>show-outbound-call</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="callestablished"><code>CallEstablished</code></h3>
+<p><code>softphone.control.CallEstablished</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.MediaConnected</code> on its <code>established</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="callfailed"><code>CallFailed</code></h3>
+<p><code>softphone.control.CallFailed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>cause</code> — <code>softphone.control.EndCause</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.FailCall</code> on its <code>failed</code> outcome.</p>
+<p><code>record-failed-call</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="callhungup"><code>CallHungUp</code></h3>
+<p><code>softphone.control.CallHungUp</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.HangUp</code> on its <code>hung-up</code> outcome.</p>
+<p><code>record-hung-up-call</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="calloffered"><code>CallOffered</code></h3>
+<p><code>softphone.control.CallOffered</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.OfferCall</code> on its <code>offered</code> outcome.</p>
+<p><code>show-incoming-call</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="callrejected"><code>CallRejected</code></h3>
+<p><code>softphone.control.CallRejected</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>status</code> — <code>softphone.control.RejectStatus</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.Reject</code> on its <code>rejected</code> outcome.</p>
+<p><code>record-rejected-call</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="callringing"><code>CallRinging</code></h3>
+<p><code>softphone.control.CallRinging</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.RingCall</code> on its <code>ringing</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="digitssent"><code>DigitsSent</code></h3>
+<p><code>softphone.control.DigitsSent</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>digits</code> — <code>softphone.control.DigitString</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.SendDigits</code> on its <code>sent</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="endpointconfigured"><code>EndpointConfigured</code></h3>
+<p><code>softphone.control.EndpointConfigured</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>endpoint_id</code> — <code>softphone.control.EndpointId</code></li>
+<li><code>label</code> — <code>String</code></li>
+<li><code>default_binding</code> — <code>softphone.media.BindingKind</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.ConfigureEndpoint</code> on its <code>configured</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="mediaattached"><code>MediaAttached</code></h3>
+<p><code>softphone.control.MediaAttached</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.AttachMedia</code> on its <code>attached</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="mutechanged"><code>MuteChanged</code></h3>
+<p><code>softphone.control.MuteChanged</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>muted</code> — <code>Boolean</code></li>
+</ul>
+<p>Emitted by <code>softphone.control.SetMuted</code> on its <code>changed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="callstateconflict"><code>CallStateConflict</code></h3>
+<p>The call is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.control.Call.State</code></li>
+</ul>
+<p>Reported by <code>softphone.control.Answer</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.control.ConfirmAnswer</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.control.FailCall</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.control.MediaConnected</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.control.Reject</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.control.RingCall</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="agent"><code>Agent</code></h3>
+<p><code>softphone.control.Agent</code>, shown to a person as &quot;Agent&quot;.</p>
+<p>It may invoke <a href="#answer"><code>Answer</code></a>, <a href="#configureendpoint"><code>ConfigureEndpoint</code></a>, <a href="#dial"><code>Dial</code></a>, <a href="#hangup"><code>HangUp</code></a>, <a href="#reject"><code>Reject</code></a>, <a href="#senddigits"><code>SendDigits</code></a> and <a href="#setmuted"><code>SetMuted</code></a>.</p>
+<h3 id="human"><code>Human</code></h3>
+<p><code>softphone.control.Human</code>, shown to a person as &quot;Human&quot;.</p>
+<p>It may invoke <a href="#answer"><code>Answer</code></a>, <a href="#configureendpoint"><code>ConfigureEndpoint</code></a>, <a href="#dial"><code>Dial</code></a>, <a href="#hangup"><code>HangUp</code></a>, <a href="#reject"><code>Reject</code></a>, <a href="#senddigits"><code>SendDigits</code></a> and <a href="#setmuted"><code>SetMuted</code></a>.</p>
+<h3 id="kernel"><code>Kernel</code></h3>
+<p><code>softphone.control.Kernel</code>, shown to a person as &quot;Signalling kernel&quot;.</p>
+<p>It may invoke <a href="#attachmedia"><code>AttachMedia</code></a>, <a href="#confirmanswer"><code>ConfirmAnswer</code></a>, <a href="#failcall"><code>FailCall</code></a>, <a href="#mediaconnected"><code>MediaConnected</code></a>, <a href="#offercall"><code>OfferCall</code></a> and <a href="#ringcall"><code>RingCall</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>913760e973be00acd471682b61f976e01adb4da95f8c410d040f7c82c85b7f98</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

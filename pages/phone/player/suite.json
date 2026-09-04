@@ -1,0 +1,2365 @@
+{
+  "provenance": {
+    "suite_version": "ess-conformance/4",
+    "system": "softphone",
+    "specification_version": "v1",
+    "spec_digest": "aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf",
+    "contract_digest": "ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643"
+  },
+  "scenarios": {
+    "softphone.control/authored/dtmf-and-mute-in-call": {
+      "purpose": "On an established call the user sends digits to an IVR and mutes themselves.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Dial",
+          "actor": "softphone.control.Human",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:ivr@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Dial",
+            "outcome": "dialled"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallDialled",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfirmAnswer",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfirmAnswer",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.MediaConnected",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.SendDigits",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "digits": {
+              "kind": "literal",
+              "value": "2"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.SendDigits",
+            "outcome": "sent"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.DigitsSent",
+          "payload": {
+            "digits": "2"
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "digits": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.SetMuted",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "muted": {
+              "kind": "literal",
+              "value": true
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.SetMuted",
+            "outcome": "changed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.MuteChanged",
+          "payload": {
+            "muted": true
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "muted": {
+              "holds": "primitive",
+              "kind": "boolean"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.HangUp",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.HangUp",
+            "outcome": "hung-up"
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.DigitString"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfirmAnswer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Dial"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.HangUp"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.MediaConnected"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.SendDigits"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.SetMuted"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfirmAnswer",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Dial",
+            "outcome": "dialled"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.HangUp",
+            "outcome": "hung-up"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.SendDigits",
+            "outcome": "sent"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.SetMuted",
+            "outcome": "changed"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallDialled"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.DigitsSent"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.MuteChanged"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.control/authored/inbound-call-answered": {
+      "purpose": "A call arrives, rings, the user answers it, and media connects.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.EndpointConfigured",
+          "payload": {
+            "label": "Desk"
+          },
+          "shape": {
+            "default_binding": {
+              "holds": "enum",
+              "variants": [
+                "Sip",
+                "Loopback"
+              ]
+            },
+            "endpoint_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "label": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:alice@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallOffered",
+          "payload": {
+            "remote": "sip:alice@example.test"
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "endpoint_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "remote": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Answer",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Answer",
+            "outcome": "answered"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.MediaConnected",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Answer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.MediaConnected"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.OfferCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Answer",
+            "outcome": "answered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallOffered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.control/authored/inbound-call-declined": {
+      "purpose": "The user declines a ringing call with 486 Busy Here.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:spam@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Reject",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "status": {
+              "kind": "literal",
+              "value": 486.0
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Reject",
+            "outcome": "rejected"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallRejected",
+          "payload": {
+            "status": 486.0
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "status": {
+              "holds": "primitive",
+              "kind": "integer"
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RejectStatus"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.OfferCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Reject"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Reject",
+            "outcome": "rejected"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallOffered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallRejected"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.control/authored/inbound-call-missed": {
+      "purpose": "A call arrives, rings, and the caller gives up before it is answered.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.EndpointConfigured",
+          "payload": {
+            "label": "Desk"
+          },
+          "shape": {
+            "default_binding": {
+              "holds": "enum",
+              "variants": [
+                "Sip",
+                "Loopback"
+              ]
+            },
+            "endpoint_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "label": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:unknown@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.FailCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Refused"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.FailCall",
+            "outcome": "failed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallFailed",
+          "payload": {
+            "cause": "Refused"
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "cause": {
+              "holds": "enum",
+              "variants": [
+                "Local",
+                "Remote",
+                "Refused",
+                "Sip",
+                "Media",
+                "Timeout"
+              ]
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.FailCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.OfferCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.FailCall",
+            "outcome": "failed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallFailed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallOffered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.control/authored/media-fails-after-answer": {
+      "purpose": "The user answers, media never connects, and the call ends without ever being Active.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:carol@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Answer",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Answer",
+            "outcome": "answered"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.FailCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Media"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.FailCall",
+            "outcome": "failed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallFailed",
+          "payload": {
+            "cause": "Media"
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "cause": {
+              "holds": "enum",
+              "variants": [
+                "Local",
+                "Remote",
+                "Refused",
+                "Sip",
+                "Media",
+                "Timeout"
+              ]
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Answer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.FailCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.OfferCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Answer",
+            "outcome": "answered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.FailCall",
+            "outcome": "failed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallFailed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallOffered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.control/authored/outbound-call-answered": {
+      "purpose": "A dialled call rings, the far end answers, media connects, and the user hangs up.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.EndpointConfigured",
+          "payload": {
+            "default_binding": "Sip",
+            "label": "Desk"
+          },
+          "shape": {
+            "default_binding": {
+              "holds": "enum",
+              "variants": [
+                "Sip",
+                "Loopback"
+              ]
+            },
+            "endpoint_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "label": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Dial",
+          "actor": "softphone.control.Human",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:bob@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Dial",
+            "outcome": "dialled"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallDialled",
+          "payload": {
+            "remote": "sip:bob@example.test"
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "endpoint_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "remote": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallDialled",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfirmAnswer",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfirmAnswer",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.MediaConnected",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.HangUp",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.HangUp",
+            "outcome": "hung-up"
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfirmAnswer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Dial"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.HangUp"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.MediaConnected"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfirmAnswer",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Dial",
+            "outcome": "dialled"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.HangUp",
+            "outcome": "hung-up"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallDialled"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.directory/authored/phonebook-contact-and-address": {
+      "purpose": "A contact is added with two addresses, one is removed, and the contact is deleted.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddContact",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "display_name": {
+              "kind": "literal",
+              "value": "Bob Fenwick"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddContact",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.directory.ContactAdded",
+          "payload": {
+            "display_name": "Bob Fenwick"
+          },
+          "shape": {
+            "contact_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "display_name": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "contact",
+          "entity": "softphone.directory.Contact",
+          "event": "softphone.directory.ContactAdded",
+          "field": "contact_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address": {
+              "kind": "literal",
+              "value": "sip:bob@example.test"
+            },
+            "contact_id": {
+              "kind": "instance",
+              "instance": "contact"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Work"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "work",
+          "entity": "softphone.directory.ContactAddress",
+          "event": "softphone.directory.ContactAddressAdded",
+          "field": "address_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address": {
+              "kind": "literal",
+              "value": "sip:bob.mobile@example.test"
+            },
+            "contact_id": {
+              "kind": "instance",
+              "instance": "contact"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Mobile"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "mobile",
+          "entity": "softphone.directory.ContactAddress",
+          "event": "softphone.directory.ContactAddressAdded",
+          "field": "address_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.RemoveAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address_id": {
+              "kind": "instance",
+              "instance": "mobile"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.RemoveAddress",
+            "outcome": "removed"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.DeleteContact",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "contact_id": {
+              "kind": "instance",
+              "instance": "contact"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.DeleteContact",
+            "outcome": "deleted"
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.directory"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.AddressLabel"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.ContactAddressId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.ContactId"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.directory.Contact"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.directory.ContactAddress"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.AddAddress"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.AddContact"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.DeleteContact"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.RemoveAddress"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.AddContact",
+            "outcome": "added"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.DeleteContact",
+            "outcome": "deleted"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.RemoveAddress",
+            "outcome": "removed"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.directory.ContactAdded"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.directory.ContactAddressAdded"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.directory.Human"
+        }
+      ]
+    },
+    "softphone.media/authored/media-session-lifecycle": {
+      "purpose": "A media session is opened, goes live, carries a DTMF digit, and is terminated.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:dave@example.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "sess-7f3a"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.ActivateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.SendSignal",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            },
+            "signal": {
+              "kind": "literal",
+              "value": {
+                "dtmf": "5",
+                "kind": "dtmf"
+              }
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.SendSignal",
+            "outcome": "sent"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.TerminateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "reason": {
+              "kind": "literal",
+              "value": "RemoteHangup"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "terminated"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.media.SessionTerminated",
+          "payload": {
+            "reason": "RemoteHangup"
+          },
+          "shape": {
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.media"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ChannelSignal"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.DigitString"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.ActivateSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.SendSignal"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.TerminateSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.SendSignal",
+            "outcome": "sent"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "terminated"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionTerminated"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.sip/authored/registration-recovers": {
+      "purpose": "A registration fails, is retried, succeeds, and is later given up deliberately.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.sip.Register",
+          "actor": "softphone.sip.SipHost",
+          "input": {
+            "aor": {
+              "kind": "literal",
+              "value": "sip:desk@example.test"
+            },
+            "expires": {
+              "kind": "literal",
+              "value": "3600s"
+            },
+            "transport": {
+              "kind": "literal",
+              "value": "SecureWebSocket"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.sip.Register",
+            "outcome": "requested"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.sip.RegistrationRequested",
+          "payload": {
+            "aor": "sip:desk@example.test",
+            "transport": "SecureWebSocket"
+          },
+          "shape": {
+            "aor": {
+              "holds": "primitive",
+              "kind": "string"
+            },
+            "expires": {
+              "holds": "primitive",
+              "kind": "duration"
+            },
+            "registration_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "transport": {
+              "holds": "enum",
+              "variants": [
+                "SecureWebSocket"
+              ]
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "reg",
+          "entity": "softphone.sip.Registration",
+          "event": "softphone.sip.RegistrationRequested",
+          "field": "registration_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.sip.FailRegistration",
+          "actor": "softphone.sip.Kernel",
+          "input": {
+            "cause": {
+              "kind": "literal",
+              "value": "503 Service Unavailable"
+            },
+            "registration_id": {
+              "kind": "instance",
+              "instance": "reg"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.sip.FailRegistration",
+            "outcome": "failed"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.sip.RetryRegistration",
+          "actor": "softphone.sip.SipHost",
+          "input": {
+            "registration_id": {
+              "kind": "instance",
+              "instance": "reg"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.sip.RetryRegistration",
+            "outcome": "retried"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.sip.ConfirmRegistration",
+          "actor": "softphone.sip.Kernel",
+          "input": {
+            "registration_id": {
+              "kind": "instance",
+              "instance": "reg"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.sip.ConfirmRegistration",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.sip.Unregister",
+          "actor": "softphone.sip.SipHost",
+          "input": {
+            "registration_id": {
+              "kind": "instance",
+              "instance": "reg"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.sip.Unregister",
+            "outcome": "ended"
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.sip"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.sip.AddressOfRecord"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.sip.RegistrationId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.sip.SignallingTransport"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.sip.SipCause"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.sip.Registration"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.sip.ConfirmRegistration"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.sip.FailRegistration"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.sip.Register"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.sip.RetryRegistration"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.sip.Unregister"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.sip.ConfirmRegistration",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.sip.FailRegistration",
+            "outcome": "failed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.sip.Register",
+            "outcome": "requested"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.sip.RetryRegistration",
+            "outcome": "retried"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.sip.Unregister",
+            "outcome": "ended"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.sip.RegistrationRequested"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.sip.Kernel"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.sip.SipHost"
+        }
+      ]
+    }
+  }
+}

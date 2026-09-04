@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest fdb4355f5761f84b8fd05460cf8fb8c08fd6d136a6f61c1c7143575080b24b51
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIP binding · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html" aria-current="page">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>SIP binding</h1>
+<p>A SIP registration and the dialogs carrying media sessions over it. The only domain that names SIP, SDP, an address-of-record or a WebSocket. The offer/answer exchange lives here as four commands and the two descriptions a dialog carries.</p>
+<p><code>softphone.sip</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="addressofrecord"><code>AddressOfRecord</code></h3>
+<p><code>softphone.sip.AddressOfRecord</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="mediasecurity"><code>MediaSecurity</code></h3>
+<p><code>softphone.sip.MediaSecurity</code> is one of <code>DtlsSrtp</code>.</p>
+<h3 id="registrationid"><code>RegistrationId</code></h3>
+<p><code>softphone.sip.RegistrationId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="registrationrow"><code>RegistrationRow</code></h3>
+<p><code>softphone.sip.RegistrationRow</code> is a record of four fields:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>aor</code> — <code>softphone.sip.AddressOfRecord</code></li>
+<li><code>transport</code> — <code>softphone.sip.SignallingTransport</code></li>
+<li><code>state</code> — <code>softphone.sip.Registration.State</code></li>
+</ul>
+<h3 id="sessiondescription"><code>SessionDescription</code></h3>
+<p><code>softphone.sip.SessionDescription</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="signallingtransport"><code>SignallingTransport</code></h3>
+<p><code>softphone.sip.SignallingTransport</code> is one of <code>SecureWebSocket</code>.</p>
+<h3 id="sipcause"><code>SipCause</code></h3>
+<p><code>softphone.sip.SipCause</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="sipdialogid"><code>SipDialogId</code></h3>
+<p><code>softphone.sip.SipDialogId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="sipdialogrow"><code>SipDialogRow</code></h3>
+<p><code>softphone.sip.SipDialogRow</code> is a record of eight fields:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>remote_uri</code> — <code>softphone.sip.SipUri</code></li>
+<li><code>media_security</code> — <code>softphone.sip.MediaSecurity</code></li>
+<li><code>local_sdp</code> — <code>Optional&lt;softphone.sip.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.sip.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.sip.SipDialog.State</code></li>
+</ul>
+<h3 id="sipuri"><code>SipUri</code></h3>
+<p><code>softphone.sip.SipUri</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<p>Two of the types above are reached by nothing else in this system: <code>softphone.sip.RegistrationRow</code> and <code>softphone.sip.SipDialogRow</code>. No entity, view, command, event, error or crossing names them, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="registration"><code>Registration</code></h3>
+<p><code>softphone.sip.Registration</code>.</p>
+<p>An instance is identified by <code>registration_id</code>, a <code>softphone.sip.RegistrationId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>aor</code> — <code>softphone.sip.AddressOfRecord</code></li>
+<li><code>transport</code> — <code>softphone.sip.SignallingTransport</code></li>
+<li><code>expires</code> — <code>Duration</code></li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.sip.Registration.State</code>, one of <code>Ended</code>, <code>Failed</code>, <code>Registered</code> and <code>Requested</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Requested</code>. <code>Ended</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Requested
+    Requested --&gt; Registered: confirm (ConfirmRegistration)
+    Registered --&gt; Failed: fail (FailRegistration)
+    Requested --&gt; Failed: fail (FailRegistration)
+    Failed --&gt; Requested: retry (RetryRegistration)
+    Registered --&gt; Ended: end (Unregister)
+    Ended --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>confirm</code> — taken by <code>softphone.sip.ConfirmRegistration</code> on its <code>confirmed</code> outcome</li>
+<li><code>fail</code> — taken by <code>softphone.sip.FailRegistration</code> on its <code>failed</code> outcome</li>
+<li><code>retry</code> — taken by <code>softphone.sip.RetryRegistration</code> on its <code>retried</code> outcome</li>
+<li><code>end</code> — taken by <code>softphone.sip.Unregister</code> on its <code>ended</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.sip.Register</code> on its <code>requested</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Ended</code> may not become <code>Failed</code></li>
+<li><code>Ended</code> may not become <code>Registered</code></li>
+<li><code>Ended</code> may not become <code>Requested</code></li>
+<li><code>Failed</code> may not become <code>Ended</code></li>
+<li><code>Failed</code> may not become <code>Registered</code></li>
+<li><code>Registered</code> may not become <code>Requested</code></li>
+<li><code>Requested</code> may not become <code>Ended</code></li>
+</ul>
+<p>One view projects it: <a href="#registrationbyid"><code>RegistrationById</code></a>.</p>
+<h3 id="sipdialog"><code>SipDialog</code></h3>
+<p><code>softphone.sip.SipDialog</code>.</p>
+<p>An instance is identified by <code>dialog_id</code>, a <code>softphone.sip.SipDialogId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>remote_uri</code> — <code>softphone.sip.SipUri</code></li>
+<li><code>media_security</code> — <code>softphone.sip.MediaSecurity</code></li>
+<li><code>local_sdp</code> — <code>Optional&lt;softphone.sip.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.sip.SessionDescription&gt;</code>, which may be absent</li>
+</ul>
+<p>It references at most one <a href="softphone-media.html#mediasession"><code>softphone.media.MediaSession</code></a>, as <code>session</code>, carried by <code>SipDialog.session_id</code>.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.sip.SipDialog.State</code>, one of <code>Closed</code> and <code>Open</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Open</code>. <code>Closed</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Open
+    Open --&gt; Closed: close (CloseDialog)
+    Closed --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>close</code> — taken by <code>softphone.sip.CloseDialog</code> on its <code>closed</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.sip.OpenDialog</code> on its <code>opened</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Closed</code> may not become <code>Open</code></li>
+</ul>
+<p>One view projects it: <a href="#sipdialogbyid"><code>SipDialogById</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="registrationbyid"><code>RegistrationById</code></h3>
+<p><code>softphone.sip.RegistrationById</code>, shown to a person as &quot;Registration by id&quot; and called <code>registration-by-id</code> on the wire.</p>
+<p>It reads <a href="#registration"><code>Registration</code></a>.</p>
+<p>It contains the instances where <code>registration_id == param.registration_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>aor</code> — <code>softphone.sip.AddressOfRecord</code></li>
+<li><code>transport</code> — <code>softphone.sip.SignallingTransport</code></li>
+<li><code>state</code> — <code>softphone.sip.Registration.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="sipdialogbyid"><code>SipDialogById</code></h3>
+<p><code>softphone.sip.SipDialogById</code>, shown to a person as &quot;SIP dialog by id&quot; and called <code>sip-dialog-by-id</code> on the wire.</p>
+<p>It reads <a href="#sipdialog"><code>SipDialog</code></a>.</p>
+<p>It contains the instances where <code>dialog_id == param.dialog_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>remote_uri</code> — <code>softphone.sip.SipUri</code></li>
+<li><code>media_security</code> — <code>softphone.sip.MediaSecurity</code></li>
+<li><code>local_sdp</code> — <code>Optional&lt;softphone.sip.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>remote_sdp</code> — <code>Optional&lt;softphone.sip.SessionDescription&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.sip.SipDialog.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="applyremotemedia"><code>ApplyRemoteMedia</code></h3>
+<p><code>softphone.sip.ApplyRemoteMedia</code>, shown to a person as &quot;Apply remote media&quot; and called <code>apply-remote-media</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L370</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>sdp</code> — <code>softphone.sip.SessionDescription</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>applied</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.sip.SipDialog</code> without moving it along its lifecycle. The instance is the one named by the input field <code>dialog_id</code>. It emits <code>softphone.sip.RemoteMediaApplied</code>. It sets <code>remote_sdp</code> from <code>input.sdp</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="closedialog"><code>CloseDialog</code></h3>
+<p><code>softphone.sip.CloseDialog</code>, shown to a person as &quot;Close dialog&quot; and called <code>close-dialog</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>cause</code> — <code>softphone.sip.SipCause</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>closed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.sip.SipDialog</code> from <code>Open</code> to <code>Closed</code>, along the declared move <code>close</code>. The instance is the one named by the input field <code>dialog_id</code>. It emits <code>softphone.sip.SipDialogClosed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.sip.SipDialog</code> in <code>Closed</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.sip.SipDialogStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="confirmregistration"><code>ConfirmRegistration</code></h3>
+<p><code>softphone.sip.ConfirmRegistration</code>, shown to a person as &quot;Confirm registration&quot; and called <code>confirm-registration</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>confirmed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.sip.Registration</code> from <code>Requested</code> to <code>Registered</code>, along the declared move <code>confirm</code>. The instance is the one named by the input field <code>registration_id</code>. It emits <code>softphone.sip.RegistrationConfirmed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.sip.Registration</code> in <code>Ended</code>, <code>Failed</code> and <code>Registered</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.sip.RegistrationStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="faillocalmedia"><code>FailLocalMedia</code></h3>
+<p><code>softphone.sip.FailLocalMedia</code>, shown to a person as &quot;Fail local media&quot; and called <code>fail-local-media</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L352</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>cause</code> — <code>softphone.sip.SipCause</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>failed</code></strong> — Negotiation did not produce media. The dialog is not moved here — `CloseDialog` ends it and `softphone.control.FailCall` is what tells the call, so a media failure never arrives as a SIP cause. The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.sip.LocalMediaFailed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="failregistration"><code>FailRegistration</code></h3>
+<p><code>softphone.sip.FailRegistration</code>, shown to a person as &quot;Fail registration&quot; and called <code>fail-registration</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>cause</code> — <code>softphone.sip.SipCause</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>failed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.sip.Registration</code> from <code>Registered</code> and <code>Requested</code> to <code>Failed</code>, along the declared move <code>fail</code>. The instance is the one named by the input field <code>registration_id</code>. It emits <code>softphone.sip.RegistrationFailed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.sip.Registration</code> in <code>Ended</code> and <code>Failed</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.sip.RegistrationStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="offerlocalmedia"><code>OfferLocalMedia</code></h3>
+<p><code>softphone.sip.OfferLocalMedia</code>, shown to a person as &quot;Offer local media&quot; and called <code>offer-local-media</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L350</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>sdp</code> — <code>softphone.sip.SessionDescription</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>offered</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.sip.SipDialog</code> without moving it along its lifecycle. The instance is the one named by the input field <code>dialog_id</code>. It emits <code>softphone.sip.LocalMediaOffered</code>. It sets <code>local_sdp</code> from <code>input.sdp</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="opendialog"><code>OpenDialog</code></h3>
+<p><code>softphone.sip.OpenDialog</code>, shown to a person as &quot;Open dialog&quot; and called <code>open-dialog</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>remote_uri</code> — <code>softphone.sip.SipUri</code></li>
+<li><code>media_security</code> — <code>softphone.sip.MediaSecurity</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>opened</code></strong> — The only outcome that creates a `SipDialog`. This is what holds the binding discriminator on `softphone.media.MediaSession` honest — no invariant can. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.sip.SipDialog</code>, which starts in <code>Open</code>. The new instance&#39;s identity is published as <code>dialog_id</code> on <code>softphone.sip.SipDialogOpened</code>. It emits <code>softphone.sip.SipDialogOpened</code>. It sets <code>session_id</code> from <code>input.session_id</code>, <code>registration_id</code> from <code>input.registration_id</code>, <code>remote_uri</code> from <code>input.remote_uri</code> and <code>media_security</code> from <code>input.media_security</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="refreshregistration"><code>RefreshRegistration</code></h3>
+<p><code>softphone.sip.RefreshRegistration</code>, shown to a person as &quot;Refresh registration&quot; and called <code>refresh-registration</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>expires</code> — <code>Duration</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>refreshed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.sip.Registration</code> without moving it along its lifecycle. The instance is the one named by the input field <code>registration_id</code>. It emits <code>softphone.sip.RegistrationRefreshed</code>. It sets <code>expires</code> from <code>input.expires</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="register"><code>Register</code></h3>
+<p><code>softphone.sip.Register</code>, shown to a person as &quot;Register&quot; and called <code>register</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L341</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>aor</code> — <code>softphone.sip.AddressOfRecord</code></li>
+<li><code>transport</code> — <code>softphone.sip.SignallingTransport</code></li>
+<li><code>expires</code> — <code>Duration</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>requested</code></strong> — Requested; no SIP transaction has succeeded yet. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.sip.Registration</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>registration_id</code> on <code>softphone.sip.RegistrationRequested</code>. It emits <code>softphone.sip.RegistrationRequested</code>. It sets <code>aor</code> from <code>input.aor</code>, <code>transport</code> from <code>input.transport</code> and <code>expires</code> from <code>input.expires</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="requestlocalmedia"><code>RequestLocalMedia</code></h3>
+<p><code>softphone.sip.RequestLocalMedia</code>, shown to a person as &quot;Request local media&quot; and called <code>request-local-media</code> on the wire.</p>
+<p>Recorded at <code>sipx:docs/specs/browser-sdk.md#L368</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>requested</code></strong> — The kernel is asking the browser for a description; nothing about the dialog changes. The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.sip.LocalMediaRequested</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="retryregistration"><code>RetryRegistration</code></h3>
+<p><code>softphone.sip.RetryRegistration</code>, shown to a person as &quot;Retry registration&quot; and called <code>retry-registration</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>retried</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.sip.Registration</code> from <code>Failed</code> to <code>Requested</code>, along the declared move <code>retry</code>. The instance is the one named by the input field <code>registration_id</code>. It emits <code>softphone.sip.RegistrationRetried</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.sip.Registration</code> in <code>Ended</code>, <code>Registered</code> and <code>Requested</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.sip.RegistrationStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="unregister"><code>Unregister</code></h3>
+<p><code>softphone.sip.Unregister</code>, shown to a person as &quot;Unregister&quot; and called <code>unregister</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>ended</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.sip.Registration</code> from <code>Registered</code> to <code>Ended</code>, along the declared move <code>end</code>. The instance is the one named by the input field <code>registration_id</code>. It emits <code>softphone.sip.RegistrationEnded</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.sip.Registration</code> in <code>Ended</code>, <code>Failed</code> and <code>Requested</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.sip.RegistrationStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h2 id="events">Events</h2>
+<h3 id="localmediafailed"><code>LocalMediaFailed</code></h3>
+<p><code>softphone.sip.LocalMediaFailed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>cause</code> — <code>softphone.sip.SipCause</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.FailLocalMedia</code> on its <code>failed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="localmediaoffered"><code>LocalMediaOffered</code></h3>
+<p><code>softphone.sip.LocalMediaOffered</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>sdp</code> — <code>softphone.sip.SessionDescription</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.OfferLocalMedia</code> on its <code>offered</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="localmediarequested"><code>LocalMediaRequested</code></h3>
+<p><code>softphone.sip.LocalMediaRequested</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.RequestLocalMedia</code> on its <code>requested</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="registrationconfirmed"><code>RegistrationConfirmed</code></h3>
+<p><code>softphone.sip.RegistrationConfirmed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.ConfirmRegistration</code> on its <code>confirmed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="registrationended"><code>RegistrationEnded</code></h3>
+<p><code>softphone.sip.RegistrationEnded</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.Unregister</code> on its <code>ended</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="registrationfailed"><code>RegistrationFailed</code></h3>
+<p><code>softphone.sip.RegistrationFailed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>cause</code> — <code>softphone.sip.SipCause</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.FailRegistration</code> on its <code>failed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="registrationrefreshed"><code>RegistrationRefreshed</code></h3>
+<p><code>softphone.sip.RegistrationRefreshed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>expires</code> — <code>Duration</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.RefreshRegistration</code> on its <code>refreshed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="registrationrequested"><code>RegistrationRequested</code></h3>
+<p><code>softphone.sip.RegistrationRequested</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>aor</code> — <code>softphone.sip.AddressOfRecord</code></li>
+<li><code>transport</code> — <code>softphone.sip.SignallingTransport</code></li>
+<li><code>expires</code> — <code>Duration</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.Register</code> on its <code>requested</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="registrationretried"><code>RegistrationRetried</code></h3>
+<p><code>softphone.sip.RegistrationRetried</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.RetryRegistration</code> on its <code>retried</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="remotemediaapplied"><code>RemoteMediaApplied</code></h3>
+<p><code>softphone.sip.RemoteMediaApplied</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>sdp</code> — <code>softphone.sip.SessionDescription</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.ApplyRemoteMedia</code> on its <code>applied</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="sipdialogclosed"><code>SipDialogClosed</code></h3>
+<p><code>softphone.sip.SipDialogClosed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>cause</code> — <code>softphone.sip.SipCause</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.CloseDialog</code> on its <code>closed</code> outcome.</p>
+<p><code>end-session-with-dialog</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h3 id="sipdialogopened"><code>SipDialogOpened</code></h3>
+<p><code>softphone.sip.SipDialogOpened</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>dialog_id</code> — <code>softphone.sip.SipDialogId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>registration_id</code> — <code>softphone.sip.RegistrationId</code></li>
+<li><code>remote_uri</code> — <code>softphone.sip.SipUri</code></li>
+<li><code>media_security</code> — <code>softphone.sip.MediaSecurity</code></li>
+</ul>
+<p>Emitted by <code>softphone.sip.OpenDialog</code> on its <code>opened</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="registrationstateconflict"><code>RegistrationStateConflict</code></h3>
+<p>The registration is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.sip.Registration.State</code></li>
+</ul>
+<p>Reported by <code>softphone.sip.ConfirmRegistration</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.sip.FailRegistration</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.sip.RetryRegistration</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.sip.Unregister</code> on its <code>wrong-state</code> outcome.</p>
+<h3 id="sipdialogstateconflict"><code>SipDialogStateConflict</code></h3>
+<p>The dialog is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.sip.SipDialog.State</code></li>
+</ul>
+<p>Reported by <code>softphone.sip.CloseDialog</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="kernel"><code>Kernel</code></h3>
+<p><code>softphone.sip.Kernel</code>, shown to a person as &quot;Signalling kernel&quot;.</p>
+<p>It may invoke <a href="#applyremotemedia"><code>ApplyRemoteMedia</code></a>, <a href="#closedialog"><code>CloseDialog</code></a>, <a href="#confirmregistration"><code>ConfirmRegistration</code></a>, <a href="#failregistration"><code>FailRegistration</code></a> and <a href="#requestlocalmedia"><code>RequestLocalMedia</code></a>.</p>
+<h3 id="siphost"><code>SipHost</code></h3>
+<p><code>softphone.sip.SipHost</code>, shown to a person as &quot;SIP host&quot;.</p>
+<p>It may invoke <a href="#closedialog"><code>CloseDialog</code></a>, <a href="#faillocalmedia"><code>FailLocalMedia</code></a>, <a href="#offerlocalmedia"><code>OfferLocalMedia</code></a>, <a href="#opendialog"><code>OpenDialog</code></a>, <a href="#refreshregistration"><code>RefreshRegistration</code></a>, <a href="#register"><code>Register</code></a>, <a href="#retryregistration"><code>RetryRegistration</code></a> and <a href="#unregister"><code>Unregister</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>fdb4355f5761f84b8fd05460cf8fb8c08fd6d136a6f61c1c7143575080b24b51</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

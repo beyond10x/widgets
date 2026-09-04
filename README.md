@@ -56,17 +56,17 @@ current is a storage decision", so where the phonebook and the call log live is 
 caller identity, which types do not carry, and enforcement belongs to the layer that knows who is
 calling. The `Human`/`Agent` parity is a fact a reader and a checker can read, and a host obligation.
 
-Both are on the [obligations page](docs/obligations.md), with all 68.
+Both are on the [obligations page](widgets/phone/docs/obligations.md), with all 68.
 
 ## Reading it
 
 | | |
 |---|---|
-| [Overview](docs/index.md) | the system as a graph, its contexts and its components |
-| [Interactions](docs/interactions.md) | the seven reactions, and the events nothing reacts to |
-| [Type crossings](docs/crossings.md) | every place two contexts have to agree about a type |
-| [Topology](docs/topology.md) | what each component needs from a browser to run at all |
-| [Obligations](docs/obligations.md) | what a specification does not decide |
+| [Overview](widgets/phone/docs/index.md) | the system as a graph, its contexts and its components |
+| [Interactions](widgets/phone/docs/interactions.md) | the seven reactions, and the events nothing reacts to |
+| [Type crossings](widgets/phone/docs/crossings.md) | every place two contexts have to agree about a type |
+| [Topology](widgets/phone/docs/topology.md) | what each component needs from a browser to run at all |
+| [Obligations](widgets/phone/docs/obligations.md) | what a specification does not decide |
 
 Everything under `docs/` is generated from the specification and carries a `do not edit` header.
 `task docs` regenerates it; `task drift` fails if what is committed is not what the specification

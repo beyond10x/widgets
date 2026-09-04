@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest bfa232816068f6f4511f0652d9c15d5a31ecde99bff74ad8f70c1cd77888f7c5
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local binding · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html" aria-current="page">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Local binding</h1>
+<p>A media session carried by local audio devices. No network, no signalling, no registration — the binding whose existence is the evidence that the media layer is not the SIP layer.</p>
+<p><code>softphone.local</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="deviceref"><code>DeviceRef</code></h3>
+<p><code>softphone.local.DeviceRef</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="loopbackdeviceid"><code>LoopbackDeviceId</code></h3>
+<p><code>softphone.local.LoopbackDeviceId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="loopbackdevicerow"><code>LoopbackDeviceRow</code></h3>
+<p><code>softphone.local.LoopbackDeviceRow</code> is a record of five fields:</p>
+<ul>
+<li><code>device_id</code> — <code>softphone.local.LoopbackDeviceId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>capture</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>render</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>state</code> — <code>softphone.local.LoopbackDevice.State</code></li>
+</ul>
+<p>One of the types above is reached by nothing else in this system: <code>softphone.local.LoopbackDeviceRow</code>. No entity, view, command, event, error or crossing names it, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="loopbackdevice"><code>LoopbackDevice</code></h3>
+<p><code>softphone.local.LoopbackDevice</code>.</p>
+<p>An instance is identified by <code>device_id</code>, a <code>softphone.local.LoopbackDeviceId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>capture</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>render</code> — <code>softphone.local.DeviceRef</code></li>
+</ul>
+<p>It references at most one <a href="softphone-media.html#mediasession"><code>softphone.media.MediaSession</code></a>, as <code>session</code>, carried by <code>LoopbackDevice.session_id</code>.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.local.LoopbackDevice.State</code>, one of <code>Attached</code> and <code>Detached</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Attached</code>. <code>Detached</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Attached
+    Attached --&gt; Detached: detach (DetachLoopback)
+    Detached --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>detach</code> — taken by <code>softphone.local.DetachLoopback</code> on its <code>detached</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.local.AttachLoopback</code> on its <code>attached</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Detached</code> may not become <code>Attached</code></li>
+</ul>
+<p>One view projects it: <a href="#loopbackdevicebyid"><code>LoopbackDeviceById</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="loopbackdevicebyid"><code>LoopbackDeviceById</code></h3>
+<p><code>softphone.local.LoopbackDeviceById</code>, shown to a person as &quot;Loopback device by id&quot; and called <code>loopback-device-by-id</code> on the wire.</p>
+<p>It reads <a href="#loopbackdevice"><code>LoopbackDevice</code></a>.</p>
+<p>It contains the instances where <code>device_id == param.device_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>device_id</code> — <code>softphone.local.LoopbackDeviceId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>capture</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>render</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>state</code> — <code>softphone.local.LoopbackDevice.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="attachloopback"><code>AttachLoopback</code></h3>
+<p><code>softphone.local.AttachLoopback</code>, shown to a person as &quot;Attach loopback&quot; and called <code>attach-loopback</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>capture</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>render</code> — <code>softphone.local.DeviceRef</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>attached</code></strong> — The only outcome that creates a `LoopbackDevice`. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.local.LoopbackDevice</code>, which starts in <code>Attached</code>. The new instance&#39;s identity is published as <code>device_id</code> on <code>softphone.local.LoopbackAttached</code>. It emits <code>softphone.local.LoopbackAttached</code>. It sets <code>session_id</code> from <code>input.session_id</code>, <code>capture</code> from <code>input.capture</code> and <code>render</code> from <code>input.render</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="detachloopback"><code>DetachLoopback</code></h3>
+<p><code>softphone.local.DetachLoopback</code>, shown to a person as &quot;Detach loopback&quot; and called <code>detach-loopback</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>device_id</code> — <code>softphone.local.LoopbackDeviceId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>detached</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.local.LoopbackDevice</code> from <code>Attached</code> to <code>Detached</code>, along the declared move <code>detach</code>. The instance is the one named by the input field <code>device_id</code>. It emits <code>softphone.local.LoopbackDetached</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.local.LoopbackDevice</code> in <code>Detached</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.local.LoopbackDeviceStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h2 id="events">Events</h2>
+<h3 id="loopbackattached"><code>LoopbackAttached</code></h3>
+<p><code>softphone.local.LoopbackAttached</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>device_id</code> — <code>softphone.local.LoopbackDeviceId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>capture</code> — <code>softphone.local.DeviceRef</code></li>
+<li><code>render</code> — <code>softphone.local.DeviceRef</code></li>
+</ul>
+<p>Emitted by <code>softphone.local.AttachLoopback</code> on its <code>attached</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="loopbackdetached"><code>LoopbackDetached</code></h3>
+<p><code>softphone.local.LoopbackDetached</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>device_id</code> — <code>softphone.local.LoopbackDeviceId</code></li>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>Emitted by <code>softphone.local.DetachLoopback</code> on its <code>detached</code> outcome.</p>
+<p><code>end-session-with-loopback</code> reacts to it — see <a href="../interactions.html">Interactions</a>.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="loopbackdevicestateconflict"><code>LoopbackDeviceStateConflict</code></h3>
+<p>The device is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.local.LoopbackDevice.State</code></li>
+</ul>
+<p>Reported by <code>softphone.local.DetachLoopback</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="localhost"><code>LocalHost</code></h3>
+<p><code>softphone.local.LocalHost</code>, shown to a person as &quot;Local host&quot;.</p>
+<p>It may invoke <a href="#attachloopback"><code>AttachLoopback</code></a> and <a href="#detachloopback"><code>DetachLoopback</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>bfa232816068f6f4511f0652d9c15d5a31ecde99bff74ad8f70c1cd77888f7c5</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# The reason `Answering` exists. The target contract refuses to call a call established before its
+# media is up — a failure is "presented as `failed`, not as connected" — so a call whose media never
+# connects must stop short of `Active`. This is the scenario that proves it can.
+type: ess-scenario/1
+domain: softphone.control
+scenario: media-fails-after-answer
+summary: The user answers, media never connects, and the call ends without ever being Active.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T18:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input: { label: Desk, default_binding: Sip }
+    outcome: configured
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T18:00:04Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input: { endpoint_id: {$instance: phone}, remote: 'sip:carol@example.test' }
+    outcome: offered
+    capture: {instance: call, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-04T18:00:05Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: ringing
+
+  - at: 2026-09-04T18:00:08Z
+    command: softphone.control.Answer
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call} }
+    outcome: answered
+
+  # No `MediaConnected`. The microphone was denied, or negotiation failed, and the only command that
+  # leaves `Answering` for `Active` is never issued. `EndCause::Media` says which.
+  - at: 2026-09-04T18:00:11Z
+    command: softphone.control.FailCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call}, cause: Media }
+    outcome: failed
+    events:
+      - event: softphone.control.CallFailed
+        payload: { cause: Media }

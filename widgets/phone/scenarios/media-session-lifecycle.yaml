@@ -1,0 +1,58 @@
+# The neutral layer on its own, with no binding in sight. Nothing in this scenario names SIP, RTP,
+# RTVBP or WebRTC — which is the claim `softphone.media` makes about itself, exercised rather than
+# asserted.
+#
+# The profile's four numbers are not free: the type carries invariants fixing them at 8 kHz, mono,
+# 20 ms, 320 bytes, because upstream accepts exactly one descriptor.
+type: ess-scenario/1
+domain: softphone.media
+scenario: media-session-lifecycle
+summary: A media session is opened, goes live, carries a DTMF digit, and is terminated.
+
+arrange:
+  - instance: session
+    entity: softphone.media.MediaSession
+
+timeline:
+  - at: 2026-09-04T22:00:00Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'sess-7f3a'
+      binding: Sip
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:dave@example.test'
+        trust: Untrusted
+    outcome: opened
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  - at: 2026-09-04T22:00:01Z
+    command: softphone.media.ActivateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session} }
+    outcome: activated
+
+  # A keypress is not audio, so it cannot travel the frame path. This is the write direction of the
+  # port's signal seam, and it changes no field of the session — hence no subject on the outcome.
+  - at: 2026-09-04T22:00:09Z
+    command: softphone.media.SendSignal
+    actor: softphone.media.SessionHost
+    input:
+      session_id: {$instance: session}
+      signal: { kind: dtmf, dtmf: '5' }
+    outcome: sent
+
+  - at: 2026-09-04T22:00:31Z
+    command: softphone.media.TerminateSession
+    actor: softphone.media.SessionHost
+    input: { session_id: {$instance: session}, reason: RemoteHangup }
+    outcome: terminated
+    events:
+      - event: softphone.media.SessionTerminated
+        payload: { reason: RemoteHangup }

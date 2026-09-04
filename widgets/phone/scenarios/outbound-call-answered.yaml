@@ -1,0 +1,72 @@
+# An outbound call, answered, with media, then hung up. The path a person takes most often, and the
+# one that exercises `Answering` — the state that exists because the target contract refuses to call
+# a call established before its media is up.
+type: ess-scenario/1
+domain: softphone.control
+scenario: outbound-call-answered
+summary: A dialled call rings, the far end answers, media connects, and the user hangs up.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T15:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input:
+      label: Desk
+      default_binding: Sip
+    outcome: configured
+    events:
+      - event: softphone.control.EndpointConfigured
+        payload:
+          label: Desk
+          default_binding: Sip
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T15:00:05Z
+    command: softphone.control.Dial
+    actor: softphone.control.Human
+    input:
+      endpoint_id: {$instance: phone}
+      remote: sip:bob@example.test
+    outcome: dialled
+    events:
+      - event: softphone.control.CallDialled
+        payload:
+          remote: sip:bob@example.test
+    capture: {instance: call, event: softphone.control.CallDialled, field: call_id}
+
+  # Only the kernel may say the far end is ringing. A page asserting this would be asserting a fact
+  # about somebody else's network.
+  - at: 2026-09-04T15:00:06Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: ringing
+
+  - at: 2026-09-04T15:00:09Z
+    command: softphone.control.ConfirmAnswer
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: confirmed
+
+  # The call is `Answering` until here, and this is the only command that leaves it.
+  - at: 2026-09-04T15:00:10Z
+    command: softphone.control.MediaConnected
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: established
+
+  - at: 2026-09-04T15:00:42Z
+    command: softphone.control.HangUp
+    actor: softphone.control.Human
+    input:
+      call_id: {$instance: call}
+    outcome: hung-up

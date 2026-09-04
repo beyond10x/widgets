@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest f059b49bde0fd4d907197511f8dc422f77b181d48478bee6a29861987e9fd879
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call history · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html" aria-current="page">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Call history</h1>
+<p>One durable record per finished call, in the neutral termination vocabulary, optionally attributed to a contact. Deleted one record at a time; there is no bulk erase.</p>
+<p><code>softphone.history</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="callrecordid"><code>CallRecordId</code></h3>
+<p><code>softphone.history.CallRecordId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="callrecordrow"><code>CallRecordRow</code></h3>
+<p><code>softphone.history.CallRecordRow</code> is a record of 11 fields:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>started_at</code> — <code>Timestamp</code></li>
+<li><code>ended_at</code> — <code>Timestamp</code></li>
+<li><code>answered_at</code> — <code>Optional&lt;Timestamp&gt;</code>, which may be absent</li>
+<li><code>termination</code> — <code>softphone.control.EndCause</code></li>
+<li><code>status</code> — <code>Optional&lt;softphone.control.RejectStatus&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.history.CallRecord.State</code></li>
+</ul>
+<p>One of the types above is reached by nothing else in this system: <code>softphone.history.CallRecordRow</code>. No entity, view, command, event, error or crossing names it, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="callrecord"><code>CallRecord</code></h3>
+<p><code>softphone.history.CallRecord</code>.</p>
+<p>An instance is identified by <code>record_id</code>, a <code>softphone.history.CallRecordId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>started_at</code> — <code>Timestamp</code></li>
+<li><code>ended_at</code> — <code>Timestamp</code></li>
+<li><code>answered_at</code> — <code>Optional&lt;Timestamp&gt;</code>, which may be absent</li>
+<li><code>termination</code> — <code>softphone.control.EndCause</code></li>
+<li><code>status</code> — <code>Optional&lt;softphone.control.RejectStatus&gt;</code>, which may be absent</li>
+</ul>
+<p>It references at most one <a href="softphone-control.html#call"><code>softphone.control.Call</code></a>, as <code>call</code>, carried by <code>CallRecord.call_id</code>. It references at most one <a href="softphone-directory.html#contact"><code>softphone.directory.Contact</code></a>, as <code>contact</code>, carried by <code>CallRecord.contact_id</code>.</p>
+<p>Every instance satisfies <code>ended_at &gt;= started_at</code> — a predicate over this entity&#39;s own fields, checked against them rather than stored as a sentence, so an invariant reading something the entity does not have is refused instead of documented.</p>
+<p>Its state is a <code>softphone.history.CallRecord.State</code>, one of <code>Deleted</code> and <code>Recorded</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Recorded</code>. <code>Deleted</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Recorded
+    Recorded --&gt; Deleted: delete (DeleteRecord)
+    Deleted --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>delete</code> — taken by <code>softphone.history.DeleteRecord</code> on its <code>deleted</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.history.RecordCall</code> on its <code>recorded</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Deleted</code> may not become <code>Recorded</code></li>
+</ul>
+<p>Two views project it: <a href="#callrecordbyid"><code>CallRecordById</code></a> and <a href="#recentcalls"><code>RecentCalls</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="callrecordbyid"><code>CallRecordById</code></h3>
+<p><code>softphone.history.CallRecordById</code>, shown to a person as &quot;Call record by id&quot; and called <code>call-record-by-id</code> on the wire.</p>
+<p>It reads <a href="#callrecord"><code>CallRecord</code></a>.</p>
+<p>It contains the instances where <code>record_id == param.record_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>started_at</code> — <code>Timestamp</code></li>
+<li><code>ended_at</code> — <code>Timestamp</code></li>
+<li><code>answered_at</code> — <code>Optional&lt;Timestamp&gt;</code>, which may be absent</li>
+<li><code>termination</code> — <code>softphone.control.EndCause</code></li>
+<li><code>status</code> — <code>Optional&lt;softphone.control.RejectStatus&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.history.CallRecord.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="recentcalls"><code>RecentCalls</code></h3>
+<p><code>softphone.history.RecentCalls</code>, shown to a person as &quot;Recent calls&quot; and called <code>recent-calls</code> on the wire.</p>
+<p>It reads <a href="#callrecord"><code>CallRecord</code></a>.</p>
+<p>It contains the instances where <code>state == Recorded</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+<li><code>direction</code> — <code>softphone.control.CallDirection</code></li>
+<li><code>remote</code> — <code>softphone.control.RemoteAddress</code></li>
+<li><code>started_at</code> — <code>Timestamp</code></li>
+<li><code>ended_at</code> — <code>Timestamp</code></li>
+<li><code>answered_at</code> — <code>Optional&lt;Timestamp&gt;</code>, which may be absent</li>
+<li><code>termination</code> — <code>softphone.control.EndCause</code></li>
+<li><code>status</code> — <code>Optional&lt;softphone.control.RejectStatus&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.history.CallRecord.State</code></li>
+</ul>
+<p>Its rows are ordered by <code>ended_at</code> descending.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="attributerecord"><code>AttributeRecord</code></h3>
+<p><code>softphone.history.AttributeRecord</code>, shown to a person as &quot;Attribute record&quot; and called <code>attribute-record</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>attributed</code></strong> — An absent `contact_id` clears the attribution; `remote` is never changed. The default branch, taken when no other outcome&#39;s condition matched. It changes a <code>softphone.history.CallRecord</code> without moving it along its lifecycle. The instance is the one named by the input field <code>record_id</code>. It emits <code>softphone.history.RecordAttributed</code>. It sets <code>contact_id</code> from <code>input.contact_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="deleterecord"><code>DeleteRecord</code></h3>
+<p><code>softphone.history.DeleteRecord</code>, shown to a person as &quot;Delete record&quot; and called <code>delete-record</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>deleted</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.history.CallRecord</code> from <code>Recorded</code> to <code>Deleted</code>, along the declared move <code>delete</code>. The instance is the one named by the input field <code>record_id</code>. It emits <code>softphone.history.RecordDeleted</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.history.CallRecord</code> in <code>Deleted</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.history.CallRecordStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="recordcall"><code>RecordCall</code></h3>
+<p><code>softphone.history.RecordCall</code>, shown to a person as &quot;Record call&quot; and called <code>record-call</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>recorded</code></strong> — Written once the call is terminal. `contact_id` is absent here; attribution is a separate command, because who a number belongs to can change after the call. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.history.CallRecord</code>, which starts in <code>Recorded</code>. The new instance&#39;s identity is published as <code>record_id</code> on <code>softphone.history.CallRecorded</code>. It emits <code>softphone.history.CallRecorded</code>. It sets <code>call_id</code> from <code>input.call_id</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h2 id="events">Events</h2>
+<h3 id="callrecorded"><code>CallRecorded</code></h3>
+<p><code>softphone.history.CallRecorded</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+<li><code>call_id</code> — <code>softphone.control.CallId</code></li>
+</ul>
+<p>Emitted by <code>softphone.history.RecordCall</code> on its <code>recorded</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="recordattributed"><code>RecordAttributed</code></h3>
+<p><code>softphone.history.RecordAttributed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+<li><code>contact_id</code> — <code>Optional&lt;softphone.directory.ContactId&gt;</code>, which may be absent</li>
+</ul>
+<p>Emitted by <code>softphone.history.AttributeRecord</code> on its <code>attributed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="recorddeleted"><code>RecordDeleted</code></h3>
+<p><code>softphone.history.RecordDeleted</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>record_id</code> — <code>softphone.history.CallRecordId</code></li>
+</ul>
+<p>Emitted by <code>softphone.history.DeleteRecord</code> on its <code>deleted</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="callrecordstateconflict"><code>CallRecordStateConflict</code></h3>
+<p>The record is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.history.CallRecord.State</code></li>
+</ul>
+<p>Reported by <code>softphone.history.DeleteRecord</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="historyhost"><code>HistoryHost</code></h3>
+<p><code>softphone.history.HistoryHost</code>, shown to a person as &quot;History host&quot;.</p>
+<p>It may invoke <a href="#recordcall"><code>RecordCall</code></a>.</p>
+<h3 id="human"><code>Human</code></h3>
+<p><code>softphone.history.Human</code>, shown to a person as &quot;Human&quot;.</p>
+<p>It may invoke <a href="#attributerecord"><code>AttributeRecord</code></a> and <a href="#deleterecord"><code>DeleteRecord</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>f059b49bde0fd4d907197511f8dc422f77b181d48478bee6a29861987e9fd879</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

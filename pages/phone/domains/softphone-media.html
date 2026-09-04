@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest af8016500b0f577bda6782c1b7f67c654aed2688f7e2b92f0f925252f2170d55
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Media session · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html" aria-current="page">Media session</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Media session</h1>
+<p>One admitted media session, its neutral audio profile, the signals crossing it and the one reason it ended. Agnostic to SIP, RTVBP and WebRTC by construction: no relation and no field type here points at a binding domain.</p>
+<p><code>softphone.media</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="bindingkind"><code>BindingKind</code></h3>
+<p><code>softphone.media.BindingKind</code> is one of <code>Sip</code> and <code>Loopback</code>.</p>
+<h3 id="channelsignal"><code>ChannelSignal</code></h3>
+<p><code>softphone.media.ChannelSignal</code> is one of one shape, told apart by a <code>kind</code> field — tagged, so a decoder never has to guess which branch it is reading:</p>
+<ul>
+<li><code>dtmf</code> — <code>softphone.media.DigitString</code></li>
+</ul>
+<h3 id="contexttrust"><code>ContextTrust</code></h3>
+<p><code>softphone.media.ContextTrust</code> is one of <code>Untrusted</code>.</p>
+<h3 id="digitstring"><code>DigitString</code></h3>
+<p><code>softphone.media.DigitString</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="mediaprofile"><code>MediaProfile</code></h3>
+<p><code>softphone.media.MediaProfile</code> is a record of five fields:</p>
+<ul>
+<li><code>sample_format</code> — <code>softphone.media.SampleFormat</code></li>
+<li><code>sample_rate_hz</code> — <code>Integer</code></li>
+<li><code>channels</code> — <code>Integer</code></li>
+<li><code>packet_time_ms</code> — <code>Integer</code></li>
+<li><code>frame_bytes</code> — <code>Integer</code></li>
+</ul>
+<p>Every value satisfies <code>sample_rate_hz == 8000</code>, <code>channels == 1</code>, <code>packet_time_ms == 20</code> and <code>frame_bytes == 320</code>.</p>
+<h3 id="mediasessionid"><code>MediaSessionId</code></h3>
+<p><code>softphone.media.MediaSessionId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="mediasessionrow"><code>MediaSessionRow</code></h3>
+<p><code>softphone.media.MediaSessionRow</code> is a record of seven fields:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>session_ref</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>profile</code> — <code>softphone.media.MediaProfile</code></li>
+<li><code>participant</code> — <code>softphone.media.Participant</code></li>
+<li><code>termination</code> — <code>Optional&lt;softphone.media.TerminationReason&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.media.MediaSession.State</code></li>
+</ul>
+<h3 id="participant"><code>Participant</code></h3>
+<p><code>softphone.media.Participant</code> is a record of three fields:</p>
+<ul>
+<li><code>reference</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>trust</code> — <code>softphone.media.ContextTrust</code></li>
+<li><code>display</code> — <code>Optional&lt;String&gt;</code>, which may be absent</li>
+</ul>
+<h3 id="sampleformat"><code>SampleFormat</code></h3>
+<p><code>softphone.media.SampleFormat</code> is one of <code>PcmS16Le</code>.</p>
+<h3 id="sessionref"><code>SessionRef</code></h3>
+<p><code>softphone.media.SessionRef</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="terminationreason"><code>TerminationReason</code></h3>
+<p><code>softphone.media.TerminationReason</code> is one of <code>Completed</code>, <code>Cancelled</code>, <code>RemoteHangup</code>, <code>AuthorityRevoked</code>, <code>LeaseExpired</code>, <code>MediaOverload</code>, <code>TransportLost</code> and <code>ProtocolError</code>.</p>
+<p>One of the types above is reached by nothing else in this system: <code>softphone.media.MediaSessionRow</code>. No entity, view, command, event, error or crossing names it, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="mediasession"><code>MediaSession</code></h3>
+<p><code>softphone.media.MediaSession</code>.</p>
+<p>An instance is identified by <code>session_id</code>, a <code>softphone.media.MediaSessionId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>session_ref</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>profile</code> — <code>softphone.media.MediaProfile</code></li>
+<li><code>participant</code> — <code>softphone.media.Participant</code></li>
+<li><code>termination</code> — <code>Optional&lt;softphone.media.TerminationReason&gt;</code>, which may be absent</li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>Every instance satisfies <code>(not (state == Terminated) or defined(termination))</code> — a predicate over this entity&#39;s own fields, checked against them rather than stored as a sentence, so an invariant reading something the entity does not have is refused instead of documented.</p>
+<p>Its state is a <code>softphone.media.MediaSession.State</code>, one of <code>Live</code>, <code>Requested</code> and <code>Terminated</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Requested</code>. <code>Terminated</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Requested
+    Requested --&gt; Live: establish (ActivateSession)
+    Live --&gt; Terminated: terminate (TerminateSession)
+    Requested --&gt; Terminated: terminate (TerminateSession)
+    Terminated --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>establish</code> — taken by <code>softphone.media.ActivateSession</code> on its <code>activated</code> outcome</li>
+<li><code>terminate</code> — taken by <code>softphone.media.TerminateSession</code> on its <code>terminated</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.media.OpenSession</code> on its <code>opened</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Live</code> may not become <code>Requested</code></li>
+<li><code>Terminated</code> may not become <code>Live</code></li>
+<li><code>Terminated</code> may not become <code>Requested</code></li>
+</ul>
+<p>Two views project it: <a href="#livesessions"><code>LiveSessions</code></a> and <a href="#mediasessionbyid"><code>MediaSessionById</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="livesessions"><code>LiveSessions</code></h3>
+<p><code>softphone.media.LiveSessions</code>, shown to a person as &quot;Live sessions&quot; and called <code>live-sessions</code> on the wire.</p>
+<p>It reads <a href="#mediasession"><code>MediaSession</code></a>.</p>
+<p>It contains the instances where <code>state == Live</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>session_ref</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>profile</code> — <code>softphone.media.MediaProfile</code></li>
+<li><code>participant</code> — <code>softphone.media.Participant</code></li>
+<li><code>termination</code> — <code>Optional&lt;softphone.media.TerminationReason&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.media.MediaSession.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="mediasessionbyid"><code>MediaSessionById</code></h3>
+<p><code>softphone.media.MediaSessionById</code>, shown to a person as &quot;Media session by id&quot; and called <code>media-session-by-id</code> on the wire.</p>
+<p>It reads <a href="#mediasession"><code>MediaSession</code></a>.</p>
+<p>It contains the instances where <code>session_id == param.session_id</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>session_ref</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>profile</code> — <code>softphone.media.MediaProfile</code></li>
+<li><code>participant</code> — <code>softphone.media.Participant</code></li>
+<li><code>termination</code> — <code>Optional&lt;softphone.media.TerminationReason&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.media.MediaSession.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="activatesession"><code>ActivateSession</code></h3>
+<p><code>softphone.media.ActivateSession</code>, shown to a person as &quot;Activate session&quot; and called <code>activate-session</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>activated</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.media.MediaSession</code> from <code>Requested</code> to <code>Live</code>, along the declared move <code>establish</code>. The instance is the one named by the input field <code>session_id</code>. It emits <code>softphone.media.SessionActivated</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.media.MediaSession</code> in <code>Live</code> and <code>Terminated</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.media.MediaSessionStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="interruptoutput"><code>InterruptOutput</code></h3>
+<p><code>softphone.media.InterruptOutput</code>, shown to a person as &quot;Interrupt output&quot; and called <code>interrupt-output</code> on the wire.</p>
+<p>Recorded at <code>connectors:crates/domain/src/voice.rs#L192</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>interrupted</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.media.OutputInterrupted</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="opensession"><code>OpenSession</code></h3>
+<p><code>softphone.media.OpenSession</code>, shown to a person as &quot;Open session&quot; and called <code>open-session</code> on the wire.</p>
+<p>Recorded at <code>connectors:crates/domain/src/voice.rs#L152</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_ref</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>profile</code> — <code>softphone.media.MediaProfile</code></li>
+<li><code>participant</code> — <code>softphone.media.Participant</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>opened</code></strong> — The session is Requested; no media crosses it until it is Live. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.media.MediaSession</code>, which starts in <code>Requested</code>. The new instance&#39;s identity is published as <code>session_id</code> on <code>softphone.media.SessionOpened</code>. It emits <code>softphone.media.SessionOpened</code>. It sets <code>session_ref</code> from <code>input.session_ref</code>, <code>binding</code> from <code>input.binding</code>, <code>profile</code> from <code>input.profile</code> and <code>participant</code> from <code>input.participant</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="receivesignal"><code>ReceiveSignal</code></h3>
+<p><code>softphone.media.ReceiveSignal</code>, shown to a person as &quot;Receive signal&quot; and called <code>receive-signal</code> on the wire.</p>
+<p>Recorded at <code>connectors:crates/domain/src/voice.rs#L167</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>signal</code> — <code>softphone.media.ChannelSignal</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>received</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.media.SignalReceived</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="sendsignal"><code>SendSignal</code></h3>
+<p><code>softphone.media.SendSignal</code>, shown to a person as &quot;Send signal&quot; and called <code>send-signal</code> on the wire.</p>
+<p>Recorded at <code>connectors:crates/domain/src/voice.rs#L174</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>signal</code> — <code>softphone.media.ChannelSignal</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>sent</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. No entity in this specification changes. It emits <code>softphone.media.SignalSent</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="terminatesession"><code>TerminateSession</code></h3>
+<p><code>softphone.media.TerminateSession</code>, shown to a person as &quot;Terminate session&quot; and called <code>terminate-session</code> on the wire.</p>
+<p>Recorded at <code>connectors:crates/domain/src/voice.rs#L193</code>.</p>
+<p>It takes:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>terminated</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.media.MediaSession</code> from <code>Live</code> and <code>Requested</code> to <code>Terminated</code>, along the declared move <code>terminate</code>. The instance is the one named by the input field <code>session_id</code>. It emits <code>softphone.media.SessionTerminated</code>. It sets <code>termination</code> from <code>input.reason</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.media.MediaSession</code> in <code>Terminated</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.media.MediaSessionStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h2 id="events">Events</h2>
+<h3 id="outputinterrupted"><code>OutputInterrupted</code></h3>
+<p><code>softphone.media.OutputInterrupted</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+</ul>
+<p>Emitted by <code>softphone.media.InterruptOutput</code> on its <code>interrupted</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="sessionactivated"><code>SessionActivated</code></h3>
+<p><code>softphone.media.SessionActivated</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+</ul>
+<p>Emitted by <code>softphone.media.ActivateSession</code> on its <code>activated</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="sessionopened"><code>SessionOpened</code></h3>
+<p><code>softphone.media.SessionOpened</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>session_ref</code> — <code>softphone.media.SessionRef</code></li>
+<li><code>binding</code> — <code>softphone.media.BindingKind</code></li>
+<li><code>profile</code> — <code>softphone.media.MediaProfile</code></li>
+<li><code>participant</code> — <code>softphone.media.Participant</code></li>
+</ul>
+<p>Emitted by <code>softphone.media.OpenSession</code> on its <code>opened</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="sessionterminated"><code>SessionTerminated</code></h3>
+<p><code>softphone.media.SessionTerminated</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>reason</code> — <code>softphone.media.TerminationReason</code></li>
+</ul>
+<p>Emitted by <code>softphone.media.TerminateSession</code> on its <code>terminated</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="signalreceived"><code>SignalReceived</code></h3>
+<p><code>softphone.media.SignalReceived</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>signal</code> — <code>softphone.media.ChannelSignal</code></li>
+</ul>
+<p>Emitted by <code>softphone.media.ReceiveSignal</code> on its <code>received</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="signalsent"><code>SignalSent</code></h3>
+<p><code>softphone.media.SignalSent</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>session_id</code> — <code>softphone.media.MediaSessionId</code></li>
+<li><code>signal</code> — <code>softphone.media.ChannelSignal</code></li>
+</ul>
+<p>Emitted by <code>softphone.media.SendSignal</code> on its <code>sent</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="mediasessionstateconflict"><code>MediaSessionStateConflict</code></h3>
+<p>The session is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.media.MediaSession.State</code></li>
+</ul>
+<p>Reported by <code>softphone.media.ActivateSession</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.media.TerminateSession</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="sessionhost"><code>SessionHost</code></h3>
+<p><code>softphone.media.SessionHost</code>, shown to a person as &quot;Session host&quot;.</p>
+<p>It may invoke <a href="#activatesession"><code>ActivateSession</code></a>, <a href="#interruptoutput"><code>InterruptOutput</code></a>, <a href="#opensession"><code>OpenSession</code></a>, <a href="#receivesignal"><code>ReceiveSignal</code></a>, <a href="#sendsignal"><code>SendSignal</code></a> and <a href="#terminatesession"><code>TerminateSession</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>af8016500b0f577bda6782c1b7f67c654aed2688f7e2b92f0f925252f2170d55</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

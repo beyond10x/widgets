@@ -2,12 +2,12 @@
 format: aep.planning-md/1
 id: upstream-blocker:ess-web-target-redeliver
 kind: upstream-blocker
-status: open
+status: cleared
 title: ESS 0.13.1 web synthesis emits a call to a method its rust target does not generate
 relations:
 - blocks: story:softphone-page
 withholds: test_result
-revision: 2
+revision: 4
 ---
 # The generated web target does not compile at ESS 0.13.1
 
@@ -71,3 +71,38 @@ builds clean.
 The model source is byte-identical across 0.13.1 and 0.13.5 (`diff -rq` over
 `crates/specify/ess-domain/src` and `docs/`), so nothing read from either tree is invalidated —
 only the version number in this record was.
+
+## Correction: this was never an ESS defect against this specification
+
+The diagnosis above is wrong on its central fact. It says `redeliver` "appears **nowhere** in the
+rust target". It appears when the rust target emits it, and what decides that is the specification:
+
+- `crates/generate/ess-synth/src/rust/system.rs:515,525` — `retries` starts `false` and is set true
+  only by a binding whose `on_failure:` is `retry`.
+- `:775` — `pub fn redeliver` is emitted only `if retries`.
+- The web bridge calls `self.redeliver(&event)` from `fn replay` unconditionally.
+
+This specification declared **no bindings at all** when the blocker was filed. So no binding asked
+for `retry`, no `redeliver` was emitted, and the web bridge called a method that did not exist. The
+model was the cause, not the emitter.
+
+Seven bindings now exist, all with `on_failure: retry`. `pub fn redeliver` is emitted at
+`crates/softphone-system/src/lib.rs:412`, and the web target **builds**:
+
+```console
+$ cargo build --release --target wasm32-unknown-unknown
+    Finished `release` profile [optimized] target(s) in 2.48s
+$ ls -la target/wasm32-unknown-unknown/release/softphone_web.wasm
+-rwxr-xr-x 2 timo timo 472945 ... softphone_web.wasm
+```
+
+## What remains true, and is somebody else's
+
+`ess generate synthesize --target web` emits output that cannot compile for **any** specification
+with no `on_failure: retry` binding — which includes every specification with no bindings, and the
+`--kind docs` page calls that state legal and worth seeing. A target that refuses to compile for a
+valid document is still a defect; it is just not this project's blocker, and it is narrower than
+what is written above.
+
+Cleared because the thing it withheld — a browser observation of this specification — is now
+producible.

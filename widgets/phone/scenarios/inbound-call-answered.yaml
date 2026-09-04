@@ -1,0 +1,60 @@
+# An inbound call the user takes. The mirror of the outbound path, and the reason `Answer` and
+# `ConfirmAnswer` are two commands over one transition: this one is the local decision.
+type: ess-scenario/1
+domain: softphone.control
+scenario: inbound-call-answered
+summary: A call arrives, rings, the user answers it, and media connects.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T16:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input:
+      label: Desk
+      default_binding: Sip
+    outcome: configured
+    events:
+      - event: softphone.control.EndpointConfigured
+        payload:
+          label: Desk
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T16:00:11Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input:
+      endpoint_id: {$instance: phone}
+      remote: sip:alice@example.test
+    outcome: offered
+    events:
+      - event: softphone.control.CallOffered
+        payload:
+          remote: sip:alice@example.test
+    capture: {instance: call, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-04T16:00:12Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: ringing
+
+  - at: 2026-09-04T16:00:15Z
+    command: softphone.control.Answer
+    actor: softphone.control.Human
+    input:
+      call_id: {$instance: call}
+    outcome: answered
+
+  - at: 2026-09-04T16:00:16Z
+    command: softphone.control.MediaConnected
+    actor: softphone.control.Kernel
+    input:
+      call_id: {$instance: call}
+    outcome: established

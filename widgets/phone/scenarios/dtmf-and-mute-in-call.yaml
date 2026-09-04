@@ -1,0 +1,74 @@
+# Two things that change a call without moving it. `SendDigits` and `SetMuted` are `updates`
+# outcomes, so the call stays `Active` throughout and only a field changes — which is exactly what
+# the state panel's field highlighting is for.
+#
+# `SendDigits` has no SIP path at v1: `docs/specs/browser-sdk.md:830` excludes DTMF sending from the
+# browser SDK's vocabulary. The command is modelled because the neutral port has it and the next
+# binding may carry it, and this scenario is what that decision looks like when it is exercised.
+type: ess-scenario/1
+domain: softphone.control
+scenario: dtmf-and-mute-in-call
+summary: On an established call the user sends digits to an IVR and mutes themselves.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T20:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input: { label: Desk, default_binding: Sip }
+    outcome: configured
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T20:00:03Z
+    command: softphone.control.Dial
+    actor: softphone.control.Human
+    input: { endpoint_id: {$instance: phone}, remote: 'sip:ivr@example.test' }
+    outcome: dialled
+    capture: {instance: call, event: softphone.control.CallDialled, field: call_id}
+
+  - at: 2026-09-04T20:00:04Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: ringing
+
+  - at: 2026-09-04T20:00:06Z
+    command: softphone.control.ConfirmAnswer
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: confirmed
+
+  - at: 2026-09-04T20:00:07Z
+    command: softphone.control.MediaConnected
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: established
+
+  - at: 2026-09-04T20:00:14Z
+    command: softphone.control.SendDigits
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call}, digits: '2' }
+    outcome: sent
+    events:
+      - event: softphone.control.DigitsSent
+        payload: { digits: '2' }
+
+  - at: 2026-09-04T20:00:20Z
+    command: softphone.control.SetMuted
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call}, muted: true }
+    outcome: changed
+    events:
+      - event: softphone.control.MuteChanged
+        payload: { muted: true }
+
+  - at: 2026-09-04T20:00:52Z
+    command: softphone.control.HangUp
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call} }
+    outcome: hung-up

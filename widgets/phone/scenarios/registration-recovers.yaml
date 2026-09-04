@@ -1,0 +1,50 @@
+# `Registration.Failed` used to be terminal, so one transient WSS drop killed the registration for
+# good and the phone could not re-register without a new entity. `RetryRegistration` is the way back
+# and this scenario is what proves the state is reachable in both directions.
+type: ess-scenario/1
+domain: softphone.sip
+scenario: registration-recovers
+summary: A registration fails, is retried, succeeds, and is later given up deliberately.
+
+arrange:
+  - instance: reg
+    entity: softphone.sip.Registration
+
+timeline:
+  - at: 2026-09-04T21:00:00Z
+    command: softphone.sip.Register
+    actor: softphone.sip.SipHost
+    input:
+      aor: 'sip:desk@example.test'
+      transport: SecureWebSocket
+      expires: 3600s
+    outcome: requested
+    events:
+      - event: softphone.sip.RegistrationRequested
+        payload: { aor: 'sip:desk@example.test', transport: SecureWebSocket }
+    capture: {instance: reg, event: softphone.sip.RegistrationRequested, field: registration_id}
+
+  # The transport went before the REGISTER completed. Only the kernel can report this.
+  - at: 2026-09-04T21:00:02Z
+    command: softphone.sip.FailRegistration
+    actor: softphone.sip.Kernel
+    input: { registration_id: {$instance: reg}, cause: '503 Service Unavailable' }
+    outcome: failed
+
+  - at: 2026-09-04T21:00:12Z
+    command: softphone.sip.RetryRegistration
+    actor: softphone.sip.SipHost
+    input: { registration_id: {$instance: reg} }
+    outcome: retried
+
+  - at: 2026-09-04T21:00:13Z
+    command: softphone.sip.ConfirmRegistration
+    actor: softphone.sip.Kernel
+    input: { registration_id: {$instance: reg} }
+    outcome: confirmed
+
+  - at: 2026-09-04T21:30:00Z
+    command: softphone.sip.Unregister
+    actor: softphone.sip.SipHost
+    input: { registration_id: {$instance: reg} }
+    outcome: ended

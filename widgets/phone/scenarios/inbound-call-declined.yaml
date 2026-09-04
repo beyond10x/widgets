@@ -1,0 +1,42 @@
+# Declined is not missed. `Reject` carries a SIP status, so the log can tell a call the user refused
+# from one the caller gave up on — which `TerminationReason` alone could not express.
+type: ess-scenario/1
+domain: softphone.control
+scenario: inbound-call-declined
+summary: The user declines a ringing call with 486 Busy Here.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T19:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input: { label: Desk, default_binding: Sip }
+    outcome: configured
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T19:00:06Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input: { endpoint_id: {$instance: phone}, remote: 'sip:spam@example.test' }
+    outcome: offered
+    capture: {instance: call, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-04T19:00:07Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: ringing
+
+  - at: 2026-09-04T19:00:09Z
+    command: softphone.control.Reject
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call}, status: 486 }
+    outcome: rejected
+    events:
+      - event: softphone.control.CallRejected
+        payload: { status: 486 }

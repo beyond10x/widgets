@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf
+  contract digest ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topology · softphone</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="index.html">softphone v1</a>
+<a href="crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="domains/softphone-control.html">Phone control</a>
+<a class="nested" href="domains/softphone-directory.html">Phonebook</a>
+<a class="nested" href="domains/softphone-history.html">Call history</a>
+<a class="nested" href="domains/softphone-local.html">Local binding</a>
+<a class="nested" href="domains/softphone-media.html">Media session</a>
+<a class="nested" href="domains/softphone-presentation.html">Phone console</a>
+<a class="nested" href="domains/softphone-sip.html">SIP binding</a>
+<a href="interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="plan/obligations.html">plan/obligations</a>
+<a href="topology.html" aria-current="page">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Topology</h1>
+<p>Runtime requirements, stated semantically. None of this is a deployment and nothing generates a manifest from it: a replica floor of two is a claim that the system is not correct with one instance, which is a fact about the design and survives every change of hosting.</p>
+<h2 id="call-history"><code>call-history</code></h2>
+<p>Owns the durable record of every finished call.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires:</p>
+<ul>
+<li><code>browser</code> — <code>local-storage</code></li>
+</ul>
+<h2 id="local-binding"><code>local-binding</code></h2>
+<p>Owns the local-audio binding, the second carrier the media layer is proved against.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires:</p>
+<ul>
+<li><code>browser</code> — <code>audio-capture</code></li>
+<li><code>browser</code> — <code>audio-render</code></li>
+</ul>
+<h2 id="media-session"><code>media-session</code></h2>
+<p>Owns the protocol-neutral media session and the signals crossing it.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires:</p>
+<ul>
+<li><code>browser</code> — <code>audio-capture</code></li>
+<li><code>browser</code> — <code>audio-render</code></li>
+</ul>
+<h2 id="phone-console"><code>phone-console</code></h2>
+<p>Owns what is on screen and what a gesture means.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires:</p>
+<ul>
+<li><code>browser</code> — <code>dom</code></li>
+</ul>
+<h2 id="phone-control"><code>phone-control</code></h2>
+<p>Owns the call surface a human or an agent drives identically.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires nothing beyond itself.</p>
+<h2 id="phone-directory"><code>phone-directory</code></h2>
+<p>Owns the phonebook.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires:</p>
+<ul>
+<li><code>browser</code> — <code>local-storage</code></li>
+</ul>
+<h2 id="sip-binding"><code>sip-binding</code></h2>
+<p>Owns the SIP registration and the dialogs carrying media sessions over it.</p>
+<p>One instance is enough: nothing about the design needs a second. No ceiling is declared.</p>
+<p>Stateful: an instance holds state that outlives a request, so instances are not interchangeable.</p>
+<p>It requires:</p>
+<ul>
+<li><code>browser</code> — <code>rtc-peer-connection</code></li>
+<li><code>browser</code> — <code>secure-websocket</code></li>
+</ul>
+<p><a href="index.html">Back to the index</a>.</p>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>aba1da1149fb1642c433b23af295d777adcc159bd748b60ca1a5d9a812a4becf</code> · contract digest <code>ef93fa7f8584a1ef672990779da742c4036cf471dd4a5ce03ec96443be9da643</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>
