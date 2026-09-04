@@ -37,19 +37,26 @@ checkable, and the check is mechanical — search the compiled `domains."softpho
 
 ### What joins them
 
-**Eight `relations:` entries**, seven crossing a domain boundary. A broken one is refused by
+**Nine `relations:` entries**, eight crossing a domain boundary. A broken one is refused by
 `ess validate` under five rules — an unknown target, a missing carrier, a mistyped carrier, a second
 owner, a twice-carried field — and all five were exercised by introducing the defect and recording
 the code.
 
-**Seven `bindings:`**, each one event causing one command. They are why an arriving call puts itself
+**Ten `bindings:`**, each one event causing one command. They are why an arriving call puts itself
 on screen and why a finished call reaches the log without anybody asking for either.
 
 ### Counts
 
-`ess validate` reports `softphone v1 — 10 file(s), valid`. 52 commands, 52 events, 16 views, 12
-entities, 7 invariants, 7 workloads. `ess generate synthesize --target rust` reports 307
-capabilities: 221 generated, 68 obligations, 18 refused — and the emitted crates build.
+`ess validate` reports `softphone v1 — 11 file(s), valid`. 57 commands, 57 events, 18 views, 13
+entities, 7 workloads. `ess generate synthesize --target rust` reports 344 capabilities: 248
+generated, 75 obligations, 21 refused — and the emitted crates build.
+
+**And the 75 are filled.** `crates/softphone-behaviour` implements every `*Behavior` and `*Query`
+trait the plan owes; `crates/softphone-shell` installs it into the generated web bridge through that
+bridge's own `install` seam, so the emitted page, wire and catalogue are untouched and the page says
+"a realization is installed". `task test` replays the eleven authored scenarios through the same
+three WebAssembly exports a browser uses — **11 scenarios, 181 steps, 0 failures** — which is the
+difference between a specification that is coherent and one that executes.
 
 ## What the specification deliberately does not decide
 

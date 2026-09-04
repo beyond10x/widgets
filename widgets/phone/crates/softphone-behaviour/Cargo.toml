@@ -1,0 +1,19 @@
+[package]
+name = "softphone-behaviour"
+description = "Behaviour behind every obligation the softphone specification declares."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+softphone-types.workspace = true
+softphone-system.workspace = true
+bridge-binding.workspace = true
+call-history.workspace = true
+local-binding.workspace = true
+media-session.workspace = true
+phone-console.workspace = true
+phone-control.workspace = true
+phone-directory.workspace = true
+sip-binding.workspace = true

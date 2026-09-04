@@ -3,65 +3,59 @@ format: aep.planning-md/1
 id: story:signalling-over-wss
 kind: story
 status: draft
-title: Register over secure WebSocket
-summary: Load the WASM kernel, open WSS, and drive REGISTER to a terminal state.
+title: Register the SIP leg, on the server that holds it
+summary: 'Registration moved off the browser: phone-server drives REGISTER to a terminal state.'
 relations:
 - decomposes: epic:browser-softphone
 - depends_on: story:media-session-domain
-revision: 5
+- informed_by: architecture-decision-record:browser-holds-no-sip-stack
+revision: 7
 ---
-# Register over secure WebSocket
+# Register the SIP leg, on the server that holds it
+
+## What changed about this story
+
+It was "Register over secure WebSocket": the page would load the sipx WebAssembly session kernel,
+open WSS to a SIP provider and drive REGISTER itself.
+`architecture-decision-record:browser-holds-no-sip-stack` moved that off the browser. Registration
+is still specified — `softphone.sip` is unchanged — and it is now `phone-server`'s, which
+`ess/topology.yaml` states: `sip-binding` requires `network: sip-signalling` and `network: rtp-media`
+rather than two browser facilities.
+
+The kernel this story was built on is not the reason it moved, but it is why it could not have
+shipped as written: `sipx` `A-17` (package the browser SDK) and `M-52` (browser-native WebRTC audio)
+are both `status: ready`.
 
 ## Outcome
 
-The page loads the sipx WebAssembly session kernel, opens a WSS connection to the SIP provider, and
-drives `softphone.sip.Register` through to `Registered` or `Failed` — and back out of `Failed`, which
-it could not do before: that state was terminal, so one transient WSS drop killed the registration
-permanently.
+`phone-server` drives `softphone.sip.Register` to `Registered` or `Failed`, and back out of `Failed`
+— that state stopped being terminal for exactly this reason: one transient drop must not kill a
+registration permanently.
 
 ## Acceptance
 
-Loading the page with a configured address-of-record, a WSS URL and an expiry produces a
-`softphone.sip.RegistrationConfirmed` fact, and `softphone.sip.RegistrationById` reports
-`Registered`. A rejected REGISTER produces `RegistrationFailed` and no retry loop —
-`RetryRegistration` is a command somebody issues, not a loop the model implies. `RefreshRegistration`
-extends the lifetime without a state change.
+Against the SIP service the deployment names, a configured address-of-record and expiry produce a
+`softphone.sip.RegistrationConfirmed` fact and `softphone.sip.RegistrationById` reports `Registered`.
+A rejected REGISTER produces `RegistrationFailed` and no retry loop — `RetryRegistration` is a
+command somebody issues, not a loop the model implies. `RefreshRegistration` extends the lifetime
+with no state change.
 
 ## Scope
 
-This story is now scoped to `softphone.sip` — `ess/domains/sip.yaml` — and nothing else. Registration
-and the dialog live there; the call lifecycle moved to `softphone.control` and the media session to
-`softphone.media`.
+`softphone.sip` only. `Registration`, `SipDialog`, the four SDP commands, and the server-side code
+that drives them through `sipx-call`.
 
-- `Registration` — `aor`, `transport`, four states, four commands. `SignallingTransport` has one
-  member, `SecureWebSocket`, because a browser can open no other and the page is served over HTTPS.
-- `SipDialog` — `session_id` typed `softphone.media.MediaSessionId`, which is the carrier of bridge 2.
-  `OpenDialog` is the only outcome that creates one, and that is what holds the binding
-  discriminator on `MediaSession` honest, since no invariant can.
-- `MediaSecurity` has one member, `DtlsSrtp`: the browser negotiates media and that is the only
-  keying `RTCPeerConnection` offers.
-- `SipCause` stays text. Inventing a closed set of SIP causes here would be inventing the protocol's
-  vocabulary; the call log records `softphone.media.TerminationReason` instead.
+Two type members were narrowed to what a browser could do and now describe the server instead, so
+each is a question this story answers rather than an assumption it keeps:
 
-Implementation, unchanged from before: the vendored `browser/src/` binding from the pinned sipx
-revision, the WASM module from `crates/sipx-wasm` and `wasm/`, and the hand-written ABI glue that
-`A-17` has not generated.
+- `SignallingTransport` has one member, `SecureWebSocket`. A server can use UDP, TCP or TLS, so
+  either the member set grows or the deployment is stated to be WSS-only. Decide it here.
+- `MediaSecurity` has one member, `DtlsSrtp`. The browser leg keeps DTLS-SRTP; the SIP leg to a
+  dev-cluster Asterisk will most likely be plain RTP or SDES-keyed SRTP, which is the same question
+  with the same two answers.
 
-## Cited from
+## What is no longer in scope
 
-- `browser/README.md` — the binding's four platform facilities and its constructor-injected socket,
-  clock, entropy and connectivity monitor.
-- `docs/specs/browser-signalling.md` — the contract the binding implements.
-- `docs/specs/browser-sdk.md` §4 — the kernel ABI.
-
-## Authentication
-
-A browser cannot set an `Authorization` header on a WebSocket upgrade. The access token rides the
-negotiated WebSocket subprotocol list, the way
-`~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` §4 records for the console's
-RTVBP phone. Whether the SIP provider's WSS endpoint accepts a token that way, or wants SIP digest
-authentication in the REGISTER instead, is not established here and is the first thing to check
-against the chosen provider.
-
-Origin allowlisting and a TLS endpoint reachable from the browser are the deployment's, not this
-story's.
+The vendored `browser/src/` binding, the `crates/sipx-wasm` module, the hand-written ABI glue, and
+the WebSocket-subprotocol token trick a browser needs because it cannot set an `Authorization`
+header on an upgrade. A server sets the header.

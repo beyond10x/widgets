@@ -1,0 +1,16 @@
+[package]
+name = "softphone-shell"
+description = "The module a page loads: the generated web bridge with this application's behaviour installed."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# `cdylib` is what a browser instantiates. The generated bridge's own `#[no_mangle]` exports travel
+# out of this one, which is what its `install` seam is for.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+softphone-behaviour.workspace = true
+softphone-web = { path = "../../.build/synth/web/crates/softphone-web" }

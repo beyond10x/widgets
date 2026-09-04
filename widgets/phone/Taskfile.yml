@@ -152,6 +152,38 @@ tasks:
       - task: pages
       - cmd: git -C ../.. diff --quiet -- pages || { echo "pages/ is stale — commit what task pages produced"; exit 1; }
 
+  # ── the realization ─────────────────────────────────────────────────────────
+  impl:
+    desc: Build the realized module — the specification, executing.
+    # `crates/softphone-behaviour` fills every obligation and `crates/softphone-shell` installs it
+    # into the generated web bridge through that bridge's own `install` seam, so the page, the wire
+    # and the catalogue stay exactly as emitted.
+    deps: [synthesize]
+    cmds:
+      - cargo build --release --target wasm32-unknown-unknown
+
+  test:
+    desc: Execute every authored scenario against the realized module.
+    # The gate that says the specification is executable: each step goes through the same three
+    # exports and the same `bridge.js` a browser uses, and every declared outcome and event is
+    # asserted. Replay is what the published player does; this runs.
+    deps: [scenarios, impl]
+    cmds:
+      - node tests/suite.mjs
+
+  phone:
+    desc: Serve the phone itself — the generated page, over the realized module.
+    deps: [impl]
+    # The page tries three paths and the last is `softphone_web.wasm` beside it, so the realized
+    # module is copied to that name. Its own comment says a host's realization answers this page;
+    # the candidate list is simply not parameterised by which crate built it.
+    cmds:
+      - rm -rf {{.OUT}}/phone && mkdir -p {{.OUT}}/phone
+      - cp .build/synth/web/index.html .build/synth/web/bridge.js {{.OUT}}/phone/
+      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm {{.OUT}}/phone/softphone_web.wasm
+      - cmd: echo "http://127.0.0.1:8741/index.html"
+      - cd {{.OUT}}/phone && python3 -m http.server 8741 --bind 127.0.0.1
+
   # ── the gates ───────────────────────────────────────────────────────────────
   check:
     desc: The fast gate — specification, scenarios, and committed documentation.
@@ -160,6 +192,7 @@ tasks:
       - task: compile
       - task: scenarios
       - task: drift
+      - task: test
 
   build:
     desc: Everything. Run this before pushing.
@@ -172,8 +205,10 @@ tasks:
       - task: build-web
       - task: player
       - task: pages
+      - task: impl
+      - task: test
       - cmd: echo "built — every kind emitted, every code target compiled"
 
   clean:
     cmds:
-      - rm -rf {{.OUT}} site
+      - rm -rf {{.OUT}} site target

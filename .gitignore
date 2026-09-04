@@ -1,4 +1,5 @@
-/target/
+# Unanchored: `widgets/phone` is a cargo workspace of its own now.
+target/
 site/
 *.swp
 .build/
