@@ -2,7 +2,7 @@
 format: aep.planning-md/1
 id: story:browser-media-adapter
 kind: story
-status: draft
+status: active
 title: Adapt browser-native audio
 summary: Audio-only RTCPeerConnection adapter; media failures never present as SIP failures.
 relations:
@@ -11,7 +11,7 @@ relations:
 scope:
 - confidence: inferred
   path: Cargo.toml
-- confidence: inferred
+- confidence: cited
   path: Taskfile.yml
 - confidence: inferred
   path: crates/softphone-shell
@@ -21,7 +21,11 @@ scope:
   path: ess/domains/bridge.yaml
 - confidence: inferred
   path: web
-revision: 12
+- confidence: cited
+  path: widget
+- confidence: cited
+  path: widget/src
+revision: 18
 ---
 # Adapt browser-native audio
 
@@ -117,3 +121,41 @@ generation.
 Read from `~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` §5, which is the
 implemented version of this for RTVBP, and whose §7 records that jitter behaviour is bounded by a ring
 buffer policy rather than solved.
+
+## What landed 2026-09-05, and what is still unproven
+
+The page half now exists: `widget/` is a pnpm package `@b10x/phone-widget` holding the module, one
+control channel and one `RTCPeerConnection` together.
+
+| file | what it owns |
+|---|---|
+| `widget/src/kernel.ts` | the realized module through the emitted `bridge.js`'s own `open()`; every command answers the whole observation, so nothing here shadows the module's state |
+| `widget/src/transport.ts` | the WebSocket. `phone_server::wire::FromBrowser` out; inbound frames are already the module's own request shape and go in verbatim |
+| `widget/src/call.ts` | `scenarios/bridge-carries-outbound-call.yaml`'s sequence at run time |
+| `widget/src/PhonePanel.vue` | the screen, rendered from the projection and never from a copy |
+| `widget/index.html`, `widget/src/dev.ts` | a harness, so the page runs with no devcenter |
+
+**`AttachMedia` and `MediaConnected` are issued here and not by the server**, which is what
+`crates/phone-server/tests/wire.rs:33-44` already said: only the page watches its own
+`RTCPeerConnection`, and the page minted the media session before it said anything to the server.
+Both are gated on *two* conditions rather than on the peer connection alone — `Call.activate` has
+`Answering` as its only legal `from`, and DTLS completes as soon as the answer is applied, well
+before a person picks up. Issuing `MediaConnected` on `connected` alone earns a `CallStateConflict`
+and the call never becomes `Active`.
+
+Measured against the realized module, 2026-09-05: the sequence walks `Requested → Ringing →
+Answering → Active`, `ActiveCalls` gains its row only after `MediaConnected`, and `RecentCalls`
+records the call on hang-up. The harness mounts in Brave headless, instantiates the module and logs
+`softphone.control.EndpointConfigured`.
+
+Two things the panel reads that are worth writing down. It renders
+`softphone.control.CallById` rather than `ActiveCalls`, because `ActiveCalls` filters
+`state == Active` and a ringing call is not in it — an `observe` that binds no parameter answers a
+parameterised view over its whole source. And it draws no timestamps:
+`story:the-module-has-no-clock` records why.
+
+**This story's acceptance is not met.** It asks for non-silent audio in both directions and for a
+denied microphone to end the call as `EndCause::Media`. Both need a browser with a microphone, and
+neither has been observed. `widget/src/offer.mjs`, `call.ts` and `PhonePanel.vue` are unexercised by
+any automated case for exactly that reason, and `task widget-check` says so in its own comment
+rather than implying coverage it does not have.
