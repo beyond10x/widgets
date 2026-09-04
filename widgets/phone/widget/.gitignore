@@ -1,5 +1,4 @@
 node_modules/
 dist/
-# Both are placed by `task widget-assets` out of `target/`, which is generated.
-assets/softphone.wasm
+# Placed by `task widget-assets` out of `target/`, which is generated.
 public/softphone.wasm

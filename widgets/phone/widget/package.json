@@ -9,22 +9,21 @@
     "node": ">=22.0.0"
   },
   "files": [
-    "dist",
-    "assets/softphone.wasm"
+    "dist"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./softphone.wasm": "./assets/softphone.wasm",
+    "./softphone.wasm": "./dist/softphone.wasm",
     "./style.css": "./dist/phone-widget.css"
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "typecheck": "vue-tsc --build --force",
     "unit": "node --test test/*.test.mjs",
-    "build": "vue-tsc --build --force && vite build",
+    "build": "vite build && vue-tsc --build --force",
     "check": "pnpm typecheck && pnpm unit"
   },
   "peerDependencies": {

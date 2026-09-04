@@ -239,11 +239,10 @@ tasks:
     desc: Place the realized module where the widget's harness serves it.
     # The wasm is a build product of `crates/softphone-shell` and is gitignored inside the package
     # for the same reason `.build/` is: it is determined by the specification, and a committed copy
-    # is a copy that can disagree with it. A published package needs it in the tarball, which is
-    # what `files:` in `widget/package.json` is for.
+    # is a copy that can disagree with it. It lands in `public/`, which Vite copies into `dist/`, so
+    # the built package carries exactly one copy of it and the export map points there.
     deps: [impl]
     cmds:
-      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm widget/assets/softphone.wasm
       - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm widget/public/softphone.wasm
 
   widget-check:
