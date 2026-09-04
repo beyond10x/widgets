@@ -1,0 +1,16 @@
+schema: b10x-change/v1
+id: widgets/public-surface-2026-09-04
+repository: widgets
+publishedAt: 2026-09-04T12:00:00Z
+title: Widgets joins the public ecosystem surface
+summary: Widgets publishes small applications specified end to end before they are built. The first is a browser softphone modelled as seven ESS domains joined by eight checked relations and seven bindings; it has no implementation, and the specification and its evidence are the deliverable.
+kind: capability
+impact: significant
+source:
+  url: https://github.com/beyond10x/widgets
+journeys: [specify]
+affectedSurfaces: [widgets/docs]
+relations:
+  - {target: surface:ess/docs, kind: depends-on, label: Specifies each application as an executable system specification}
+  - {target: surface:aep/docs, kind: depends-on, label: Plans each application in a governed artifact store}
+  - {target: surface:connectors/docs, kind: uses, label: Models the media session from the protocol-neutral telephony port}
