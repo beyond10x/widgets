@@ -158,9 +158,36 @@ tasks:
     # `crates/softphone-behaviour` fills every obligation and `crates/softphone-shell` installs it
     # into the generated web bridge through that bridge's own `install` seam, so the page, the wire
     # and the catalogue stay exactly as emitted.
+    #
+    # `-p softphone-shell` rather than the whole workspace, since `crates/phone-server` joined it:
+    # that crate is a native process with a SIP stack in it and does not build for wasm. `-p` here
+    # was chosen over `exclude` in the manifest because an excluded crate is not in the workspace
+    # at all, and `cargo test -p phone-server` from this directory would then not resolve it.
+    # `softphone-behaviour` is built anyway, as the shell's own dependency.
     deps: [synthesize]
     cmds:
-      - cargo build --release --target wasm32-unknown-unknown
+      - cargo build --release --target wasm32-unknown-unknown -p softphone-shell
+
+  server:
+    desc: Build and test phone-server — the process that holds the SIP leg.
+    # Hermetic: every case binds loopback endpoints and drives this crate's legs against sipx's own
+    # `answer` role in-process. Nothing here reaches the network, a second machine, or the `sipx`
+    # binary.
+    #
+    # `deps: [synthesize]` for the reason `impl` has it: `crates/softphone-behaviour` names the
+    # generated crates under `.build/` by path, so the whole workspace fails to resolve until
+    # `task synthesize` has run — even for a `-p` that does not depend on any of them.
+    #
+    # `--check -p phone-server` and not a workspace-wide `cargo fmt --check`, because the workspace
+    # is not fmt-clean today and was not before this crate existed: `cargo fmt --check` reports 17
+    # diffs, all six of them in `crates/softphone-behaviour/src/`, on the commit this crate was
+    # added to. Widening this step would put somebody else's pre-existing condition in the gate.
+    deps: [synthesize]
+    cmds:
+      - cargo build --release -p phone-server
+      - cargo test -p phone-server
+      - cargo clippy -p phone-server --all-targets -- -D warnings
+      - cargo fmt --check -p phone-server
 
   test:
     desc: Execute every authored scenario against the realized module.
@@ -207,6 +234,7 @@ tasks:
       - task: pages
       - task: impl
       - task: test
+      - task: server
       - cmd: echo "built — every kind emitted, every code target compiled"
 
   clean:
