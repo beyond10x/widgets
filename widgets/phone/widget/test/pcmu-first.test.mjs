@@ -15,7 +15,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { pcmuFirst } from "../pcmu-first.mjs";
+import { pcmuFirst } from "../src/pcmu-first.mjs";
 
 const CHROME = [
   "v=0",

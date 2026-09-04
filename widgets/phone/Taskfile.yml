@@ -226,20 +226,52 @@ tasks:
       - cmd: echo "http://127.0.0.1:{{.PORT}}/index.html"
       - cd {{.OUT}}/phone && python3 -m http.server {{.PORT}} --bind 127.0.0.1
 
-  test-web:
-    desc: The page's own function under node — no browser, no build.
-    # `web/pcmu-first.mjs` is pure so it can be decided without a browser: it puts PCMU at the head
-    # of an offer's `m=audio` format list, which is what makes a call bridgeable against a SIP leg
-    # this server does not resample for. `web/offer.mjs` needs an `RTCPeerConnection` and is not
-    # reachable from here; it says so in its own doc.
-    #
-    # The plain-script form on purpose: `node --test web/test/` on Node 22 treats the directory as a
-    # file and reports one passing test having run nothing.
+  # ── the widget ──────────────────────────────────────────────────────────────
+  widget-install:
+    desc: The widget package's toolchain, from its own lockfile.
+    dir: widget
     cmds:
-      # Every case, and the adversarial pass's two files among them: the second checks this page's
-      # own reading of the server's audio profile against a transcription written independently of
-      # it, which is worth more than either alone.
-      - node --test web/test/*.test.mjs
+      - pnpm install --frozen-lockfile
+    sources: [package.json, pnpm-lock.yaml]
+    generates: [node_modules/.modules.yaml]
+
+  widget-assets:
+    desc: Place the realized module where the widget's harness serves it.
+    # The wasm is a build product of `crates/softphone-shell` and is gitignored inside the package
+    # for the same reason `.build/` is: it is determined by the specification, and a committed copy
+    # is a copy that can disagree with it. A published package needs it in the tarball, which is
+    # what `files:` in `widget/package.json` is for.
+    deps: [impl]
+    cmds:
+      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm widget/assets/softphone.wasm
+      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm widget/public/softphone.wasm
+
+  widget-check:
+    desc: The widget's own gate — types, and every case that needs no browser.
+    # `pcmu-first.mjs` is pure and is decided here. `offer.mjs` needs an `RTCPeerConnection`,
+    # `call.ts` needs a WebSocket and `PhonePanel.vue` needs a DOM; none of the three is faked, so
+    # what proves them is `task widget` in a browser and nothing here pretends otherwise.
+    deps: [widget-install]
+    dir: widget
+    cmds:
+      - pnpm typecheck
+      - pnpm unit
+
+  widget-build:
+    desc: Build the mountable package — what a host imports.
+    deps: [widget-install, widget-assets]
+    dir: widget
+    cmds:
+      - pnpm build
+
+  widget:
+    desc: Serve the widget's own harness — the phone, with no devcenter in the way.
+    # `phone-server` has to be running for a call to go anywhere: `task call-local` starts one
+    # against a far end on this machine, and `task call-cluster` against the dev cluster's Asterisk.
+    deps: [widget-install, widget-assets]
+    dir: widget
+    cmds:
+      - pnpm dev
 
   lints:
     desc: Formatting and clippy, over the crates this application wrote.
@@ -254,6 +286,66 @@ tasks:
       - cargo clippy -p softphone-behaviour -p phone-server --all-targets -- -D warnings
       - cargo clippy -p softphone-shell --target wasm32-unknown-unknown -- -D warnings
 
+  # ── running against a far end ───────────────────────────────────────────────
+  call-local:
+    desc: Run phone-server against a far end on this machine.
+    # The whole path with nothing external in it: the browser leg, the SIP leg, and `sipx answer`
+    # as the far end. Start `sipx answer --port 5080 --wait 60 --once` in another terminal first.
+    #
+    # Everything binds loopback, so `--media-address 127.0.0.1` is both what the sockets use and
+    # what the SDP advertises.
+    vars:
+      FAR: '{{.FAR | default "127.0.0.1:5080"}}'
+    deps: [server-build]
+    cmds:
+      - >-
+        target/release/phone-server
+        --listen 127.0.0.1:8780
+        --sip-bind 127.0.0.1:0
+        --sip-proxy {{.FAR}}
+        --from sip:phone@127.0.0.1
+        --media-address 127.0.0.1
+
+  call-cluster:
+    desc: Run phone-server against Asterisk in the dev cluster.
+    # Three deployment facts, and none of them is committed here.
+    #
+    # The address is resolved at run time rather than written down, because the service is headless
+    # — its `clusterIP` is `None`, so DNS answers pod addresses — and the service network is not
+    # routed from a workstation at all. What *is* routed is the pod network, over the WireGuard
+    # interface: `ip route get <pod>` answers `dev wg0 src <address>`, and that source address is
+    # what the SDP has to advertise, since a socket bound to `0.0.0.0` would advertise the wrong
+    # one of this machine's several addresses.
+    #
+    # `PHONE_NS` and `PHONE_SELECTOR` come from the environment. A namespace or a label in a
+    # committed file in a public repository is a deployment fact this repository does not own.
+    vars:
+      NS: '{{.PHONE_NS | default "latest"}}'
+      SELECTOR: '{{.PHONE_SELECTOR | default "io.kompose.service=asterisk"}}'
+      SIP_PORT: '{{.SIP_PORT | default "5062"}}'
+    deps: [server-build]
+    cmds:
+      - |
+        set -eu
+        pod="$(kubectl -n {{.NS}} get pod -l {{.SELECTOR}} \
+          -o jsonpath='{.items[0].status.podIP}')"
+        test -n "$pod" || { echo "no pod matched {{.SELECTOR}} in {{.NS}}"; exit 1; }
+        via="$(ip route get "$pod" | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
+        test -n "$via" || { echo "no route to $pod — is the tunnel up?"; exit 1; }
+        echo "asterisk $pod:{{.SIP_PORT}}, advertising $via"
+        exec target/release/phone-server \
+          --listen 127.0.0.1:8780 \
+          --sip-bind "$via:0" \
+          --sip-proxy "$pod:{{.SIP_PORT}}" \
+          --from "sip:phone@$via" \
+          --media-address "$via"
+
+  server-build:
+    desc: Build phone-server without running its tests.
+    deps: [synthesize]
+    cmds:
+      - cargo build --release -p phone-server
+
   # ── the gates ───────────────────────────────────────────────────────────────
   check:
     desc: The fast gate — specification, scenarios, and committed documentation.
@@ -263,7 +355,7 @@ tasks:
       - task: scenarios
       - task: drift
       - task: test
-      - task: test-web
+      - task: widget-check
       - task: lints
 
   build:

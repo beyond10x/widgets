@@ -16,7 +16,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createPcmuFirstOffer } from "../offer.mjs";
+import { createPcmuFirstOffer } from "../src/offer.mjs";
 
 /** A microphone stream that records whether anybody stopped it. */
 function fakeMicrophone() {

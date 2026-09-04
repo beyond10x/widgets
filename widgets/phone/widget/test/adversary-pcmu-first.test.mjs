@@ -12,7 +12,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { pcmuFirst, unanswerable } from "../pcmu-first.mjs";
+import { pcmuFirst, unanswerable } from "../src/pcmu-first.mjs";
 
 // ── the two captures, copied verbatim from `pcmu-first.test.mjs` ─────────────
 //

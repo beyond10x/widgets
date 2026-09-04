@@ -3,7 +3,7 @@
 // This file cannot be tested under node, and does not pretend to be: `RTCPeerConnection` and
 // `navigator.mediaDevices` are the browser's, and nothing in this repository fakes either.
 // Everything that can be decided without a browser — the reorder — is `pcmu-first.mjs`, and
-// `web/test/pcmu-first.test.mjs` decides it. What is left here is the browser calls in the order
+// `test/pcmu-first.test.mjs` decides it. What is left here is the browser calls in the order
 // they have to happen, and the order is the point:
 //
 //   1. `getUserMedia({audio: true})` — the track exists before the offer describes it;
