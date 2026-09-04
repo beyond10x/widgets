@@ -10,7 +10,22 @@ relations:
 - depends_on: story:call-lifecycle
 - depends_on: story:browser-media-adapter
 - depends_on: story:layer-bridges
-revision: 4
+scope:
+- confidence: cited
+  path: Taskfile.yml
+- confidence: inferred
+  path: docs
+- confidence: inferred
+  path: ess/components.yaml
+- confidence: cited
+  path: ess/domains/presentation.yaml
+- confidence: inferred
+  path: pages/phone
+- confidence: inferred
+  path: player/skin.js
+- confidence: inferred
+  path: scenarios
+revision: 7
 ---
 # The softphone page
 
@@ -65,3 +80,29 @@ the emitted web tree does not compile at ESS 0.13.1. See
 from the same specification builds clean, so this is the emitter and not the model.
 
 Until that clears, this story has no way to produce a browser observation of anything.
+
+## Scope
+
+Derived 2026-09-04 by `story-scoper`, confidence **medium** — the acceptance's surface is generated
+and unmodifiable, so the tree says where a page is assembled and rendered but not which of those
+files this unit edits. Paths are relative to `widgets/phone`, except the published tree.
+
+| path | mark | why |
+|---|---|---|
+| `ess/domains/presentation.yaml` | cited | the story's "what was built"; present and complete (11 commands, 11 events, 3 views), so re-opening it is the only way it changes |
+| `Taskfile.yml` | cited | `phone` assembles `index.html` + `bridge.js` + the wasm and serves it; `pages` publishes the docs and the player and **not** the phone, so publishing or gating the page lands here |
+| `scenarios` | inferred | **no scenario names `softphone.presentation` at all** — the keypad, the tile and the four modes are unasserted |
+| `player/skin.js` | inferred | the only hand-written surface that renders `softphone.presentation`, and its comments assert that no scenario issues a presentation command, which a presentation scenario makes false |
+| `ess/components.yaml` | inferred | `phone-console` accepts 6 of the 11 presentation commands; `OpenConsole`, `EnterDialing`, `EnterIncoming`, `EnterCall` and `LeaveCall` are accepted by no component, which is why the web target refuses all five — so the screen's four modes are not drivable from the generated page |
+| `docs`, `pages/phone` | inferred | generated and diff-gated; move only if `ess/` moves |
+
+**Not touched:** `crates/` — all 14 presentation obligations are implemented in
+`crates/softphone-behaviour/src/presentation_impl.rs`. `tests/suite.mjs` — it replays the compiled
+suite generically, so a new scenario needs no edit there.
+
+**Would collide with** any unit touching `Taskfile.yml`, any unit touching `ess/**` through the
+regenerated `docs/` and `pages/phone/` trees, and any unit touching `player/skin.js`.
+
+**Open, and it decides whether this story has file-landing work at all:** its acceptance may already
+be met by `task phone` over the realized module, in which case the remaining act is a browser
+observation and lands only here in the store.

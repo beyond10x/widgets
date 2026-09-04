@@ -9,7 +9,20 @@ relations:
 - decomposes: epic:browser-softphone
 - depends_on: story:media-session-domain
 - informed_by: architecture-decision-record:browser-holds-no-sip-stack
-revision: 7
+scope:
+- confidence: cited
+  path: crates/phone-server
+- confidence: inferred
+  path: crates/softphone-behaviour/src/sip_impl.rs
+- confidence: cited
+  path: docs/domains/softphone-sip.md
+- confidence: cited
+  path: ess/domains/sip.yaml
+- confidence: inferred
+  path: pages/phone
+- confidence: inferred
+  path: scenarios/registration-recovers.yaml
+revision: 11
 ---
 # Register the SIP leg, on the server that holds it
 
@@ -42,17 +55,29 @@ with no state change.
 
 ## Scope
 
-`softphone.sip` only. `Registration`, `SipDialog`, the four SDP commands, and the server-side code
-that drives them through `sipx-call`.
+Derived 2026-09-04 by `story-scoper`, confidence **medium** — the `ess/` half is cited to the line
+by the story itself; the server half names a crate that exists in no commit, so nothing inside it
+is citable. Paths are relative to `widgets/phone`.
 
-Two type members were narrowed to what a browser could do and now describe the server instead, so
-each is a question this story answers rather than an assumption it keeps:
+| path | mark | why |
+|---|---|---|
+| `ess/domains/sip.yaml` | cited | the body's scope reads "`softphone.sip` only". `:47-49` is `SignallingTransport`, `:52-54` is `MediaSecurity`, and `:6-8`, `:16-20`, `:51` are the comments justifying each one-member set by a browser limit the ADR retires |
+| `crates/phone-server` | cited | "the server-side code that drives them through `sipx-call`" |
+| `docs/domains/softphone-sip.md` | cited | generated and committed, and `task drift` inside `task check` fails when it is not what the specification determines |
+| `pages/phone` | inferred | `task pages` regenerates the committed published tree and `pages-drift` demands it |
+| `crates/softphone-behaviour/src/sip_impl.rs` | inferred | it fills every `softphone.sip` obligation but touches `transport` and `media_security` only as clones, so the two enum edits alone do not reach it |
+| `scenarios/registration-recovers.yaml` | inferred | the only `softphone.sip` scenario, and it pins `transport: SecureWebSocket` |
 
-- `SignallingTransport` has one member, `SecureWebSocket`. A server can use UDP, TCP or TLS, so
-  either the member set grows or the deployment is stated to be WSS-only. Decide it here.
-- `MediaSecurity` has one member, `DtlsSrtp`. The browser leg keeps DTLS-SRTP; the SIP leg to a
-  dev-cluster Asterisk will most likely be plain RTP or SDES-keyed SRTP, which is the same question
-  with the same two answers.
+**Two open questions this unit answers, both in `ess/domains/sip.yaml`.** `SignallingTransport` has
+one member, `SecureWebSocket`, and a server can use UDP, TCP or TLS — so either the member set grows
+or the deployment is stated to be WSS-only. `MediaSecurity` has one member, `DtlsSrtp`; the browser
+leg keeps it and the SIP leg to a dev-cluster Asterisk is most likely plain RTP or SDES-keyed SRTP.
+
+**Not a surface:** `ess/topology.yaml` — `sip-binding` already requires `network: sip-signalling`
+and `network: rtp-media`; this story reports that rather than editing it.
+
+**Would collide with** `story:phone-server`, unconditionally: `crates/phone-server` is that story's
+whole surface and this one lands inside it. The store declares no edge ordering the two.
 
 ## What is no longer in scope
 

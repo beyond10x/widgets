@@ -2,7 +2,7 @@
 format: aep.planning-md/1
 id: story:fill-the-obligations
 kind: story
-status: active
+status: implemented
 title: Fill every obligation so the specified phone runs
 relations:
 - decomposes: epic:browser-softphone
@@ -15,7 +15,7 @@ scope:
   path: crates/softphone-behaviour
 - confidence: cited
   path: crates/softphone-shell
-revision: 4
+revision: 5
 ---
 # Fill every obligation so the specified phone runs
 
