@@ -13,7 +13,10 @@
 import { readFile } from "node:fs/promises";
 import { open } from "../.build/synth/web/bridge.js";
 
-const MODULE = "./target/wasm32-unknown-unknown/release/softphone_shell.wasm";
+// Where cargo actually put it. `CARGO_TARGET_DIR` is how a worktree keeps its build out of the
+// tree, and a suite that reads only `./target` fails with ENOENT in every such tree.
+const TARGET = process.env.CARGO_TARGET_DIR ?? "./target";
+const MODULE = `${TARGET}/wasm32-unknown-unknown/release/softphone_shell.wasm`;
 const SUITE = "./.build/suite.json";
 // The model as the page reads it. A view assertion needs the declared `filter:` and the fields the
 // row projects, and this is where both are published.
