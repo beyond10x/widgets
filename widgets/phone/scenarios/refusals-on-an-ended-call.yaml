@@ -1,0 +1,153 @@
+# The clause nothing executed. `softphone.control` declares a `wrong-state` branch on seven of its
+# commands, every one of them implemented, and until this file the compiled suite contained no
+# expectation that any of them was ever taken — so an implementation that answered a call it had
+# already ended would have passed every scenario here.
+#
+# One call, driven to `Ended`, and then every command that declares a refusal issued against it. The
+# assertions are per-command, which is what makes this legible: `CallRejected` was published
+# legitimately at 20:00:09 and must not be published again at 20:00:15.
+#
+# `HangUp` is the one refusal with no `error:` claim, and that is the specification rather than an
+# omission: its branch is `refuses: false`, because hanging up a call that is already over is not
+# something a caller can act on. `no_events:` is written on it for the record, but be clear about
+# what it buys: after a refusal the wire's `published` is an empty literal, so that claim iterates
+# nothing. What proves these refusals changed nothing is the `assert:` block at the end.
+type: ess-scenario/1
+domain: softphone.control
+scenario: refusals-on-an-ended-call
+summary: Every command that declares a wrong-state branch refuses an ended call and publishes nothing.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-04T20:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input: { label: Desk, default_binding: Sip }
+    outcome: configured
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-04T20:00:06Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input: { endpoint_id: {$instance: phone}, remote: 'sip:mallory@example.test' }
+    outcome: offered
+    capture: {instance: call, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-04T20:00:07Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: ringing
+
+  # `end`, and the call is terminal from here. Every act below is issued from `Ended`.
+  - at: 2026-09-04T20:00:09Z
+    command: softphone.control.Reject
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call}, status: 486 }
+    outcome: rejected
+    events:
+      - event: softphone.control.CallRejected
+        payload: { status: 486 }
+    # The one negative claim in this file that can fail. After a refusal `published` is empty, so a
+    # `no_events:` there iterates nothing and decides nothing; here `published` holds
+    # `CallRejected`, and the claim is a real one — ending a call is not answering it.
+    no_events: [softphone.control.CallAnswered]
+
+  - at: 2026-09-04T20:00:11Z
+    command: softphone.control.Answer
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call} }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallAnswered]
+
+  - at: 2026-09-04T20:00:12Z
+    command: softphone.control.ConfirmAnswer
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallConfirmed]
+
+  - at: 2026-09-04T20:00:13Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallRinging]
+
+  - at: 2026-09-04T20:00:14Z
+    command: softphone.control.MediaConnected
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallEstablished]
+
+  - at: 2026-09-04T20:00:15Z
+    command: softphone.control.Reject
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call}, status: 486 }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallRejected]
+
+  - at: 2026-09-04T20:00:16Z
+    command: softphone.control.FailCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call}, cause: Remote }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallFailed]
+
+  - at: 2026-09-04T20:00:17Z
+    command: softphone.control.HangUp
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call} }
+    outcome: wrong-state
+    no_events: [softphone.control.CallHungUp]
+
+# `Ended` is terminal, and the call rests there rather than vanishing from it — which is what
+# `a-refusal-leaves-the-call-where-it-was.yaml` states of `CallById`. The other half is that it is
+# gone from the view that says which calls are up: seven refusals did not resurrect it.
+  # A second call, and it is here to make the assertions below say something. `CallById` is a view
+  # with a parameter, and "it holds exactly one row" is trivially true of a store holding one call
+  # however the query behaves — the claim only becomes a claim once there is another row for it to
+  # have to leave out. It is `Requested`, so it is not in `ActiveCalls` either.
+  - at: 2026-09-04T20:00:18Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input: { endpoint_id: {$instance: phone}, remote: 'sip:second@example.test' }
+    outcome: offered
+
+# `Ended` is terminal, and the call rests there rather than vanishing from it — the claim
+# `a-refusal-leaves-the-call-where-it-was.yaml` makes of `CallById`. Two more here: the by-id view
+# answers with that one call and not with the store, and the view that says which calls are up does
+# not hold it. Seven refusals neither resurrected it nor took it away.
+assert:
+  - view: softphone.control.CallById
+    params: {call_id: {$instance: call}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.control.CallById
+    params: {call_id: {$instance: call}}
+    contains: {state: Ended, remote: 'sip:mallory@example.test'}
+  - view: softphone.control.ActiveCalls
+    excludes: {call_id: {$instance: call}}

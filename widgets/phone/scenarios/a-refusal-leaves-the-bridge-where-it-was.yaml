@@ -1,0 +1,83 @@
+# The same claim in the domain whose own scenario says it is the point.
+#
+# `refusals-on-a-closed-bridge.yaml` opens by arguing that a late answer "must not move a closed
+# bridge to `Live`, because the entity's own invariant — `Live` implies `remote_sdp` — would then
+# hold of a bridge nobody is connected to". Nothing in that file checks it. The three assertions it
+# makes are all about the response, and `no_such_bridge()` in `bridge_impl.rs:17` answers a bridge
+# the store does not hold with `state: Closed` — the same refusal the real closed bridge gets.
+#
+# `BridgeById` is what the model offers for saying it, and the row it holds after the refusal is the
+# only place `Live`, `remote_sdp` and existence are observable at all.
+type: ess-scenario/1
+domain: softphone.bridge
+scenario: a-refusal-leaves-the-bridge-where-it-was
+summary: A refused ConfirmBridge leaves the bridge in the store, still Closed.
+
+arrange:
+  - instance: session
+    entity: softphone.media.MediaSession
+  - instance: bridge
+    entity: softphone.bridge.BridgeSession
+
+timeline:
+  - at: 2026-09-06T09:00:00Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'bridge-9f04'
+      binding: Bridge
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:2002@asterisk.dev.test'
+        trust: Untrusted
+    outcome: opened
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  - at: 2026-09-06T09:00:01Z
+    command: softphone.bridge.ConnectBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      session_id: {$instance: session}
+      endpoint: 'wss://phone.dev.test/phone'
+      offer: 'v=0 o=- 0 0 IN IP4 0.0.0.0'
+    outcome: connecting
+    capture: {instance: bridge, event: softphone.bridge.BridgeConnecting, field: bridge_id}
+
+  - at: 2026-09-06T09:00:02Z
+    command: softphone.bridge.CloseBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      bridge_id: {$instance: bridge}
+      session_id: {$instance: session}
+      cause: Local
+      reason: Cancelled
+    outcome: closed
+    events:
+      - event: softphone.bridge.BridgeClosed
+        payload: { cause: Local, reason: Cancelled }
+
+  - at: 2026-09-06T09:00:03Z
+    command: softphone.bridge.ConfirmBridge
+    actor: softphone.bridge.Kernel
+    input:
+      bridge_id: {$instance: bridge}
+      session_id: {$instance: session}
+      answer: 'v=0 o=- 0 0 IN IP4 203.0.113.7'
+    outcome: wrong-state
+    error:
+      name: softphone.bridge.BridgeStateConflict
+      fields: { state: Closed }
+    no_events: [softphone.bridge.BridgeConfirmed]
+
+assert:
+  - view: softphone.bridge.BridgeById
+    params: {bridge_id: {$instance: bridge}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.bridge.BridgeById
+    params: {bridge_id: {$instance: bridge}}
+    contains: {state: Closed}
