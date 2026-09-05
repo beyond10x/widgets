@@ -3,10 +3,1217 @@
     "suite_version": "ess-conformance/4",
     "system": "softphone",
     "specification_version": "v1",
-    "spec_digest": "3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6",
-    "contract_digest": "b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a"
+    "spec_digest": "522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e",
+    "contract_digest": "a716fbbbe26b7fdd24cf69b5441a8a7a57b304f349ef2e63e6705b0c329ffd20"
   },
   "scenarios": {
+    "softphone.bridge/authored/a-refusal-leaves-the-bridge-where-it-was": {
+      "purpose": "A refused ConfirmBridge leaves the bridge in the store, still Closed.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Bridge"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:2002@asterisk.dev.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "bridge-9f04"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConnectBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "endpoint": {
+              "kind": "literal",
+              "value": "wss://phone.dev.test/phone"
+            },
+            "offer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "bridge",
+          "entity": "softphone.bridge.BridgeSession",
+          "event": "softphone.bridge.BridgeConnecting",
+          "field": "bridge_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.CloseBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Local"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "Cancelled"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.bridge.BridgeClosed",
+          "payload": {
+            "cause": "Local",
+            "reason": "Cancelled"
+          },
+          "shape": {
+            "bridge_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "cause": {
+              "holds": "enum",
+              "variants": [
+                "Local",
+                "Remote",
+                "Transport",
+                "Refused"
+              ]
+            },
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConfirmBridge",
+          "actor": "softphone.bridge.Kernel",
+          "input": {
+            "answer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 203.0.113.7"
+            },
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConfirmBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.bridge.BridgeStateConflict",
+          "fields": {
+            "state": "Closed"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "cause": {
+                "kind": "literal",
+                "value": "Local"
+              },
+              "endpoint": {
+                "kind": "literal",
+                "value": "wss://phone.dev.test/phone"
+              },
+              "local_sdp": {
+                "kind": "literal",
+                "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+              },
+              "session_id": {
+                "kind": "instance",
+                "instance": "session"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Closed"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "remote_sdp": {
+                "kind": "literal",
+                "value": "v=0 o=- 0 0 IN IP4 203.0.113.7"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.bridge"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.ServerEndpoint"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.SessionDescription"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.bridge.BridgeSession"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.CloseBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConfirmBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConnectBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConfirmBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeClosed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConnecting"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.bridge.BridgeStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.bridge.BridgeById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.BridgeHost"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.Kernel"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.bridge/authored/adversary-a-refused-close-leaves-the-bridge-where-it-was": {
+      "purpose": "A refused second CloseBridge leaves the closed bridge in the store, still Closed.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Bridge"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:2003@asterisk.dev.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "bridge-ad02"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConnectBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "endpoint": {
+              "kind": "literal",
+              "value": "wss://phone.dev.test/phone"
+            },
+            "offer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "bridge",
+          "entity": "softphone.bridge.BridgeSession",
+          "event": "softphone.bridge.BridgeConnecting",
+          "field": "bridge_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.CloseBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Local"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "Cancelled"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.bridge.BridgeClosed",
+          "payload": {
+            "cause": "Local",
+            "reason": "Cancelled"
+          },
+          "shape": {
+            "bridge_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "cause": {
+              "holds": "enum",
+              "variants": [
+                "Local",
+                "Remote",
+                "Transport",
+                "Refused"
+              ]
+            },
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.CloseBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Local"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "Completed"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.bridge.BridgeStateConflict",
+          "fields": {
+            "state": "Closed"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeClosed"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "cause": {
+                "kind": "literal",
+                "value": "Local"
+              },
+              "endpoint": {
+                "kind": "literal",
+                "value": "wss://phone.dev.test/phone"
+              },
+              "local_sdp": {
+                "kind": "literal",
+                "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Closed"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.bridge"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.ServerEndpoint"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.SessionDescription"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.bridge.BridgeSession"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.CloseBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConnectBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeClosed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConnecting"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.bridge.BridgeStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.bridge.BridgeById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.BridgeHost"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.bridge/authored/adversary-a-refused-confirm-does-not-write-the-answer": {
+      "purpose": "A refused ConfirmBridge does not record the answer it refused.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Bridge"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:2004@asterisk.dev.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "bridge-ad04"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConnectBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "endpoint": {
+              "kind": "literal",
+              "value": "wss://phone.dev.test/phone"
+            },
+            "offer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "bridge",
+          "entity": "softphone.bridge.BridgeSession",
+          "event": "softphone.bridge.BridgeConnecting",
+          "field": "bridge_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.CloseBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Local"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "Cancelled"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.bridge.BridgeClosed",
+          "payload": {
+            "cause": "Local",
+            "reason": "Cancelled"
+          },
+          "shape": {
+            "bridge_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "cause": {
+              "holds": "enum",
+              "variants": [
+                "Local",
+                "Remote",
+                "Transport",
+                "Refused"
+              ]
+            },
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConfirmBridge",
+          "actor": "softphone.bridge.Kernel",
+          "input": {
+            "answer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 198.51.100.9"
+            },
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConfirmBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.bridge.BridgeStateConflict",
+          "fields": {
+            "state": "Closed"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "local_sdp": {
+                "kind": "literal",
+                "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Closed"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.bridge.BridgeById",
+          "params": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.bridge.BridgeById",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "remote_sdp": {
+                "kind": "literal",
+                "value": "v=0 o=- 0 0 IN IP4 198.51.100.9"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.bridge"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.ServerEndpoint"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.SessionDescription"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.bridge.BridgeSession"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.CloseBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConfirmBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConnectBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConfirmBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeClosed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConnecting"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.bridge.BridgeStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.bridge.BridgeById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.BridgeHost"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.Kernel"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
     "softphone.bridge/authored/bridge-carries-outbound-call": {
       "purpose": "A media session over the bridge binding carries a dialled call, answered, then hung up.",
       "steps": [
@@ -1244,6 +2451,771 @@
         {
           "kind": "actor",
           "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.bridge/authored/refusals-on-a-closed-bridge": {
+      "purpose": "A closed bridge refuses the answer, a second close and a failure, and publishes nothing.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Bridge"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:2002@asterisk.dev.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "bridge-3d72"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConnectBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "endpoint": {
+              "kind": "literal",
+              "value": "wss://phone.dev.test/phone"
+            },
+            "offer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 0.0.0.0"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "bridge",
+          "entity": "softphone.bridge.BridgeSession",
+          "event": "softphone.bridge.BridgeConnecting",
+          "field": "bridge_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.CloseBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Local"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "Cancelled"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.bridge.BridgeClosed",
+          "payload": {
+            "cause": "Local",
+            "reason": "Cancelled"
+          },
+          "shape": {
+            "bridge_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "cause": {
+              "holds": "enum",
+              "variants": [
+                "Local",
+                "Remote",
+                "Transport",
+                "Refused"
+              ]
+            },
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.ConfirmBridge",
+          "actor": "softphone.bridge.Kernel",
+          "input": {
+            "answer": {
+              "kind": "literal",
+              "value": "v=0 o=- 0 0 IN IP4 203.0.113.7"
+            },
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.ConfirmBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.bridge.BridgeStateConflict",
+          "fields": {
+            "state": "Closed"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.CloseBridge",
+          "actor": "softphone.bridge.BridgeHost",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Local"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "Completed"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.bridge.BridgeStateConflict",
+          "fields": {
+            "state": "Closed"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeClosed"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.bridge.FailBridge",
+          "actor": "softphone.bridge.Kernel",
+          "input": {
+            "bridge_id": {
+              "kind": "instance",
+              "instance": "bridge"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Transport"
+            },
+            "reason": {
+              "kind": "literal",
+              "value": "TransportLost"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.bridge.FailBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.bridge.BridgeStateConflict",
+          "fields": {
+            "state": "Closed"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.bridge.BridgeFailed"
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.bridge"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.BridgeSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.ServerEndpoint"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.bridge.SessionDescription"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.bridge.BridgeSession"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.CloseBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConfirmBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.ConnectBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.bridge.FailBridge"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "closed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.CloseBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConfirmBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.ConnectBridge",
+            "outcome": "connecting"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.bridge.FailBridge",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeClosed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConfirmed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeConnecting"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.bridge.BridgeFailed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.bridge.BridgeStateConflict"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.BridgeHost"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.bridge.Kernel"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.control/authored/a-refusal-leaves-the-call-where-it-was": {
+      "purpose": "A refused Answer leaves the ended call in the store, still Ended.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:mallory@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Reject",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "status": {
+              "kind": "literal",
+              "value": 486.0
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Reject",
+            "outcome": "rejected"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallRejected",
+          "payload": {
+            "status": 486.0
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "status": {
+              "holds": "primitive",
+              "kind": "integer"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Answer",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Answer",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallAnswered"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.control.CallById",
+          "params": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.control.CallById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.control.CallById",
+          "params": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.control.CallById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "state": {
+                "kind": "literal",
+                "value": "Ended"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.Call.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallDirection"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RejectStatus"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Answer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.OfferCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Reject"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Answer",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Reject",
+            "outcome": "rejected"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallAnswered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallOffered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallRejected"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.control.CallStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.control.CallById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
         }
       ]
     },
@@ -2886,6 +4858,1093 @@
         }
       ]
     },
+    "softphone.control/authored/refusals-on-an-ended-call": {
+      "purpose": "Every command that declares a wrong-state branch refuses an ended call and publishes nothing.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfigureEndpoint",
+          "actor": "softphone.control.Human",
+          "input": {
+            "default_binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Desk"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "phone",
+          "entity": "softphone.control.PhoneEndpoint",
+          "event": "softphone.control.EndpointConfigured",
+          "field": "endpoint_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:mallory@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "call",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Reject",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "status": {
+              "kind": "literal",
+              "value": 486.0
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Reject",
+            "outcome": "rejected"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.control.CallRejected",
+          "payload": {
+            "status": 486.0
+          },
+          "shape": {
+            "call_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "status": {
+              "holds": "primitive",
+              "kind": "integer"
+            }
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallAnswered"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Answer",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Answer",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallAnswered"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.ConfirmAnswer",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.ConfirmAnswer",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallConfirmed"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallRinging"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.MediaConnected",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallEstablished"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Reject",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "status": {
+              "kind": "literal",
+              "value": 486.0
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Reject",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallRejected"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.FailCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            },
+            "cause": {
+              "kind": "literal",
+              "value": "Remote"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.FailCall",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.control.CallStateConflict",
+          "fields": {
+            "state": "Ended"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallFailed"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.HangUp",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.HangUp",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.control.CallHungUp"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.OfferCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "endpoint_id": {
+              "kind": "instance",
+              "instance": "phone"
+            },
+            "remote": {
+              "kind": "literal",
+              "value": "sip:second@example.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "second",
+          "entity": "softphone.control.Call",
+          "event": "softphone.control.CallOffered",
+          "field": "call_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.RingCall",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "second"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.Answer",
+          "actor": "softphone.control.Human",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "second"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.Answer",
+            "outcome": "answered"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.control.MediaConnected",
+          "actor": "softphone.control.Kernel",
+          "input": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "second"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.control.CallById",
+          "params": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.control.CallById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.control.CallById",
+          "params": {
+            "call_id": {
+              "kind": "instance",
+              "instance": "call"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.control.CallById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "direction": {
+                "kind": "literal",
+                "value": "Inbound"
+              },
+              "held": {
+                "kind": "literal",
+                "value": false
+              },
+              "muted": {
+                "kind": "literal",
+                "value": false
+              },
+              "remote": {
+                "kind": "literal",
+                "value": "sip:mallory@example.test"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Ended"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.control.ActiveCalls"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.control.ActiveCalls",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "call_id": {
+                "kind": "instance",
+                "instance": "second"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.control.ActiveCalls"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.control.ActiveCalls",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "call_id": {
+                "kind": "instance",
+                "instance": "call"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.control"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.Call.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallDirection"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.CallId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.EndpointId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RejectStatus"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.Call"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.control.PhoneEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Answer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfigureEndpoint"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.ConfirmAnswer"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.FailCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.HangUp"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.MediaConnected"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.OfferCall"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.Reject"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.control.RingCall"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Answer",
+            "outcome": "answered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Answer",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfigureEndpoint",
+            "outcome": "configured"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.ConfirmAnswer",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.FailCall",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.HangUp",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "established"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.MediaConnected",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.OfferCall",
+            "outcome": "offered"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Reject",
+            "outcome": "rejected"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.Reject",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "ringing"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.control.RingCall",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallAnswered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallConfirmed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallEstablished"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallFailed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallHungUp"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallOffered"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallRejected"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.CallRinging"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.control.EndpointConfigured"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.control.CallStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.control.ActiveCalls"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.control.CallById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Human"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.control.Kernel"
+        }
+      ]
+    },
+    "softphone.directory/authored/adversary-a-compound-filter-view-is-read-by-its-parameter": {
+      "purpose": "ContactAddresses answers one contact's live address, not the store's.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddContact",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "display_name": {
+              "kind": "literal",
+              "value": "Bob Fenwick"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddContact",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "bob",
+          "entity": "softphone.directory.Contact",
+          "event": "softphone.directory.ContactAdded",
+          "field": "contact_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddContact",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "display_name": {
+              "kind": "literal",
+              "value": "Carol Ide"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddContact",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "carol",
+          "entity": "softphone.directory.Contact",
+          "event": "softphone.directory.ContactAdded",
+          "field": "contact_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address": {
+              "kind": "literal",
+              "value": "sip:bob@example.test"
+            },
+            "contact_id": {
+              "kind": "instance",
+              "instance": "bob"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Work"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "work",
+          "entity": "softphone.directory.ContactAddress",
+          "event": "softphone.directory.ContactAddressAdded",
+          "field": "address_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address": {
+              "kind": "literal",
+              "value": "sip:bob.mobile@example.test"
+            },
+            "contact_id": {
+              "kind": "instance",
+              "instance": "bob"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Mobile"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "mobile",
+          "entity": "softphone.directory.ContactAddress",
+          "event": "softphone.directory.ContactAddressAdded",
+          "field": "address_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.AddAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address": {
+              "kind": "literal",
+              "value": "sip:carol@example.test"
+            },
+            "contact_id": {
+              "kind": "instance",
+              "instance": "carol"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Work"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "elsewhere",
+          "entity": "softphone.directory.ContactAddress",
+          "event": "softphone.directory.ContactAddressAdded",
+          "field": "address_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.directory.RemoveAddress",
+          "actor": "softphone.directory.Human",
+          "input": {
+            "address_id": {
+              "kind": "instance",
+              "instance": "mobile"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.directory.RemoveAddress",
+            "outcome": "removed"
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.directory.ContactAddresses",
+          "params": {
+            "contact_id": {
+              "kind": "instance",
+              "instance": "bob"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.directory.ContactAddresses",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.directory.ContactAddresses",
+          "params": {
+            "contact_id": {
+              "kind": "instance",
+              "instance": "bob"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.directory.ContactAddresses",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "address": {
+                "kind": "literal",
+                "value": "sip:bob@example.test"
+              },
+              "label": {
+                "kind": "literal",
+                "value": "Work"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Active"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.directory.ContactAddresses",
+          "params": {
+            "contact_id": {
+              "kind": "instance",
+              "instance": "bob"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.directory.ContactAddresses",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "address_id": {
+                "kind": "instance",
+                "instance": "mobile"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.directory.ContactAddresses",
+          "params": {
+            "contact_id": {
+              "kind": "instance",
+              "instance": "bob"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.directory.ContactAddresses",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "address_id": {
+                "kind": "instance",
+                "instance": "elsewhere"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.directory"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.control.RemoteAddress"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.AddressLabel"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.ContactAddress.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.ContactAddressId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.directory.ContactId"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.directory.Contact"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.directory.ContactAddress"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.AddAddress"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.AddContact"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.directory.RemoveAddress"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.AddAddress",
+            "outcome": "added"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.AddContact",
+            "outcome": "added"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.directory.RemoveAddress",
+            "outcome": "removed"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.directory.ContactAdded"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.directory.ContactAddressAdded"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.directory.ContactAddresses"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.directory.Human"
+        }
+      ]
+    },
     "softphone.directory/authored/phonebook-contact-and-address": {
       "purpose": "A contact is added with two addresses, one is removed, and the contact is deleted.",
       "steps": [
@@ -3118,6 +6177,620 @@
         {
           "kind": "actor",
           "name": "softphone.directory.Human"
+        }
+      ]
+    },
+    "softphone.media/authored/adversary-a-refused-activation-leaves-the-profile-alone": {
+      "purpose": "A refused second activation leaves the live session's profile as it was opened.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:frank@example.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "sess-ad01"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.ActivateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.media.SessionActivated",
+          "shape": {
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.ActivateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.media.MediaSessionStateConflict",
+          "fields": {
+            "state": "Live"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.media.SessionActivated"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.media.MediaSessionById",
+          "params": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.media.MediaSessionById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.media.MediaSessionById",
+          "params": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.media.MediaSessionById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "binding": {
+                "kind": "literal",
+                "value": "Sip"
+              },
+              "session_ref": {
+                "kind": "literal",
+                "value": "sess-ad01"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Live"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.media.MediaSessionById",
+          "params": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.media.MediaSessionById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "participant": {
+                "kind": "literal",
+                "value": {
+                  "reference": "sip:frank@example.test",
+                  "trust": "Untrusted"
+                }
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.media.MediaSessionById",
+          "params": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.media.MediaSessionById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "profile": {
+                "kind": "literal",
+                "value": {
+                  "channels": 1.0,
+                  "frame_bytes": 320.0,
+                  "packet_time_ms": 20.0,
+                  "sample_format": "PcmS16Le",
+                  "sample_rate_hz": 8000.0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.media"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.ActivateSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionActivated"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.media.MediaSessionStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.media.MediaSessionById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.media/authored/adversary-a-refused-termination-leaves-the-session-where-it-was": {
+      "purpose": "A refused second TerminateSession leaves the terminated session in the store.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:grace@example.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "sess-ad03"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.ActivateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.TerminateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "reason": {
+              "kind": "literal",
+              "value": "RemoteHangup"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "terminated"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.media.SessionTerminated",
+          "payload": {
+            "reason": "RemoteHangup"
+          },
+          "shape": {
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.TerminateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "reason": {
+              "kind": "literal",
+              "value": "Completed"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.media.MediaSessionStateConflict",
+          "fields": {
+            "state": "Terminated"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.media.SessionTerminated"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.media.MediaSessionById",
+          "params": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.media.MediaSessionById",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.media.MediaSessionById",
+          "params": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.media.MediaSessionById",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "session_ref": {
+                "kind": "literal",
+                "value": "sess-ad03"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Terminated"
+              },
+              "termination": {
+                "kind": "literal",
+                "value": "RemoteHangup"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.media"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.ActivateSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.TerminateSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "terminated"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionTerminated"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.media.MediaSessionStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.media.MediaSessionById"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
         }
       ]
     },
@@ -3366,6 +7039,1166 @@
         {
           "kind": "actor",
           "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.media/authored/refusals-on-a-repeated-session-move": {
+      "purpose": "A session already Live refuses a second activation, and a terminated one a second termination.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.media.OpenSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "binding": {
+              "kind": "literal",
+              "value": "Sip"
+            },
+            "participant": {
+              "kind": "literal",
+              "value": {
+                "reference": "sip:erin@example.test",
+                "trust": "Untrusted"
+              }
+            },
+            "profile": {
+              "kind": "literal",
+              "value": {
+                "channels": 1.0,
+                "frame_bytes": 320.0,
+                "packet_time_ms": 20.0,
+                "sample_format": "PcmS16Le",
+                "sample_rate_hz": 8000.0
+              }
+            },
+            "session_ref": {
+              "kind": "literal",
+              "value": "sess-4c19"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.media.SessionOpened",
+          "payload": {
+            "binding": "Sip",
+            "participant": {
+              "reference": "sip:erin@example.test",
+              "trust": "Untrusted"
+            },
+            "profile": {
+              "channels": 1.0,
+              "frame_bytes": 320.0,
+              "packet_time_ms": 20.0,
+              "sample_format": "PcmS16Le",
+              "sample_rate_hz": 8000.0
+            },
+            "session_ref": "sess-4c19"
+          },
+          "shape": {
+            "binding": {
+              "holds": "enum",
+              "variants": [
+                "Sip",
+                "Bridge",
+                "Loopback"
+              ]
+            },
+            "participant.display": {
+              "holds": "primitive",
+              "kind": "string",
+              "optional": true
+            },
+            "participant.reference": {
+              "holds": "primitive",
+              "kind": "string"
+            },
+            "participant.trust": {
+              "holds": "enum",
+              "variants": [
+                "Untrusted"
+              ]
+            },
+            "profile.channels": {
+              "holds": "primitive",
+              "kind": "integer"
+            },
+            "profile.frame_bytes": {
+              "holds": "primitive",
+              "kind": "integer"
+            },
+            "profile.packet_time_ms": {
+              "holds": "primitive",
+              "kind": "integer"
+            },
+            "profile.sample_format": {
+              "holds": "enum",
+              "variants": [
+                "PcmS16Le"
+              ]
+            },
+            "profile.sample_rate_hz": {
+              "holds": "primitive",
+              "kind": "integer"
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            },
+            "session_ref": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "session",
+          "entity": "softphone.media.MediaSession",
+          "event": "softphone.media.SessionOpened",
+          "field": "session_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.ActivateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.media.SessionActivated",
+          "shape": {
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.media.SessionTerminated"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.ActivateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.media.MediaSessionStateConflict",
+          "fields": {
+            "state": "Live"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.media.SessionActivated"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.TerminateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "reason": {
+              "kind": "literal",
+              "value": "RemoteHangup"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "terminated"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.media.SessionTerminated",
+          "payload": {
+            "reason": "RemoteHangup"
+          },
+          "shape": {
+            "reason": {
+              "holds": "enum",
+              "variants": [
+                "Completed",
+                "Cancelled",
+                "RemoteHangup",
+                "AuthorityRevoked",
+                "LeaseExpired",
+                "MediaOverload",
+                "TransportLost",
+                "ProtocolError"
+              ]
+            },
+            "session_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.media.TerminateSession",
+          "actor": "softphone.media.SessionHost",
+          "input": {
+            "reason": {
+              "kind": "literal",
+              "value": "Completed"
+            },
+            "session_id": {
+              "kind": "instance",
+              "instance": "session"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.media.MediaSessionStateConflict",
+          "fields": {
+            "state": "Terminated"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.media.SessionTerminated"
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.media"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.BindingKind"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.ContextTrust"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaProfile"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSession.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.MediaSessionId"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.Participant"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SampleFormat"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.SessionRef"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.media.TerminationReason"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.media.MediaSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.ActivateSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.OpenSession"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.media.TerminateSession"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "activated"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.ActivateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.OpenSession",
+            "outcome": "opened"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "terminated"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.media.TerminateSession",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionActivated"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionOpened"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.media.SessionTerminated"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.media.MediaSessionStateConflict"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.media.SessionHost"
+        }
+      ]
+    },
+    "softphone.presence/authored/presence-announces-and-sees-another": {
+      "purpose": "A phone announces itself, is confirmed, sees two other phones, and one of them departs.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.AnnouncePresence",
+          "actor": "softphone.presence.PresenceHost",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "ada@phone.dev.test"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Ada"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.AnnouncePresence",
+            "outcome": "announcing"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.presence.PresenceAnnounced",
+          "payload": {
+            "handle": "ada@phone.dev.test",
+            "label": "Ada"
+          },
+          "shape": {
+            "handle": {
+              "holds": "primitive",
+              "kind": "string"
+            },
+            "label": {
+              "holds": "primitive",
+              "kind": "string"
+            },
+            "presence_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "me",
+          "entity": "softphone.presence.Presence",
+          "event": "softphone.presence.PresenceAnnounced",
+          "field": "presence_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.ConfirmPresence",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "presence_id": {
+              "kind": "instance",
+              "instance": "me"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.ConfirmPresence",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.NotePresent",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "grace@phone.dev.test"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Grace"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.NotePresent",
+            "outcome": "noted"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.presence.PeerPresent",
+          "payload": {
+            "handle": "grace@phone.dev.test",
+            "label": "Grace"
+          },
+          "shape": {
+            "handle": {
+              "holds": "primitive",
+              "kind": "string"
+            },
+            "label": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.NotePresent",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "alan@phone.dev.test"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Alan"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.NotePresent",
+            "outcome": "noted"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.NoteGone",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "alan@phone.dev.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.NoteGone",
+            "outcome": "noted"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.presence.PeerGone",
+          "payload": {
+            "handle": "alan@phone.dev.test"
+          },
+          "shape": {
+            "handle": {
+              "holds": "primitive",
+              "kind": "string"
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PresentPhones"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PresentPhones",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PresentPhones"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PresentPhones",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "handle": {
+                "kind": "literal",
+                "value": "grace@phone.dev.test"
+              },
+              "label": {
+                "kind": "literal",
+                "value": "Grace"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Present"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PresentPhones"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PresentPhones",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "handle": {
+                "kind": "literal",
+                "value": "alan@phone.dev.test"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PhoneByHandle",
+          "params": {
+            "handle": {
+              "kind": "literal",
+              "value": "alan@phone.dev.test"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PhoneByHandle",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "label": {
+                "kind": "literal",
+                "value": "Alan"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Gone"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.MyPresence"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.MyPresence",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.MyPresence"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.MyPresence",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "handle": {
+                "kind": "literal",
+                "value": "ada@phone.dev.test"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Present"
+              }
+            }
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PresentPhones"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PresentPhones",
+          "expectation": {
+            "expect": "excludes",
+            "fields": {
+              "handle": {
+                "kind": "literal",
+                "value": "ada@phone.dev.test"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.presence"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.DisplayName"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PeerPhone.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PhoneHandle"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.Presence.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PresenceCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PresenceId"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.presence.Presence"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.AnnouncePresence"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.ConfirmPresence"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.NoteGone"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.NotePresent"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.AnnouncePresence",
+            "outcome": "announcing"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.ConfirmPresence",
+            "outcome": "confirmed"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.NoteGone",
+            "outcome": "noted"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.NotePresent",
+            "outcome": "noted"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PeerGone"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PeerPresent"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PresenceAnnounced"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.presence.MyPresence"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.presence.PhoneByHandle"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.presence.PresentPhones"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.presence.Kernel"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.presence.PresenceHost"
+        }
+      ]
+    },
+    "softphone.presence/authored/refusals-on-a-withdrawn-presence": {
+      "purpose": "A withdrawn presence cannot be confirmed and a departed phone cannot depart again.",
+      "steps": [
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.AnnouncePresence",
+          "actor": "softphone.presence.PresenceHost",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "ada@phone.dev.test"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Ada"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.AnnouncePresence",
+            "outcome": "announcing"
+          }
+        },
+        {
+          "step": "capture_instance",
+          "instance": "me",
+          "entity": "softphone.presence.Presence",
+          "event": "softphone.presence.PresenceAnnounced",
+          "field": "presence_id"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.WithdrawPresence",
+          "actor": "softphone.presence.PresenceHost",
+          "input": {
+            "presence_id": {
+              "kind": "instance",
+              "instance": "me"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.WithdrawPresence",
+            "outcome": "withdrawn"
+          }
+        },
+        {
+          "step": "expect_event",
+          "event": "softphone.presence.PresenceWithdrawn",
+          "shape": {
+            "presence_id": {
+              "holds": "primitive",
+              "kind": "uuid"
+            }
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.ConfirmPresence",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "presence_id": {
+              "kind": "instance",
+              "instance": "me"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.ConfirmPresence",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.presence.PresenceStateConflict",
+          "fields": {
+            "state": "Withdrawn"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.presence.PresenceConfirmed"
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.NotePresent",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "grace@phone.dev.test"
+            },
+            "label": {
+              "kind": "literal",
+              "value": "Grace"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.NotePresent",
+            "outcome": "noted"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.NoteGone",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "grace@phone.dev.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.NoteGone",
+            "outcome": "noted"
+          }
+        },
+        {
+          "step": "execute_command",
+          "command": "softphone.presence.NoteGone",
+          "actor": "softphone.presence.Kernel",
+          "input": {
+            "handle": {
+              "kind": "literal",
+              "value": "grace@phone.dev.test"
+            }
+          }
+        },
+        {
+          "step": "expect_outcome",
+          "outcome": {
+            "command": "softphone.presence.NoteGone",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "step": "expect_error",
+          "error": "softphone.presence.PeerPhoneStateConflict",
+          "fields": {
+            "state": "Gone"
+          }
+        },
+        {
+          "step": "expect_no_event",
+          "event": "softphone.presence.PeerGone"
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.MyPresence"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.MyPresence",
+          "expectation": {
+            "expect": "counts",
+            "at_most": 0
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PresentPhones"
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PresentPhones",
+          "expectation": {
+            "expect": "counts",
+            "at_most": 0
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PhoneByHandle",
+          "params": {
+            "handle": {
+              "kind": "literal",
+              "value": "grace@phone.dev.test"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PhoneByHandle",
+          "expectation": {
+            "expect": "counts",
+            "at_least": 1,
+            "at_most": 1
+          }
+        },
+        {
+          "step": "query_view",
+          "view": "softphone.presence.PhoneByHandle",
+          "params": {
+            "handle": {
+              "kind": "literal",
+              "value": "grace@phone.dev.test"
+            }
+          }
+        },
+        {
+          "step": "expect_view",
+          "view": "softphone.presence.PhoneByHandle",
+          "expectation": {
+            "expect": "contains",
+            "fields": {
+              "label": {
+                "kind": "literal",
+                "value": "Grace"
+              },
+              "state": {
+                "kind": "literal",
+                "value": "Gone"
+              }
+            }
+          }
+        }
+      ],
+      "source": [
+        {
+          "kind": "domain",
+          "name": "softphone.presence"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.DisplayName"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PeerPhone.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PhoneHandle"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.Presence.State"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PresenceCause"
+        },
+        {
+          "kind": "type",
+          "name": "softphone.presence.PresenceId"
+        },
+        {
+          "kind": "entity",
+          "name": "softphone.presence.Presence"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.AnnouncePresence"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.ConfirmPresence"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.NoteGone"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.NotePresent"
+        },
+        {
+          "kind": "command",
+          "name": "softphone.presence.WithdrawPresence"
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.AnnouncePresence",
+            "outcome": "announcing"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.ConfirmPresence",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.NoteGone",
+            "outcome": "noted"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.NoteGone",
+            "outcome": "wrong-state"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.NotePresent",
+            "outcome": "noted"
+          }
+        },
+        {
+          "kind": "outcome",
+          "name": {
+            "command": "softphone.presence.WithdrawPresence",
+            "outcome": "withdrawn"
+          }
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PeerGone"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PresenceAnnounced"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PresenceConfirmed"
+        },
+        {
+          "kind": "event",
+          "name": "softphone.presence.PresenceWithdrawn"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.presence.PeerPhoneStateConflict"
+        },
+        {
+          "kind": "error",
+          "name": "softphone.presence.PresenceStateConflict"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.presence.MyPresence"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.presence.PhoneByHandle"
+        },
+        {
+          "kind": "view",
+          "name": "softphone.presence.PresentPhones"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.presence.Kernel"
+        },
+        {
+          "kind": "actor",
+          "name": "softphone.presence.PresenceHost"
         }
       ]
     },

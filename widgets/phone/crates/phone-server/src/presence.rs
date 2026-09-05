@@ -57,7 +57,10 @@ impl Registry {
     /// The fan-out happens here rather than at the call site so that a phone can never appear in
     /// the table without the others being told — the two are one critical section.
     pub fn announce(&self, handle: &str, label: &str, say: UnboundedSender<ToBrowser>) -> Claimed {
-        let mut phones = self.phones.lock().expect("the registry lock is never poisoned");
+        let mut phones = self
+            .phones
+            .lock()
+            .expect("the registry lock is never poisoned");
         if phones.contains_key(handle) {
             return Claimed::Refused;
         }
@@ -90,7 +93,10 @@ impl Registry {
     /// refuses a second `NoteGone` with a `wrong-state`, and a server that produced one would be
     /// making every page report a conflict for something it did correctly.
     pub fn depart(&self, handle: &str) {
-        let mut phones = self.phones.lock().expect("the registry lock is never poisoned");
+        let mut phones = self
+            .phones
+            .lock()
+            .expect("the registry lock is never poisoned");
         if phones.remove(handle).is_none() {
             return;
         }

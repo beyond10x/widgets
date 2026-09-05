@@ -103,6 +103,24 @@
       "name": "softphone.media.SessionHost"
     },
     {
+      "display": "Signalling kernel",
+      "may": [
+        "softphone.presence.ConfirmPresence",
+        "softphone.presence.FailPresence",
+        "softphone.presence.NoteGone",
+        "softphone.presence.NotePresent"
+      ],
+      "name": "softphone.presence.Kernel"
+    },
+    {
+      "display": "Presence host",
+      "may": [
+        "softphone.presence.AnnouncePresence",
+        "softphone.presence.WithdrawPresence"
+      ],
+      "name": "softphone.presence.PresenceHost"
+    },
+    {
       "display": "Human",
       "may": [
         "softphone.presentation.AttributeTile",
@@ -1229,6 +1247,194 @@
       ]
     },
     {
+      "display": "Announce presence",
+      "name": "softphone.presence.AnnouncePresence",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presence.PresenceAnnounced"
+          ],
+          "name": "announcing",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "handle",
+              "target": "handle"
+            },
+            {
+              "from": "label",
+              "target": "label"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presence.Presence",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Confirm presence",
+      "name": "softphone.presence.ConfirmPresence",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presence.PresenceConfirmed"
+          ],
+          "name": "confirmed",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presence.Presence",
+            "from": [
+              "Announcing"
+            ],
+            "kind": "moves",
+            "to": "Present",
+            "transition": "confirm"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Fail presence",
+      "name": "softphone.presence.FailPresence",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presence.PresenceFailed"
+          ],
+          "name": "failed",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "cause",
+              "target": "cause"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presence.Presence",
+            "from": [
+              "Announcing",
+              "Present"
+            ],
+            "kind": "moves",
+            "to": "Withdrawn",
+            "transition": "withdraw"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Note gone",
+      "name": "softphone.presence.NoteGone",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presence.PeerGone"
+          ],
+          "name": "noted",
+          "refuses": true,
+          "sets": [],
+          "subject": {
+            "entity": "softphone.presence.PeerPhone",
+            "from": [
+              "Present"
+            ],
+            "kind": "moves",
+            "to": "Gone",
+            "transition": "depart"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
+      "display": "Note present",
+      "name": "softphone.presence.NotePresent",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presence.PeerPresent"
+          ],
+          "name": "noted",
+          "refuses": true,
+          "sets": [
+            {
+              "from": "label",
+              "target": "label"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presence.PeerPhone",
+            "from": [],
+            "kind": "creates",
+            "to": null,
+            "transition": null
+          }
+        }
+      ]
+    },
+    {
+      "display": "Withdraw presence",
+      "name": "softphone.presence.WithdrawPresence",
+      "outcomes": [
+        {
+          "emits": [
+            "softphone.presence.PresenceWithdrawn"
+          ],
+          "name": "withdrawn",
+          "refuses": true,
+          "sets": [
+            {
+              "from": null,
+              "target": "cause"
+            }
+          ],
+          "subject": {
+            "entity": "softphone.presence.Presence",
+            "from": [
+              "Announcing",
+              "Present"
+            ],
+            "kind": "moves",
+            "to": "Withdrawn",
+            "transition": "withdraw"
+          }
+        },
+        {
+          "emits": [],
+          "name": "wrong-state",
+          "refuses": true,
+          "sets": [],
+          "subject": null
+        }
+      ]
+    },
+    {
       "display": "Attribute tile",
       "name": "softphone.presentation.AttributeTile",
       "outcomes": [
@@ -2024,6 +2230,41 @@
       ]
     },
     {
+      "display": "PeerPhone",
+      "fields": [
+        "label"
+      ],
+      "identity": "handle",
+      "initial": "Present",
+      "name": "softphone.presence.PeerPhone",
+      "states": [
+        "Gone",
+        "Present"
+      ],
+      "terminal": [
+        "Gone"
+      ]
+    },
+    {
+      "display": "Presence",
+      "fields": [
+        "handle",
+        "label",
+        "cause"
+      ],
+      "identity": "presence_id",
+      "initial": "Announcing",
+      "name": "softphone.presence.Presence",
+      "states": [
+        "Announcing",
+        "Present",
+        "Withdrawn"
+      ],
+      "terminal": [
+        "Withdrawn"
+      ]
+    },
+    {
       "display": "CallTile",
       "fields": [
         "call_id",
@@ -2347,6 +2588,49 @@
       "params": [
         "session_id"
       ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "My presence",
+      "entity": "softphone.presence.Presence",
+      "fields": [
+        "presence_id",
+        "handle",
+        "label",
+        "cause",
+        "state"
+      ],
+      "filter": "state == Present",
+      "name": "softphone.presence.MyPresence",
+      "params": []
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Phone by handle",
+      "entity": "softphone.presence.PeerPhone",
+      "fields": [
+        "handle",
+        "label",
+        "state"
+      ],
+      "filter": "handle == param.handle",
+      "name": "softphone.presence.PhoneByHandle",
+      "params": [
+        "handle"
+      ]
+    },
+    {
+      "consistency": "read_your_writes",
+      "display": "Present phones",
+      "entity": "softphone.presence.PeerPhone",
+      "fields": [
+        "handle",
+        "label",
+        "state"
+      ],
+      "filter": "state == Present",
+      "name": "softphone.presence.PresentPhones",
+      "params": []
     },
     {
       "consistency": "read_your_writes",

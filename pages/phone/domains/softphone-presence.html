@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<!--
+  generated from softphone v1
+  model digest 522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e
+  contract digest ac3ebcbb85aa66ce78c6add077d0f2a298ebe79b578d5370a557dfeff79b96d6
+  do not edit: regenerate with `ess generate`
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Presence · softphone</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="shell">
+<nav class="sidebar">
+<a class="masthead" href="../index.html">
+<span class="system">softphone</span><span class="version">v1</span>
+</a>
+<div class="nav">
+<a href="../index.html">softphone v1</a>
+<a href="../crossings.html">Type crossings</a>
+<div class="group">domains</div>
+<a class="nested" href="softphone-bridge.html">Media bridge</a>
+<a class="nested" href="softphone-control.html">Phone control</a>
+<a class="nested" href="softphone-directory.html">Phonebook</a>
+<a class="nested" href="softphone-history.html">Call history</a>
+<a class="nested" href="softphone-local.html">Local binding</a>
+<a class="nested" href="softphone-media.html">Media session</a>
+<a class="nested" href="softphone-presence.html" aria-current="page">Presence</a>
+<a class="nested" href="softphone-presentation.html">Phone console</a>
+<a class="nested" href="softphone-sip.html">SIP binding</a>
+<a href="../interactions.html">Interactions</a>
+<div class="group">plan</div>
+<a class="nested" href="../plan/obligations.html">plan/obligations</a>
+<a href="../topology.html">Topology</a>
+</div>
+</nav>
+<main>
+<article class="content">
+<h1>Presence</h1>
+<p>This phone&#39;s standing with the server it announced itself to, and the other phones it has been told about. One roster per page, told rather than shared.</p>
+<p><code>softphone.presence</code> is one of softphone&#39;s bounded contexts. <a href="../index.html">Back to the index</a>.</p>
+<h2 id="types">Types</h2>
+<h3 id="displayname"><code>DisplayName</code></h3>
+<p><code>softphone.presence.DisplayName</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="peerphonerow"><code>PeerPhoneRow</code></h3>
+<p><code>softphone.presence.PeerPhoneRow</code> is a record of three fields:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+<li><code>state</code> — <code>softphone.presence.PeerPhone.State</code></li>
+</ul>
+<h3 id="phonehandle"><code>PhoneHandle</code></h3>
+<p><code>softphone.presence.PhoneHandle</code> wraps <code>String</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="presencecause"><code>PresenceCause</code></h3>
+<p><code>softphone.presence.PresenceCause</code> is one of <code>Local</code>, <code>Transport</code> and <code>Refused</code>.</p>
+<h3 id="presenceid"><code>PresenceId</code></h3>
+<p><code>softphone.presence.PresenceId</code> wraps <code>Uuid</code> and is not interchangeable with one: the whole value of naming it separately is the crossings the model then refuses.</p>
+<h3 id="presencerow"><code>PresenceRow</code></h3>
+<p><code>softphone.presence.PresenceRow</code> is a record of five fields:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+<li><code>cause</code> — <code>Optional&lt;softphone.presence.PresenceCause&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.presence.Presence.State</code></li>
+</ul>
+<p>Two of the types above are reached by nothing else in this system: <code>softphone.presence.PeerPhoneRow</code> and <code>softphone.presence.PresenceRow</code>. No entity, view, command, event, error or crossing names them, so it is either vocabulary something outside this specification uses or a leftover — and only a person can tell which.</p>
+<h2 id="entities">Entities</h2>
+<p>An entity is what this context is about: something with an identity that outlives any one request, a shape, and a lifecycle. The lifecycle is exhaustive — a move that is not drawn below is a move this specification does not permit, and that is the only way it says so. Every move is labelled with the command that takes it, because a move nothing can trigger is refused rather than drawn.</p>
+<h3 id="peerphone"><code>PeerPhone</code></h3>
+<p><code>softphone.presence.PeerPhone</code>.</p>
+<p>An instance is identified by <code>handle</code>, a <code>softphone.presence.PhoneHandle</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>No invariant is declared, so nothing here constrains an instance at rest.</p>
+<p>Its state is a <code>softphone.presence.PeerPhone.State</code>, one of <code>Gone</code> and <code>Present</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Present</code>. <code>Gone</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Present
+    Present --&gt; Gone: depart (NoteGone)
+    Gone --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>depart</code> — taken by <code>softphone.presence.NoteGone</code> on its <code>noted</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.presence.NotePresent</code> on its <code>noted</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Gone</code> may not become <code>Present</code></li>
+</ul>
+<p>Two views project it: <a href="#phonebyhandle"><code>PhoneByHandle</code></a> and <a href="#presentphones"><code>PresentPhones</code></a>.</p>
+<h3 id="presence"><code>Presence</code></h3>
+<p><code>softphone.presence.Presence</code>.</p>
+<p>An instance is identified by <code>presence_id</code>, a <code>softphone.presence.PresenceId</code>. The name is part of the model and not a convention: a view projects the identity under that name, so a projection inventing its own would disagree with the view.</p>
+<p>It holds:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+<li><code>cause</code> — <code>Optional&lt;softphone.presence.PresenceCause&gt;</code>, which may be absent</li>
+</ul>
+<p>It declares no relation to another entity, and no other entity names it.</p>
+<p>Every instance satisfies <code>(not (state == Withdrawn) or defined(cause))</code> — a predicate over this entity&#39;s own fields, checked against them rather than stored as a sentence, so an invariant reading something the entity does not have is refused instead of documented.</p>
+<p>Its state is a <code>softphone.presence.Presence.State</code>, one of <code>Announcing</code>, <code>Present</code> and <code>Withdrawn</code>. That enum is synthesised from the lifecycle rather than declared beside it, so the states a view&#39;s filter compares and the states drawn below cannot disagree.</p>
+<p>An instance is created in <code>Announcing</code>. <code>Withdrawn</code> is terminal, so an instance may rest there forever. That is declared rather than inferred from having no way out: an entity that cannot leave a state is either finished or stuck, and only its author knows which.</p>
+<pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Announcing
+    Announcing --&gt; Present: confirm (ConfirmPresence)
+    Announcing --&gt; Withdrawn: withdraw (FailPresence, WithdrawPresence)
+    Present --&gt; Withdrawn: withdraw (FailPresence, WithdrawPresence)
+    Withdrawn --&gt; [*]</pre>
+<p>Each move is taken by a declared command outcome, and a move nothing takes is refused as <code>missing_causation</code> rather than left as a state change nobody can trigger:</p>
+<ul>
+<li><code>confirm</code> — taken by <code>softphone.presence.ConfirmPresence</code> on its <code>confirmed</code> outcome</li>
+<li><code>withdraw</code> — taken by <code>softphone.presence.FailPresence</code> on its <code>failed</code> outcome and <code>softphone.presence.WithdrawPresence</code> on its <code>withdrawn</code> outcome</li>
+</ul>
+<p>An instance is brought into existence by <code>softphone.presence.AnnouncePresence</code> on its <code>announcing</code> outcome.</p>
+<p>Illegal transitions are illegal by absence: no rule forbids them, there is simply no arrow, because a rule would be a second place for the same truth to live. A diagram cannot show an absence, so the pairs it does not connect are listed here, derived from the same transitions — anything named below is a move this specification does not permit.</p>
+<ul>
+<li><code>Present</code> may not become <code>Announcing</code></li>
+<li><code>Withdrawn</code> may not become <code>Announcing</code></li>
+<li><code>Withdrawn</code> may not become <code>Present</code></li>
+</ul>
+<p>One view projects it: <a href="#mypresence"><code>MyPresence</code></a>.</p>
+<h2 id="views">Views</h2>
+<p>A view is what the outside world is promised it can observe. Each one says which instances it contains and how soon it reflects a command that has already returned, because &quot;you can read this&quot; without &quot;how soon&quot; is the promise every flaky suite is built on.</p>
+<h3 id="mypresence"><code>MyPresence</code></h3>
+<p><code>softphone.presence.MyPresence</code>, shown to a person as &quot;My presence&quot; and called <code>my-presence</code> on the wire.</p>
+<p>It reads <a href="#presence"><code>Presence</code></a>.</p>
+<p>It contains the instances where <code>state == Present</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+<li><code>cause</code> — <code>Optional&lt;softphone.presence.PresenceCause&gt;</code>, which may be absent</li>
+<li><code>state</code> — <code>softphone.presence.Presence.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="phonebyhandle"><code>PhoneByHandle</code></h3>
+<p><code>softphone.presence.PhoneByHandle</code>, shown to a person as &quot;Phone by handle&quot; and called <code>phone-by-handle</code> on the wire.</p>
+<p>It reads <a href="#peerphone"><code>PeerPhone</code></a>.</p>
+<p>It contains the instances where <code>handle == param.handle</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+<li><code>state</code> — <code>softphone.presence.PeerPhone.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h3 id="presentphones"><code>PresentPhones</code></h3>
+<p><code>softphone.presence.PresentPhones</code>, shown to a person as &quot;Present phones&quot; and called <code>present-phones</code> on the wire.</p>
+<p>It reads <a href="#peerphone"><code>PeerPhone</code></a>.</p>
+<p>It contains the instances where <code>state == Present</code> holds, and only those — so an instance a caller cannot find in here has been filtered out rather than lost.</p>
+<p>It exposes:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+<li><code>state</code> — <code>softphone.presence.PeerPhone.State</code></li>
+</ul>
+<p>It declares no order, so the rows come back in whatever order the implementation has, and two reads may disagree.</p>
+<p><strong>Read-your-writes</strong>: it is current the moment the command that changed it returns. A caller that has just created an invoice and cannot see it in here has been told a lie about what it did.</p>
+<p>A generated scenario asserts it once, immediately after the command: a view promising this and not keeping the promise has to fail the suite rather than be retried until it passes.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="announcepresence"><code>AnnouncePresence</code></h3>
+<p><code>softphone.presence.AnnouncePresence</code>, shown to a person as &quot;Announce presence&quot; and called <code>announce-presence</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>announcing</code></strong> — The only outcome that creates a `Presence`. The handle is asked for rather than assigned: the server accepts it or refuses it, and until then this phone is reachable by nobody. The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.presence.Presence</code>, which starts in <code>Announcing</code>. The new instance&#39;s identity is published as <code>presence_id</code> on <code>softphone.presence.PresenceAnnounced</code>. It emits <code>softphone.presence.PresenceAnnounced</code>. It sets <code>handle</code> from <code>input.handle</code> and <code>label</code> from <code>input.label</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="confirmpresence"><code>ConfirmPresence</code></h3>
+<p><code>softphone.presence.ConfirmPresence</code>, shown to a person as &quot;Confirm presence&quot; and called <code>confirm-presence</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>confirmed</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presence.Presence</code> from <code>Announcing</code> to <code>Present</code>, along the declared move <code>confirm</code>. The instance is the one named by the input field <code>presence_id</code>. It emits <code>softphone.presence.PresenceConfirmed</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presence.Presence</code> in <code>Present</code> and <code>Withdrawn</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presence.PresenceStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="failpresence"><code>FailPresence</code></h3>
+<p><code>softphone.presence.FailPresence</code>, shown to a person as &quot;Fail presence&quot; and called <code>fail-presence</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+<li><code>cause</code> — <code>softphone.presence.PresenceCause</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>failed</code></strong> — A handle somebody else holds and a connection that died are the same move with a different cause. Both leave this phone unreachable, which is the only thing the roster can act on. The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presence.Presence</code> from <code>Announcing</code> and <code>Present</code> to <code>Withdrawn</code>, along the declared move <code>withdraw</code>. The instance is the one named by the input field <code>presence_id</code>. It emits <code>softphone.presence.PresenceFailed</code>. It sets <code>cause</code> from <code>input.cause</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presence.Presence</code> in <code>Withdrawn</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presence.PresenceStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="notegone"><code>NoteGone</code></h3>
+<p><code>softphone.presence.NoteGone</code>, shown to a person as &quot;Note gone&quot; and called <code>note-gone</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>noted</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presence.PeerPhone</code> from <code>Present</code> to <code>Gone</code>, along the declared move <code>depart</code>. The instance is the one named by the input field <code>handle</code>. It emits <code>softphone.presence.PeerGone</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presence.PeerPhone</code> in <code>Gone</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presence.PeerPhoneStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h3 id="notepresent"><code>NotePresent</code></h3>
+<p><code>softphone.presence.NotePresent</code>, shown to a person as &quot;Note present&quot; and called <code>note-present</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+</ul>
+<p>It has one outcome.</p>
+<p><strong><code>noted</code></strong> — The default branch, taken when no other outcome&#39;s condition matched. It creates a <code>softphone.presence.PeerPhone</code>, which starts in <code>Present</code>. The new instance&#39;s identity is published as <code>handle</code> on <code>softphone.presence.PeerPresent</code>. It emits <code>softphone.presence.PeerPresent</code>. It sets <code>label</code> from <code>input.label</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<h3 id="withdrawpresence"><code>WithdrawPresence</code></h3>
+<p><code>softphone.presence.WithdrawPresence</code>, shown to a person as &quot;Withdraw presence&quot; and called <code>withdraw-presence</code> on the wire.</p>
+<p>It takes:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+</ul>
+<p>It has two outcomes.</p>
+<p><strong><code>withdrawn</code></strong> — The cause is not an input. This command is the local decision, so `Local` is the only class it could carry, and asking the caller for it would let a page report its own withdrawal as a transport failure. The default branch, taken when no other outcome&#39;s condition matched. It moves a <code>softphone.presence.Presence</code> from <code>Announcing</code> and <code>Present</code> to <code>Withdrawn</code>, along the declared move <code>withdraw</code>. The instance is the one named by the input field <code>presence_id</code>. It emits <code>softphone.presence.PresenceWithdrawn</code>. It sets <code>cause</code> from <code>&quot;Local&quot;</code>. A test reaches it by constructing an input that satisfies no other outcome&#39;s condition.</p>
+<p><strong><code>wrong-state</code></strong> — Taken when the subject is resting in a state none of this command&#39;s moves start from — a <code>softphone.presence.Presence</code> in <code>Withdrawn</code>, which is what is left of the lifecycle once this command&#39;s own moves are taken away. The document lists none of it. No entity in this specification changes. It reports <code>softphone.presence.PresenceStateConflict</code>, carrying <code>state</code>. It emits nothing. A test reaches it by driving an instance into one of those states and then issuing the command, because no input selects this branch.</p>
+<h2 id="events">Events</h2>
+<h3 id="peergone"><code>PeerGone</code></h3>
+<p><code>softphone.presence.PeerGone</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+</ul>
+<p>Emitted by <code>softphone.presence.NoteGone</code> on its <code>noted</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="peerpresent"><code>PeerPresent</code></h3>
+<p><code>softphone.presence.PeerPresent</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+</ul>
+<p>Emitted by <code>softphone.presence.NotePresent</code> on its <code>noted</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="presenceannounced"><code>PresenceAnnounced</code></h3>
+<p><code>softphone.presence.PresenceAnnounced</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+<li><code>handle</code> — <code>softphone.presence.PhoneHandle</code></li>
+<li><code>label</code> — <code>softphone.presence.DisplayName</code></li>
+</ul>
+<p>Emitted by <code>softphone.presence.AnnouncePresence</code> on its <code>announcing</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="presenceconfirmed"><code>PresenceConfirmed</code></h3>
+<p><code>softphone.presence.PresenceConfirmed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presence.ConfirmPresence</code> on its <code>confirmed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="presencefailed"><code>PresenceFailed</code></h3>
+<p><code>softphone.presence.PresenceFailed</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+<li><code>cause</code> — <code>softphone.presence.PresenceCause</code></li>
+</ul>
+<p>Emitted by <code>softphone.presence.FailPresence</code> on its <code>failed</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h3 id="presencewithdrawn"><code>PresenceWithdrawn</code></h3>
+<p><code>softphone.presence.PresenceWithdrawn</code>.</p>
+<p>It carries:</p>
+<ul>
+<li><code>presence_id</code> — <code>softphone.presence.PresenceId</code></li>
+</ul>
+<p>Emitted by <code>softphone.presence.WithdrawPresence</code> on its <code>withdrawn</code> outcome.</p>
+<p>Nothing in this system reacts to it.</p>
+<h2 id="errors">Errors</h2>
+<h3 id="peerphonestateconflict"><code>PeerPhoneStateConflict</code></h3>
+<p>The phone is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.presence.PeerPhone.State</code></li>
+</ul>
+<p>Reported by <code>softphone.presence.NoteGone</code> on its <code>wrong-state</code> outcome.</p>
+<h3 id="presencestateconflict"><code>PresenceStateConflict</code></h3>
+<p>The presence is not in a state from which the requested change is allowed.</p>
+<p>It carries:</p>
+<ul>
+<li><code>state</code> — <code>softphone.presence.Presence.State</code></li>
+</ul>
+<p>Reported by <code>softphone.presence.ConfirmPresence</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.presence.FailPresence</code> on its <code>wrong-state</code> outcome.</p>
+<p>Reported by <code>softphone.presence.WithdrawPresence</code> on its <code>wrong-state</code> outcome.</p>
+<h2 id="actors">Actors</h2>
+<p>An actor is who may ask this context for something. Every grant below points at a command this specification declares — a grant is a resolved reference, so &quot;may invoke&quot; something nobody wrote is not a permission this model can express, and an authorisation that authorises nothing cannot ship quietly.</p>
+<h3 id="kernel"><code>Kernel</code></h3>
+<p><code>softphone.presence.Kernel</code>, shown to a person as &quot;Signalling kernel&quot;.</p>
+<p>It may invoke <a href="#confirmpresence"><code>ConfirmPresence</code></a>, <a href="#failpresence"><code>FailPresence</code></a>, <a href="#notegone"><code>NoteGone</code></a> and <a href="#notepresent"><code>NotePresent</code></a>.</p>
+<h3 id="presencehost"><code>PresenceHost</code></h3>
+<p><code>softphone.presence.PresenceHost</code>, shown to a person as &quot;Presence host&quot;.</p>
+<p>It may invoke <a href="#announcepresence"><code>AnnouncePresence</code></a> and <a href="#withdrawpresence"><code>WithdrawPresence</code></a>.</p>
+<ul>
+</ul>
+</article>
+<footer class="provenance">
+Generated from softphone v1 · model digest <code>522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e</code> · contract digest <code>ac3ebcbb85aa66ce78c6add077d0f2a298ebe79b578d5370a557dfeff79b96d6</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+</footer>
+</main>
+</div>
+<script type="module">
+const diagrams = document.querySelectorAll("pre.mermaid");
+if (diagrams.length > 0) {
+  // A script element, not `import`: the bundle publishes itself with a top-level `var`, and a
+  // top-level `var` in a module is scoped to the module, so importing it throws.
+  await new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = "../assets/mermaid.min.js";
+    tag.addEventListener("load", resolve);
+    tag.addEventListener("error", reject);
+    document.head.append(tag);
+  });
+  globalThis.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "strict",
+    theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default",
+  });
+  await globalThis.mermaid.run({ querySelector: "pre.mermaid" });
+}
+</script>
+</body>
+</html>

@@ -58,10 +58,7 @@ fn the_second_phone_learns_of_the_first_and_the_first_of_it() {
     // joining as a return value, and the phones already there get a command each.
     assert_eq!(
         claimed,
-        Claimed::Accepted(vec![(
-            "ada@phone.dev.test".to_owned(),
-            "Ada".to_owned()
-        )]),
+        Claimed::Accepted(vec![("ada@phone.dev.test".to_owned(), "Ada".to_owned())]),
         "the joining phone is answered with who is already here"
     );
     assert_eq!(

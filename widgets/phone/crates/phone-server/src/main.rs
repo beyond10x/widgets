@@ -18,8 +18,8 @@ use std::net::{IpAddr, SocketAddr};
 
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
-use phone_server::session::{self, apply, relay, Config, Live, OpenFailed, Phone};
 use phone_server::presence::{Claimed, Registry};
+use phone_server::session::{self, apply, relay, Config, Live, OpenFailed, Phone};
 use phone_server::wire::{BridgeCause, FromBrowser, PresenceCause, TerminationReason, ToBrowser};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
@@ -188,7 +188,9 @@ async fn serve(
                 label,
             } => {
                 if claimed.is_some() {
-                    tracing::warn!("a second handle on a channel that already claimed one; refused");
+                    tracing::warn!(
+                        "a second handle on a channel that already claimed one; refused"
+                    );
                     let _ = say.send(ToBrowser::FailPresence {
                         presence_id: presence_id.clone(),
                         cause: PresenceCause::Refused,

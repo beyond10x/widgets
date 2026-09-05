@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!--
   generated from softphone v1
-  model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
-  contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
+  model digest 522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e
+  contract digest a716fbbbe26b7fdd24cf69b5441a8a7a57b304f349ef2e63e6705b0c329ffd20
   do not edit: regenerate with `ess generate`
 -->
 <html lang="en">
@@ -28,6 +28,7 @@
 <a class="nested" href="../domains/softphone-history.html">Call history</a>
 <a class="nested" href="../domains/softphone-local.html">Local binding</a>
 <a class="nested" href="../domains/softphone-media.html">Media session</a>
+<a class="nested" href="../domains/softphone-presence.html">Presence</a>
 <a class="nested" href="../domains/softphone-presentation.html">Phone console</a>
 <a class="nested" href="../domains/softphone-sip.html">SIP binding</a>
 <a href="../interactions.html">Interactions</a>
@@ -41,7 +42,7 @@
 <h1>plan/obligations</h1>
 <h2 id="synthesis-plan---softphone-v1">Synthesis plan — softphone v1</h2>
 <p>Scope: <code>component-skeletons</code>, planned by <code>ess-synth</code>. Regenerate with <code>ess synthesize</code>.</p>
-<p>344 capabilities: <strong>248 generated</strong>, <strong>75 obligations</strong>, <strong>21 refused</strong>. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.</p>
+<p>384 capabilities: <strong>276 generated</strong>, <strong>84 obligations</strong>, <strong>24 refused</strong>. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.</p>
 <h2 id="generated">Generated</h2>
 <table>
 <thead>
@@ -91,6 +92,14 @@
 <tr><td>domain type</td><td><code>softphone.media.SampleFormat</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.media.SessionRef</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.media.TerminationReason</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.DisplayName</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.PeerPhone.State</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.PeerPhoneRow</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.PhoneHandle</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.Presence.State</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.PresenceCause</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.PresenceId</code></td></tr>
+<tr><td>domain type</td><td><code>softphone.presence.PresenceRow</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.presentation.CallTile.State</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.presentation.CallTileId</code></td></tr>
 <tr><td>domain type</td><td><code>softphone.presentation.CallTileRow</code></td></tr>
@@ -120,6 +129,8 @@
 <tr><td>entity lifecycle</td><td><code>softphone.history.CallRecord</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.local.LoopbackDevice</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.media.MediaSession</code></td></tr>
+<tr><td>entity lifecycle</td><td><code>softphone.presence.PeerPhone</code></td></tr>
+<tr><td>entity lifecycle</td><td><code>softphone.presence.Presence</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.presentation.CallTile</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.presentation.Console</code></td></tr>
 <tr><td>entity lifecycle</td><td><code>softphone.presentation.Keypad</code></td></tr>
@@ -159,6 +170,12 @@
 <tr><td>command contract</td><td><code>softphone.media.ReceiveSignal</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.media.SendSignal</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.media.TerminateSession</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.presence.AnnouncePresence</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.presence.ConfirmPresence</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.presence.FailPresence</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.presence.NoteGone</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.presence.NotePresent</code></td></tr>
+<tr><td>command contract</td><td><code>softphone.presence.WithdrawPresence</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.presentation.AttributeTile</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.presentation.ClearEntry</code></td></tr>
 <tr><td>command contract</td><td><code>softphone.presentation.DismissCall</code></td></tr>
@@ -216,6 +233,12 @@
 <tr><td>event type</td><td><code>softphone.media.SessionTerminated</code></td></tr>
 <tr><td>event type</td><td><code>softphone.media.SignalReceived</code></td></tr>
 <tr><td>event type</td><td><code>softphone.media.SignalSent</code></td></tr>
+<tr><td>event type</td><td><code>softphone.presence.PeerGone</code></td></tr>
+<tr><td>event type</td><td><code>softphone.presence.PeerPresent</code></td></tr>
+<tr><td>event type</td><td><code>softphone.presence.PresenceAnnounced</code></td></tr>
+<tr><td>event type</td><td><code>softphone.presence.PresenceConfirmed</code></td></tr>
+<tr><td>event type</td><td><code>softphone.presence.PresenceFailed</code></td></tr>
+<tr><td>event type</td><td><code>softphone.presence.PresenceWithdrawn</code></td></tr>
 <tr><td>event type</td><td><code>softphone.presentation.CallDismissed</code></td></tr>
 <tr><td>event type</td><td><code>softphone.presentation.CallShown</code></td></tr>
 <tr><td>event type</td><td><code>softphone.presentation.ConsoleDialing</code></td></tr>
@@ -246,6 +269,8 @@
 <tr><td>error type</td><td><code>softphone.history.CallRecordStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.local.LoopbackDeviceStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.media.MediaSessionStateConflict</code></td></tr>
+<tr><td>error type</td><td><code>softphone.presence.PeerPhoneStateConflict</code></td></tr>
+<tr><td>error type</td><td><code>softphone.presence.PresenceStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.presentation.CallTileStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.presentation.ConsoleStateConflict</code></td></tr>
 <tr><td>error type</td><td><code>softphone.sip.RegistrationStateConflict</code></td></tr>
@@ -263,6 +288,9 @@
 <tr><td>view type</td><td><code>softphone.local.LoopbackDeviceById</code></td></tr>
 <tr><td>view type</td><td><code>softphone.media.LiveSessions</code></td></tr>
 <tr><td>view type</td><td><code>softphone.media.MediaSessionById</code></td></tr>
+<tr><td>view type</td><td><code>softphone.presence.MyPresence</code></td></tr>
+<tr><td>view type</td><td><code>softphone.presence.PhoneByHandle</code></td></tr>
+<tr><td>view type</td><td><code>softphone.presence.PresentPhones</code></td></tr>
 <tr><td>view type</td><td><code>softphone.presentation.CallTiles</code></td></tr>
 <tr><td>view type</td><td><code>softphone.presentation.ConsoleById</code></td></tr>
 <tr><td>view type</td><td><code>softphone.presentation.KeypadById</code></td></tr>
@@ -295,6 +323,7 @@
 <tr><td>component port</td><td><code>phone-console</code></td></tr>
 <tr><td>component port</td><td><code>phone-control</code></td></tr>
 <tr><td>component port</td><td><code>phone-directory</code></td></tr>
+<tr><td>component port</td><td><code>phone-presence</code></td></tr>
 <tr><td>component port</td><td><code>sip-binding</code></td></tr>
 </tbody>
 </table>
@@ -338,6 +367,12 @@
 <tr><td>command behaviour</td><td><code>softphone.media.ReceiveSignal</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.media.ReceiveSignal</code> input, decide and enact exactly one outcome — <code>received</code> otherwise, emits <code>softphone.media.SignalReceived</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.media.SendSignal</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.media.SendSignal</code> input, decide and enact exactly one outcome — <code>sent</code> otherwise, emits <code>softphone.media.SignalSent</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.media.TerminateSession</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.media.TerminateSession</code> input, decide and enact exactly one outcome — <code>terminated</code> otherwise, takes <code>terminate</code> of <code>softphone.media.MediaSession</code>, emits <code>softphone.media.SessionTerminated</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.media.MediaSessionStateConflict</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.presence.AnnouncePresence</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presence.AnnouncePresence</code> input, decide and enact exactly one outcome — <code>announcing</code> otherwise, creates <code>softphone.presence.Presence</code>, emits <code>softphone.presence.PresenceAnnounced</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.presence.ConfirmPresence</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presence.ConfirmPresence</code> input, decide and enact exactly one outcome — <code>confirmed</code> otherwise, takes <code>confirm</code> of <code>softphone.presence.Presence</code>, emits <code>softphone.presence.PresenceConfirmed</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.presence.PresenceStateConflict</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.presence.FailPresence</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presence.FailPresence</code> input, decide and enact exactly one outcome — <code>failed</code> otherwise, takes <code>withdraw</code> of <code>softphone.presence.Presence</code>, emits <code>softphone.presence.PresenceFailed</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.presence.PresenceStateConflict</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.presence.NoteGone</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presence.NoteGone</code> input, decide and enact exactly one outcome — <code>noted</code> otherwise, takes <code>depart</code> of <code>softphone.presence.PeerPhone</code>, emits <code>softphone.presence.PeerGone</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.presence.PeerPhoneStateConflict</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.presence.NotePresent</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presence.NotePresent</code> input, decide and enact exactly one outcome — <code>noted</code> otherwise, creates <code>softphone.presence.PeerPhone</code>, emits <code>softphone.presence.PeerPresent</code></td></tr>
+<tr><td>command behaviour</td><td><code>softphone.presence.WithdrawPresence</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presence.WithdrawPresence</code> input, decide and enact exactly one outcome — <code>withdrawn</code> otherwise, takes <code>withdraw</code> of <code>softphone.presence.Presence</code>, emits <code>softphone.presence.PresenceWithdrawn</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.presence.PresenceStateConflict</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.presentation.AttributeTile</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presentation.AttributeTile</code> input, decide and enact exactly one outcome — <code>attributed</code> otherwise, updates <code>softphone.presentation.CallTile</code>, emits <code>softphone.presentation.TileAttributed</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.presentation.ClearEntry</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presentation.ClearEntry</code> input, decide and enact exactly one outcome — <code>cleared</code> otherwise, updates <code>softphone.presentation.Keypad</code>, emits <code>softphone.presentation.EntryCleared</code></td></tr>
 <tr><td>command behaviour</td><td><code>softphone.presentation.DismissCall</code></td><td>the contract is declared; the algorithm is not</td><td>given <code>softphone.presentation.DismissCall</code> input, decide and enact exactly one outcome — <code>dismissed</code> otherwise, takes <code>dismiss</code> of <code>softphone.presentation.CallTile</code>, emits <code>softphone.presentation.CallDismissed</code>; <code>wrong-state</code> from a state no declared move starts in, error <code>softphone.presentation.CallTileStateConflict</code></td></tr>
@@ -374,6 +409,9 @@
 <tr><td>view query</td><td><code>softphone.local.LoopbackDeviceById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.local.LoopbackDeviceById</code> with rows projected from <code>softphone.local.LoopbackDevice</code> at <code>read_your_writes</code> consistency, containing instances where <code>device_id == param.device_id</code></td></tr>
 <tr><td>view query</td><td><code>softphone.media.LiveSessions</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.media.LiveSessions</code> with rows projected from <code>softphone.media.MediaSession</code> at <code>read_your_writes</code> consistency, containing instances where <code>state == Live</code></td></tr>
 <tr><td>view query</td><td><code>softphone.media.MediaSessionById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.media.MediaSessionById</code> with rows projected from <code>softphone.media.MediaSession</code> at <code>read_your_writes</code> consistency, containing instances where <code>session_id == param.session_id</code></td></tr>
+<tr><td>view query</td><td><code>softphone.presence.MyPresence</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.presence.MyPresence</code> with rows projected from <code>softphone.presence.Presence</code> at <code>read_your_writes</code> consistency, containing instances where <code>state == Present</code></td></tr>
+<tr><td>view query</td><td><code>softphone.presence.PhoneByHandle</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.presence.PhoneByHandle</code> with rows projected from <code>softphone.presence.PeerPhone</code> at <code>read_your_writes</code> consistency, containing instances where <code>handle == param.handle</code></td></tr>
+<tr><td>view query</td><td><code>softphone.presence.PresentPhones</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.presence.PresentPhones</code> with rows projected from <code>softphone.presence.PeerPhone</code> at <code>read_your_writes</code> consistency, containing instances where <code>state == Present</code></td></tr>
 <tr><td>view query</td><td><code>softphone.presentation.CallTiles</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.presentation.CallTiles</code> with rows projected from <code>softphone.presentation.CallTile</code> at <code>read_your_writes</code> consistency, containing instances where <code>state == Shown</code></td></tr>
 <tr><td>view query</td><td><code>softphone.presentation.ConsoleById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.presentation.ConsoleById</code> with rows projected from <code>softphone.presentation.Console</code> at <code>read_your_writes</code> consistency, containing instances where <code>console_id == param.console_id</code></td></tr>
 <tr><td>view query</td><td><code>softphone.presentation.KeypadById</code></td><td>how the projection is kept current is a storage decision</td><td>a query answering <code>softphone.presentation.KeypadById</code> with rows projected from <code>softphone.presentation.Keypad</code> at <code>read_your_writes</code> consistency, containing instances where <code>keypad_id == param.keypad_id</code></td></tr>
@@ -397,6 +435,8 @@
 <tr><td>actor grants</td><td><code>softphone.history.Human</code></td><td>planning</td><td>may invoke <code>softphone.history.AttributeRecord</code>, <code>softphone.history.DeleteRecord</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.local.LocalHost</code></td><td>planning</td><td>may invoke <code>softphone.local.AttachLoopback</code>, <code>softphone.local.DetachLoopback</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.media.SessionHost</code></td><td>planning</td><td>may invoke <code>softphone.media.ActivateSession</code>, <code>softphone.media.InterruptOutput</code>, <code>softphone.media.OpenSession</code>, <code>softphone.media.ReceiveSignal</code>, <code>softphone.media.SendSignal</code>, <code>softphone.media.TerminateSession</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>actor grants</td><td><code>softphone.presence.Kernel</code></td><td>planning</td><td>may invoke <code>softphone.presence.ConfirmPresence</code>, <code>softphone.presence.FailPresence</code>, <code>softphone.presence.NoteGone</code>, <code>softphone.presence.NotePresent</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
+<tr><td>actor grants</td><td><code>softphone.presence.PresenceHost</code></td><td>planning</td><td>may invoke <code>softphone.presence.AnnouncePresence</code>, <code>softphone.presence.WithdrawPresence</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.presentation.Human</code></td><td>planning</td><td>may invoke <code>softphone.presentation.AttributeTile</code>, <code>softphone.presentation.ClearEntry</code>, <code>softphone.presentation.DismissCall</code>, <code>softphone.presentation.EnterCall</code>, <code>softphone.presentation.EnterDialing</code>, <code>softphone.presentation.EnterIncoming</code>, <code>softphone.presentation.LeaveCall</code>, <code>softphone.presentation.OpenConsole</code>, <code>softphone.presentation.OpenKeypad</code>, <code>softphone.presentation.PressKey</code>, <code>softphone.presentation.ShowCall</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.sip.Kernel</code></td><td>planning</td><td>may invoke <code>softphone.sip.ApplyRemoteMedia</code>, <code>softphone.sip.CloseDialog</code>, <code>softphone.sip.ConfirmRegistration</code>, <code>softphone.sip.FailRegistration</code>, <code>softphone.sip.RequestLocalMedia</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
 <tr><td>actor grants</td><td><code>softphone.sip.SipHost</code></td><td>planning</td><td>may invoke <code>softphone.sip.CloseDialog</code>, <code>softphone.sip.FailLocalMedia</code>, <code>softphone.sip.OfferLocalMedia</code>, <code>softphone.sip.OpenDialog</code>, <code>softphone.sip.RefreshRegistration</code>, <code>softphone.sip.Register</code>, <code>softphone.sip.RetryRegistration</code>, <code>softphone.sip.Unregister</code>; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling</td></tr>
@@ -407,12 +447,13 @@
 <tr><td>workload</td><td><code>phone-console</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 <tr><td>workload</td><td><code>phone-control</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 <tr><td>workload</td><td><code>phone-directory</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
+<tr><td>workload</td><td><code>phone-presence</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 <tr><td>workload</td><td><code>sip-binding</code></td><td>planning</td><td>requires at least 1 replica(s); topology synthesis is deferred with its design</td></tr>
 </tbody>
 </table>
 </article>
 <footer class="provenance">
-Generated from softphone v1 · model digest <code>3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6</code> · contract digest <code>b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
+Generated from softphone v1 · model digest <code>522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e</code> · contract digest <code>a716fbbbe26b7fdd24cf69b5441a8a7a57b304f349ef2e63e6705b0c329ffd20</code>. Do not edit this file; change the specification and regenerate it with <code>ess generate</code>.
 </footer>
 </main>
 </div>
