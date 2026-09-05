@@ -55,6 +55,14 @@ softphone-behaviour = { path = "crates/softphone-behaviour" }
 # `Codec::Opus` is absent without the feature, and `Accepted::codec` would then decline the offer
 # as an incomplete codec set instead of saying which codec at which rate and what to offer instead.
 # (This comment said the pair "transcodes" until correction round 1 measured what that does.)
+# Back at `=1.0.1`, the highest version published to crates.io, after measuring the alternative.
+#
+# The unreleased 1.1.0 tree was tried on 2026-09-05 because three merges had landed on
+# `crates/sipx-media/src/browser.rs` and `session.rs` since this tag — M-134, M-135, M-137,
+# including "Require ICE consent freshness before media" — and that is the code a browser leg's
+# bring-up runs. It changed nothing that matters here: the bring-up still never returns when a
+# browser's ICE fails, because `browser::prepare` awaits its supervisor task with no timeout of its
+# own. `browser::BRING_UP` in this crate is the bound, and it works against either version.
 sipx-call = "=1.0.1"
 sipx-media = { version = "=1.0.1", features = ["dtls", "opus"] }
 sipx-sdp = "=1.0.1"

@@ -67,6 +67,14 @@ pub enum OpenFailed {
     /// What the page asked to dial is not a URI.
     #[error("`{0}` is not a URI this server can dial")]
     NotDialable(String),
+    /// The browser leg neither came up nor failed within [`crate::browser::BRING_UP`].
+    ///
+    /// A class of its own rather than folded into [`Self::Browser`], because the two are different
+    /// faults: that one is an offer this server read and declined, this one is a leg that answered
+    /// nothing at all. A page shown the same word for both cannot tell "your browser offered
+    /// something I will not carry" from "your browser stopped talking to me".
+    #[error("the browser leg did not come up within {0:?}")]
+    BringUpTimedOut(std::time::Duration),
 }
 
 impl OpenFailed {
@@ -80,6 +88,9 @@ impl OpenFailed {
             Self::NoMediaPort(_) => (BridgeCause::Refused, TerminationReason::MediaOverload),
             Self::NoIdentity => (BridgeCause::Refused, TerminationReason::AuthorityRevoked),
             Self::NotDialable(_) => (BridgeCause::Refused, TerminationReason::ProtocolError),
+            // The connection to the page is fine; what stopped is the media path, and neither side
+            // closed it deliberately. `Transport` and `TransportLost` are the two words for that.
+            Self::BringUpTimedOut(_) => (BridgeCause::Transport, TerminationReason::TransportLost),
         };
         ToBrowser::FailBridge {
             bridge_id: bridge_id.clone(),
@@ -115,6 +126,9 @@ impl OpenFailed {
             Self::Browser(_) => EndCause::Media,
             // The media path could not be built on this side: no port, no certificate.
             Self::NoMediaPort(_) | Self::NoIdentity => EndCause::Media,
+            // Nor could it be built with the page: ICE never nominated a pair, or DTLS never
+            // finished. `Media` for the same reason `Browser` is — what failed is the audio.
+            Self::BringUpTimedOut(_) => EndCause::Media,
             // Nothing was ever dialled, so nothing refused or timed out. An address that is not a
             // URI is a signalling-layer fault, which is what `Sip` is for.
             Self::NotDialable(_) => EndCause::Sip,
@@ -207,7 +221,12 @@ impl Phone {
             answer: accepted.answer.clone(),
         });
 
-        let browser = Arc::new(
+        // Bounded, because the call underneath is not. `browser::BRING_UP` carries the measurement;
+        // what matters here is that an unbounded await at this point is invisible to everybody: the
+        // page has just been told `ConfirmBridge`, so it is waiting for a call that will never ring,
+        // and this process is holding a media socket for it for ever.
+        let started = tokio::time::timeout(
+            crate::browser::BRING_UP,
             leg.start(
                 accepted.remote_addr(),
                 codec,
@@ -215,9 +234,11 @@ impl Phone {
                 ice,
                 accepted.remote.fingerprint.clone(),
                 accepted.role,
-            )
-            .await?,
-        );
+            ),
+        )
+        .await
+        .map_err(|_| OpenFailed::BringUpTimedOut(crate::browser::BRING_UP))?;
+        let browser = Arc::new(started?);
 
         let (facts, reports) = unbounded_channel();
         let destination = Destination {

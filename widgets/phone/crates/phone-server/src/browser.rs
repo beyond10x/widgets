@@ -33,6 +33,24 @@ use crate::wire::{BridgeCause, TerminationReason};
 /// will not hear anything, and waiting longer only delays telling it so.
 pub const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// How long the whole browser bring-up may take before this server gives up on it.
+///
+/// Above [`HANDSHAKE_TIMEOUT`] on purpose, so that sipx's own budget fires first where it applies
+/// and this one catches only what that budget does not cover.
+///
+/// It has to exist because the budget above does not bound everything.
+/// `sipx_media`'s `browser::prepare` passes it into `prepare_inner` and then awaits the supervisor
+/// task with no timeout of its own (`crates/sipx-media/src/browser.rs:769` in 1.1.0), so a leg that
+/// never nominates an ICE pair leaves the await pending for ever. Measured 2026-09-05 against both
+/// 1.0.1 and the unreleased 1.1.0 tree: a browser whose `RTCPeerConnection` went to `failed` left
+/// `Phone::open` awaiting for 46 seconds and counting, with no INVITE placed, nothing logged, and a
+/// media socket still bound per attempt.
+///
+/// Without this, that is invisible: the page has already been told `ConfirmBridge`, so its bridge
+/// sits in `Live` and its call in `Requested` with nothing to move either.
+/// `story:a-browser-leg-that-never-comes-up-hangs-the-phone` carries the measurement.
+pub const BRING_UP: Duration = Duration::from_secs(15);
+
 /// The **audio** sampling rate of the SIP leg, which is G.711 and therefore always 8 kHz.
 ///
 /// `sip::SipLeg::options` builds `DialOptions::new`, whose default `MediaPolicy` is G.711 — so this
@@ -171,6 +189,24 @@ pub fn answer_offer(offer: &str, local: &BrowserAudioLocal) -> Result<Accepted, 
         reason: TerminationReason::ProtocolError,
         source: Refusal::NotSdp,
     })?;
+    // Both sides of the ICE check, named before the verdict. `ProfileError::IceRequired` is raised
+    // for our own gathered candidates and for the offer's, and the two are different faults with
+    // different owners — a server that logs one word for both leaves the reader guessing, which it
+    // did for an evening.
+    tracing::debug!(
+        local_candidates = local.candidates.len(),
+        local_port = local.port,
+        offered_candidates = offered
+            .media
+            .iter()
+            .map(|media| media
+                .attributes
+                .iter()
+                .filter(|a| a.name == "candidate")
+                .count())
+            .sum::<usize>(),
+        "answering a browser offer"
+    );
     let answer = sipx_sdp::browser_audio::answer(&offered, local)
         .map_err(refusal_of)?
         .to_string_sdp();
