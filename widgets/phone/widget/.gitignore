@@ -1,0 +1,3 @@
+node_modules/
+# Placed by `task widget-assets` out of `target/`, which is generated.
+public/softphone.wasm

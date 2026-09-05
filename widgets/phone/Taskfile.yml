@@ -158,9 +158,36 @@ tasks:
     # `crates/softphone-behaviour` fills every obligation and `crates/softphone-shell` installs it
     # into the generated web bridge through that bridge's own `install` seam, so the page, the wire
     # and the catalogue stay exactly as emitted.
+    #
+    # `-p softphone-shell` rather than the whole workspace, since `crates/phone-server` joined it:
+    # that crate is a native process with a SIP stack in it and does not build for wasm. `-p` here
+    # was chosen over `exclude` in the manifest because an excluded crate is not in the workspace
+    # at all, and `cargo test -p phone-server` from this directory would then not resolve it.
+    # `softphone-behaviour` is built anyway, as the shell's own dependency.
     deps: [synthesize]
     cmds:
-      - cargo build --release --target wasm32-unknown-unknown
+      - cargo build --release --target wasm32-unknown-unknown -p softphone-shell
+
+  server:
+    desc: Build and test phone-server — the process that holds the SIP leg.
+    # Hermetic: every case binds loopback endpoints and drives this crate's legs against sipx's own
+    # `answer` role in-process. Nothing here reaches the network, a second machine, or the `sipx`
+    # binary.
+    #
+    # `deps: [synthesize]` for the reason `impl` has it: `crates/softphone-behaviour` names the
+    # generated crates under `.build/` by path, so the whole workspace fails to resolve until
+    # `task synthesize` has run — even for a `-p` that does not depend on any of them.
+    #
+    # `--check -p phone-server` and not a workspace-wide `cargo fmt --check`, because the workspace
+    # is not fmt-clean today and was not before this crate existed: `cargo fmt --check` reports 17
+    # diffs, all six of them in `crates/softphone-behaviour/src/`, on the commit this crate was
+    # added to. Widening this step would put somebody else's pre-existing condition in the gate.
+    deps: [synthesize]
+    cmds:
+      - cargo build --release -p phone-server
+      - cargo test -p phone-server
+      - cargo clippy -p phone-server --all-targets -- -D warnings
+      - cargo fmt --check -p phone-server
 
   test:
     desc: Execute every authored scenario against the realized module.
@@ -174,15 +201,149 @@ tasks:
   phone:
     desc: Serve the phone itself — the generated page, over the realized module.
     deps: [impl]
-    # The page tries three paths and the last is `softphone_web.wasm` beside it, so the realized
-    # module is copied to that name. Its own comment says a host's realization answers this page;
-    # the candidate list is simply not parameterised by which crate built it.
+    # The module goes where the page looks **first**.
+    #
+    # The generated page tries three paths in order: the release target directory, the debug one,
+    # then `softphone_web.wasm` beside itself. That order is right for the layout the emitter
+    # expects — the page served from the generated workspace root, where `cargo build` really has
+    # left a module at the first path. This task assembles a directory instead, because the module
+    # it serves is the *realized* one from `crates/softphone-shell` rather than the generated
+    # system that refuses every command. Putting it at the third path worked and cost two 404s on
+    # every load, which reads as a broken page to anybody watching the log.
+    #
+    # The name is the page's, not ours: it loads `softphone_web.wasm` whoever built it, and the
+    # bridge's own `rlib` doc says a host's realization answers this page through the same exports.
+    #
+    # `PORT` is a variable because a hard-coded one is a trap: this session left a server of its own
+    # on 8741 and the next `task phone` could not bind. `task phone PORT=8750` is the way out.
+    vars:
+      PORT: '{{.PORT | default "8741"}}'
+      MODULE: target/wasm32-unknown-unknown/release
     cmds:
-      - rm -rf {{.OUT}}/phone && mkdir -p {{.OUT}}/phone
+      - rm -rf {{.OUT}}/phone && mkdir -p {{.OUT}}/phone/{{.MODULE}}
       - cp .build/synth/web/index.html .build/synth/web/bridge.js {{.OUT}}/phone/
-      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm {{.OUT}}/phone/softphone_web.wasm
-      - cmd: echo "http://127.0.0.1:8741/index.html"
-      - cd {{.OUT}}/phone && python3 -m http.server 8741 --bind 127.0.0.1
+      - cp {{.MODULE}}/softphone_shell.wasm {{.OUT}}/phone/{{.MODULE}}/softphone_web.wasm
+      - cmd: echo "http://127.0.0.1:{{.PORT}}/index.html"
+      - cd {{.OUT}}/phone && python3 -m http.server {{.PORT}} --bind 127.0.0.1
+
+  # ── the widget ──────────────────────────────────────────────────────────────
+  widget-install:
+    desc: The widget package's toolchain, from its own lockfile.
+    dir: widget
+    cmds:
+      - pnpm install --frozen-lockfile
+    sources: [package.json, pnpm-lock.yaml]
+    generates: [node_modules/.modules.yaml]
+
+  widget-assets:
+    desc: Place the realized module where the widget's harness serves it.
+    # The wasm is a build product of `crates/softphone-shell` and is gitignored inside the package
+    # for the same reason `.build/` is: it is determined by the specification, and a committed copy
+    # is a copy that can disagree with it. It lands in `public/`, which Vite copies into `dist/`, so
+    # the built package carries exactly one copy of it and the export map points there.
+    deps: [impl]
+    cmds:
+      - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm widget/public/softphone.wasm
+
+  widget-check:
+    desc: The widget's own gate — types, and every case that needs no browser.
+    # `pcmu-first.mjs` is pure and is decided here. `offer.mjs` needs an `RTCPeerConnection`,
+    # `call.ts` needs a WebSocket and `PhonePanel.vue` needs a DOM; none of the three is faked, so
+    # what proves them is `task widget` in a browser and nothing here pretends otherwise.
+    deps: [widget-install]
+    dir: widget
+    cmds:
+      - pnpm typecheck
+      - pnpm unit
+
+  widget-build:
+    desc: Build the mountable package — what a host imports.
+    deps: [widget-install, widget-assets]
+    dir: widget
+    cmds:
+      - pnpm build
+
+  widget:
+    desc: Serve the widget's own harness — the phone, with no devcenter in the way.
+    # `phone-server` has to be running for a call to go anywhere: `task call-local` starts one
+    # against a far end on this machine, and `task call-cluster` against the dev cluster's Asterisk.
+    deps: [widget-install, widget-assets]
+    dir: widget
+    cmds:
+      - pnpm dev
+
+  lints:
+    desc: Formatting and clippy, over the crates this application wrote.
+    # Package-scoped on purpose, twice over. `--all` reaches into `.build/`, whose crates are
+    # generated and carry `do not edit`, and rustfmt does not agree with all of them — a gate that
+    # fails on emitted code would demand editing it. And `softphone-shell` links the generated web
+    # bridge, which refuses to compile for anything but `wasm32-unknown-unknown`, so its lane names
+    # that target.
+    deps: [synthesize]
+    cmds:
+      - cargo fmt --check -p softphone-behaviour -p softphone-shell -p phone-server
+      - cargo clippy -p softphone-behaviour -p phone-server --all-targets -- -D warnings
+      - cargo clippy -p softphone-shell --target wasm32-unknown-unknown -- -D warnings
+
+  # ── running against a far end ───────────────────────────────────────────────
+  call-local:
+    desc: Run phone-server against a far end on this machine.
+    # The whole path with nothing external in it: the browser leg, the SIP leg, and `sipx answer`
+    # as the far end. Start `sipx answer --port 5080 --wait 60 --once` in another terminal first.
+    #
+    # Everything binds loopback, so `--media-address 127.0.0.1` is both what the sockets use and
+    # what the SDP advertises.
+    vars:
+      FAR: '{{.FAR | default "127.0.0.1:5080"}}'
+    deps: [server-build]
+    cmds:
+      - >-
+        target/release/phone-server
+        --listen 127.0.0.1:8780
+        --sip-bind 127.0.0.1:0
+        --sip-proxy {{.FAR}}
+        --from sip:phone@127.0.0.1
+        --media-address 127.0.0.1
+
+  call-cluster:
+    desc: Run phone-server against Asterisk in the dev cluster.
+    # Three deployment facts, and none of them is committed here.
+    #
+    # The address is resolved at run time rather than written down, because the service is headless
+    # — its `clusterIP` is `None`, so DNS answers pod addresses — and the service network is not
+    # routed from a workstation at all. What *is* routed is the pod network, over the WireGuard
+    # interface: `ip route get <pod>` answers `dev wg0 src <address>`, and that source address is
+    # what the SDP has to advertise, since a socket bound to `0.0.0.0` would advertise the wrong
+    # one of this machine's several addresses.
+    #
+    # `PHONE_NS` and `PHONE_SELECTOR` come from the environment. A namespace or a label in a
+    # committed file in a public repository is a deployment fact this repository does not own.
+    vars:
+      NS: '{{.PHONE_NS | default "latest"}}'
+      SELECTOR: '{{.PHONE_SELECTOR | default "io.kompose.service=asterisk"}}'
+      SIP_PORT: '{{.SIP_PORT | default "5062"}}'
+    deps: [server-build]
+    cmds:
+      - |
+        set -eu
+        pod="$(kubectl -n {{.NS}} get pod -l {{.SELECTOR}} \
+          -o jsonpath='{.items[0].status.podIP}')"
+        test -n "$pod" || { echo "no pod matched {{.SELECTOR}} in {{.NS}}"; exit 1; }
+        via="$(ip route get "$pod" | sed -n 's/.* src \([0-9.]*\).*/\1/p')"
+        test -n "$via" || { echo "no route to $pod — is the tunnel up?"; exit 1; }
+        echo "asterisk $pod:{{.SIP_PORT}}, advertising $via"
+        exec target/release/phone-server \
+          --listen 127.0.0.1:8780 \
+          --sip-bind "$via:0" \
+          --sip-proxy "$pod:{{.SIP_PORT}}" \
+          --from "sip:phone@$via" \
+          --media-address "$via"
+
+  server-build:
+    desc: Build phone-server without running its tests.
+    deps: [synthesize]
+    cmds:
+      - cargo build --release -p phone-server
 
   # ── the gates ───────────────────────────────────────────────────────────────
   check:
@@ -193,6 +354,8 @@ tasks:
       - task: scenarios
       - task: drift
       - task: test
+      - task: widget-check
+      - task: lints
 
   build:
     desc: Everything. Run this before pushing.
@@ -207,6 +370,7 @@ tasks:
       - task: pages
       - task: impl
       - task: test
+      - task: server
       - cmd: echo "built — every kind emitted, every code target compiled"
 
   clean:

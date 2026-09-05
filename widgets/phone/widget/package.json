@@ -1,0 +1,39 @@
+{
+  "name": "@b10x/phone-widget",
+  "version": "0.1.0",
+  "description": "The softphone as a mountable Vue component: the specification's own wasm system, one WebSocket, and one RTCPeerConnection.",
+  "license": "Apache-2.0",
+  "private": false,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./softphone.wasm": "./dist/softphone.wasm",
+    "./style.css": "./dist/phone-widget.css"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "vue-tsc --build --force",
+    "unit": "node --test test/*.test.mjs",
+    "build": "vite build && vue-tsc --build --force",
+    "check": "pnpm typecheck && pnpm unit"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.8",
+    "typescript": "5.9.3",
+    "vite": "8.2.2",
+    "vue": "3.5.42",
+    "vue-tsc": "3.3.11"
+  }
+}

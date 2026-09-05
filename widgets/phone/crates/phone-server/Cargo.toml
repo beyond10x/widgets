@@ -1,0 +1,29 @@
+[package]
+name = "phone-server"
+description = "Terminates one browser WebRTC audio leg, places one SIP call, and bridges them."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]
+bytes = { workspace = true }
+clap = { workspace = true }
+futures-util = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sipx-call = { workspace = true }
+sipx-media = { workspace = true }
+sipx-sdp = { workspace = true }
+sipx-sip = { workspace = true }
+sipx-transport = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[dev-dependencies]
+# The tests name `Codec::Opus` directly, which is the measurement behind the `opus` feature.
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }

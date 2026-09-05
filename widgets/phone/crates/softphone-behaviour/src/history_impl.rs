@@ -1,8 +1,8 @@
 //! `softphone.history` — the log of calls that finished.
 
+use softphone_types::control;
 use softphone_types::history::{self, obligations};
 use softphone_types::obligation::UnmetObligation;
-use softphone_types::{control, primitives};
 
 use crate::Behaviour;
 
@@ -37,7 +37,7 @@ impl obligations::RecordCallBehavior for Behaviour {
             .calls
             .iter()
             .find(|c| c.data.call_id == input.call_id)
-            .map(|c| (c.data.direction.clone(), c.data.remote.clone()));
+            .map(|c| (c.data.direction, c.data.remote.clone()));
         let timing = store
             .timings
             .iter()
@@ -72,7 +72,7 @@ impl obligations::RecordCallBehavior for Behaviour {
                 answered_at: timing.and_then(|t| t.answered_at),
                 termination: ending
                     .as_ref()
-                    .map_or(control::EndCause::Local, |e| e.cause.clone()),
+                    .map_or(control::EndCause::Local, |e| e.cause),
                 status: ending.and_then(|e| e.status),
             })));
         Ok(history::RecordCallOutcome::Recorded {
@@ -143,35 +143,28 @@ impl obligations::DeleteRecordBehavior for Behaviour {
     }
 }
 
-/// Every field of a record, in the order the row declares them.
-fn fields(
-    snapshot: &history::CallRecordSnapshot,
-) -> (
-    history::CallRecordId,
-    control::CallId,
-    Option<softphone_types::directory::ContactId>,
-    control::CallDirection,
-    control::RemoteAddress,
-    primitives::Timestamp,
-    primitives::Timestamp,
-    Option<primitives::Timestamp>,
-    control::EndCause,
-    Option<control::RejectStatus>,
-    history::CallRecordState,
-) {
-    (
-        snapshot.data.record_id.clone(),
-        snapshot.data.call_id.clone(),
-        snapshot.data.contact_id.clone(),
-        snapshot.data.direction.clone(),
-        snapshot.data.remote.clone(),
-        snapshot.data.started_at.clone(),
-        snapshot.data.ended_at.clone(),
-        snapshot.data.answered_at.clone(),
-        snapshot.data.termination.clone(),
-        snapshot.data.status.clone(),
-        snapshot.state,
-    )
+/// One record, in the shape a row of either view takes.
+///
+/// A macro rather than a function returning the eleven fields: the two row types are distinct
+/// types with identical fields, so nothing can be written once and used for both without naming a
+/// tuple of eleven — which is a type nobody can read and clippy refuses.
+macro_rules! row {
+    ($row:path, $snapshot:expr) => {{
+        let snapshot = $snapshot;
+        $row {
+            record_id: snapshot.data.record_id.clone(),
+            call_id: snapshot.data.call_id.clone(),
+            contact_id: snapshot.data.contact_id.clone(),
+            direction: snapshot.data.direction,
+            remote: snapshot.data.remote.clone(),
+            started_at: snapshot.data.started_at.clone(),
+            ended_at: snapshot.data.ended_at.clone(),
+            answered_at: snapshot.data.answered_at.clone(),
+            termination: snapshot.data.termination,
+            status: snapshot.data.status.clone(),
+            state: snapshot.state,
+        }
+    }};
 }
 
 impl obligations::CallRecordByIdQuery for Behaviour {
@@ -180,22 +173,7 @@ impl obligations::CallRecordByIdQuery for Behaviour {
         Ok(store
             .records
             .iter()
-            .map(|r| {
-                let f = fields(r);
-                history::CallRecordById {
-                    record_id: f.0,
-                    call_id: f.1,
-                    contact_id: f.2,
-                    direction: f.3,
-                    remote: f.4,
-                    started_at: f.5,
-                    ended_at: f.6,
-                    answered_at: f.7,
-                    termination: f.8,
-                    status: f.9,
-                    state: f.10,
-                }
-            })
+            .map(|record| row!(history::CallRecordById, record))
             .collect())
     }
 }
@@ -206,23 +184,8 @@ impl obligations::RecentCallsQuery for Behaviour {
         let mut rows: Vec<history::RecentCalls> = store
             .records
             .iter()
-            .filter(|r| r.state == history::CallRecordState::Recorded)
-            .map(|r| {
-                let f = fields(r);
-                history::RecentCalls {
-                    record_id: f.0,
-                    call_id: f.1,
-                    contact_id: f.2,
-                    direction: f.3,
-                    remote: f.4,
-                    started_at: f.5,
-                    ended_at: f.6,
-                    answered_at: f.7,
-                    termination: f.8,
-                    status: f.9,
-                    state: f.10,
-                }
-            })
+            .filter(|record| record.state == history::CallRecordState::Recorded)
+            .map(|record| row!(history::RecentCalls, record))
             .collect();
         // `order_by: ended_at desc`, which is part of the view rather than a presentation choice.
         rows.sort_by(|a, b| b.ended_at.cmp(&a.ended_at));

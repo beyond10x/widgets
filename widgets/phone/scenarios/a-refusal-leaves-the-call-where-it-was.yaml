@@ -1,0 +1,71 @@
+# The other half of a refusal, which no scenario states: what the store looks like afterwards.
+#
+# `refusals-on-an-ended-call.yaml` proves the response — the branch, the error, the state it names
+# and that the command published nothing. It cannot prove the claim the story's acceptance actually
+# makes, that the command "appends nothing", because a response is not the store: an implementation
+# whose refusal *dropped the call* answers byte-for-byte identically. `no_such_call()` in
+# `control_impl.rs:19` is why — a call this store has never seen is refused with `state: Ended`, the
+# same refusal a genuinely ended call gets — so every assertion that reads only the response passes
+# either way.
+#
+# So this file says the thing that tells them apart: after the refusal the call is still there, one
+# row of `CallById`, still `Ended`. The claim is the model's own — `Call` is `terminal: [Ended]`, and
+# a terminal state is a state an instance rests in, not one it vanishes from.
+type: ess-scenario/1
+domain: softphone.control
+scenario: a-refusal-leaves-the-call-where-it-was
+summary: A refused Answer leaves the ended call in the store, still Ended.
+
+arrange:
+  - instance: phone
+    entity: softphone.control.PhoneEndpoint
+  - instance: call
+    entity: softphone.control.Call
+
+timeline:
+  - at: 2026-09-06T20:00:00Z
+    command: softphone.control.ConfigureEndpoint
+    actor: softphone.control.Human
+    input: { label: Desk, default_binding: Sip }
+    outcome: configured
+    capture: {instance: phone, event: softphone.control.EndpointConfigured, field: endpoint_id}
+
+  - at: 2026-09-06T20:00:01Z
+    command: softphone.control.OfferCall
+    actor: softphone.control.Kernel
+    input: { endpoint_id: {$instance: phone}, remote: 'sip:mallory@example.test' }
+    outcome: offered
+    capture: {instance: call, event: softphone.control.CallOffered, field: call_id}
+
+  - at: 2026-09-06T20:00:02Z
+    command: softphone.control.RingCall
+    actor: softphone.control.Kernel
+    input: { call_id: {$instance: call} }
+    outcome: ringing
+
+  - at: 2026-09-06T20:00:03Z
+    command: softphone.control.Reject
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call}, status: 486 }
+    outcome: rejected
+    events:
+      - event: softphone.control.CallRejected
+        payload: { status: 486 }
+
+  - at: 2026-09-06T20:00:04Z
+    command: softphone.control.Answer
+    actor: softphone.control.Human
+    input: { call_id: {$instance: call} }
+    outcome: wrong-state
+    error:
+      name: softphone.control.CallStateConflict
+      fields: { state: Ended }
+    no_events: [softphone.control.CallAnswered]
+
+assert:
+  - view: softphone.control.CallById
+    params: {call_id: {$instance: call}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.control.CallById
+    params: {call_id: {$instance: call}}
+    contains: {state: Ended}

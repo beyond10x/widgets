@@ -145,7 +145,9 @@ impl obligations::EnterCallBehavior for Behaviour {
         };
         match store.consoles.remove(index).refine() {
             presentation::AnyConsole::Dialing(dialing) => {
-                store.consoles.insert(index, stamp_console(dialing.engage()));
+                store
+                    .consoles
+                    .insert(index, stamp_console(dialing.engage()));
             }
             presentation::AnyConsole::Incoming(incoming) => {
                 store

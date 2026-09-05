@@ -1,0 +1,90 @@
+# The same claim `a-refusal-leaves-the-bridge-where-it-was.yaml` makes, for the other arm.
+#
+# `close()` in `bridge_impl.rs` has its own wrong-state arm, and its own line restoring the entity
+# it took out of the store to refine. `refusals-on-a-closed-bridge.yaml` issues that refusal — a
+# second `CloseBridge` against a bridge already `Closed` — and then asks only about the response.
+# It cannot tell a refusal that put the bridge back from one that dropped it, because
+# `no_such_bridge()` answers a bridge the store does not hold with `state: Closed`: the same
+# refusal, and the `FailBridge` step after it is answered the same way either way.
+#
+# So the arm is exercised and unobserved. This file observes it.
+type: ess-scenario/1
+domain: softphone.bridge
+scenario: adversary-a-refused-close-leaves-the-bridge-where-it-was
+summary: A refused second CloseBridge leaves the closed bridge in the store, still Closed.
+
+arrange:
+  - instance: session
+    entity: softphone.media.MediaSession
+  - instance: bridge
+    entity: softphone.bridge.BridgeSession
+
+timeline:
+  - at: 2026-09-07T10:00:00Z
+    command: softphone.media.OpenSession
+    actor: softphone.media.SessionHost
+    input:
+      session_ref: 'bridge-ad02'
+      binding: Bridge
+      profile:
+        sample_format: PcmS16Le
+        sample_rate_hz: 8000
+        channels: 1
+        packet_time_ms: 20
+        frame_bytes: 320
+      participant:
+        reference: 'sip:2003@asterisk.dev.test'
+        trust: Untrusted
+    outcome: opened
+    capture: {instance: session, event: softphone.media.SessionOpened, field: session_id}
+
+  - at: 2026-09-07T10:00:01Z
+    command: softphone.bridge.ConnectBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      session_id: {$instance: session}
+      endpoint: 'wss://phone.dev.test/phone'
+      offer: 'v=0 o=- 0 0 IN IP4 0.0.0.0'
+    outcome: connecting
+    capture: {instance: bridge, event: softphone.bridge.BridgeConnecting, field: bridge_id}
+
+  - at: 2026-09-07T10:00:02Z
+    command: softphone.bridge.CloseBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      bridge_id: {$instance: bridge}
+      session_id: {$instance: session}
+      cause: Local
+      reason: Cancelled
+    outcome: closed
+    events:
+      - event: softphone.bridge.BridgeClosed
+        payload: { cause: Local, reason: Cancelled }
+
+  - at: 2026-09-07T10:00:03Z
+    command: softphone.bridge.CloseBridge
+    actor: softphone.bridge.BridgeHost
+    input:
+      bridge_id: {$instance: bridge}
+      session_id: {$instance: session}
+      cause: Local
+      reason: Completed
+    outcome: wrong-state
+    error:
+      name: softphone.bridge.BridgeStateConflict
+      fields: { state: Closed }
+    no_events: [softphone.bridge.BridgeClosed]
+
+# Still one row, still `Closed`, and still carrying the offer and the cause the legitimate close
+# recorded — a refusal writes nothing, which includes not rewriting what is already there.
+assert:
+  - view: softphone.bridge.BridgeById
+    params: {bridge_id: {$instance: bridge}}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.bridge.BridgeById
+    params: {bridge_id: {$instance: bridge}}
+    contains:
+      state: Closed
+      cause: Local
+      local_sdp: 'v=0 o=- 0 0 IN IP4 0.0.0.0'
+      endpoint: 'wss://phone.dev.test/phone'

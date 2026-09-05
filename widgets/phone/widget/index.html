@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>softphone — harness</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+        max-width: 48rem;
+        font: 15px/1.55 ui-sans-serif, system-ui, sans-serif;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+      .note {
+        opacity: 0.7;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>softphone</h1>
+    <p class="note">
+      The realized module, one control channel to <code>phone-server</code>, and one
+      <code>RTCPeerConnection</code>. Override either with <code>?endpoint=</code> or
+      <code>?wasm=</code>.
+    </p>
+    <div id="phone"></div>
+    <script type="module" src="/src/dev.ts"></script>
+  </body>
+</html>

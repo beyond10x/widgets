@@ -30,14 +30,12 @@ impl obligations::AddContactBehavior for Behaviour {
     ) -> Result<directory::AddContactOutcome, UnmetObligation> {
         let mut store = self.store.borrow_mut();
         let contact_id = directory::ContactId(store.mint());
-        store
-            .contacts
-            .push(stamp_contact(directory::Contact::new(
-                directory::ContactData {
-                    contact_id: contact_id.clone(),
-                    display_name: input.display_name.clone(),
-                },
-            )));
+        store.contacts.push(stamp_contact(directory::Contact::new(
+            directory::ContactData {
+                contact_id: contact_id.clone(),
+                display_name: input.display_name.clone(),
+            },
+        )));
         Ok(directory::AddContactOutcome::Added {
             contact_added: directory::ContactAdded {
                 contact_id,
@@ -83,7 +81,7 @@ impl obligations::AddAddressBehavior for Behaviour {
                     address_id: address_id.clone(),
                     contact_id: input.contact_id.clone(),
                     address: input.address.clone(),
-                    label: input.label.clone(),
+                    label: input.label,
                 },
             )));
         Ok(directory::AddAddressOutcome::Added {
@@ -116,7 +114,9 @@ impl obligations::RemoveAddressBehavior for Behaviour {
         };
         match store.addresses.remove(index).refine() {
             directory::AnyContactAddress::Active(active) => {
-                store.addresses.insert(index, stamp_address(active.remove()));
+                store
+                    .addresses
+                    .insert(index, stamp_address(active.remove()));
                 Ok(directory::RemoveAddressOutcome::Removed {
                     contact_address_removed: directory::ContactAddressRemoved {
                         address_id: input.address_id,
@@ -229,7 +229,7 @@ impl obligations::ContactAddressesQuery for Behaviour {
                 address_id: a.data.address_id.clone(),
                 contact_id: a.data.contact_id.clone(),
                 address: a.data.address.clone(),
-                label: a.data.label.clone(),
+                label: a.data.label,
                 state: a.state,
             })
             .collect())
