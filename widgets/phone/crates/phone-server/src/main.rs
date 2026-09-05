@@ -4,17 +4,23 @@
 //! [`phone_server::session`], write back whatever that says. Every decision is in the library, and
 //! everything in this file would be the same for any other framing.
 //!
-//! **One phone per connection, and no state outside it.** A connection holds its own bridge and
-//! nothing else does; when it closes, the bridge is dropped and both legs go with it. That is the
-//! ADR's arrangement made structural rather than remembered — there is no map here for a second
-//! phone's call to be looked up in.
+//! **One bridge per connection, and one routing table for the process.** A connection holds its
+//! own bridge and nothing else does; when it closes, the bridge is dropped and both legs go with
+//! it. There is still no map of anyone's *call* here, which is the accepted ADR's arrangement made
+//! structural rather than remembered.
+//!
+//! What there is now is [`phone_server::presence::Registry`]: which handles are connected and how
+//! to reach each. `architecture-decision-record:server-holds-a-routing-table` is where the line is
+//! drawn — a socket's own facts are this process's, a call's state stays in the page — and it
+//! exists because this paragraph used to say the opposite and a reader would have believed it.
 
 use std::net::{IpAddr, SocketAddr};
 
 use clap::Parser;
 use futures_util::{SinkExt, StreamExt};
 use phone_server::session::{self, apply, relay, Config, Live, OpenFailed, Phone};
-use phone_server::wire::{BridgeCause, FromBrowser, TerminationReason, ToBrowser};
+use phone_server::presence::{Claimed, Registry};
+use phone_server::wire::{BridgeCause, FromBrowser, PresenceCause, TerminationReason, ToBrowser};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_tungstenite::tungstenite::Message;
@@ -75,13 +81,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sipx_transport::bind(sipx_transport::Config::new(config.sip_bind)).await?;
 
     let listener = TcpListener::bind(args.listen).await?;
+    // One table for the process, shared by every connection. It is the only thing here that outlives
+    // a single phone, and it holds nothing that outlives the sockets.
+    let registry = Registry::default();
     tracing::info!(listen = %args.listen, proxy = %config.sip_proxy, "phone-server is up");
 
     loop {
         let (stream, from) = listener.accept().await?;
         let phone = Phone::new(config.clone(), signalling.clone());
+        let registry = registry.clone();
         tokio::spawn(async move {
-            if let Err(error) = serve(stream, phone).await {
+            if let Err(error) = serve(stream, phone, registry).await {
                 tracing::warn!(%from, %error, "the phone's channel ended");
             }
         });
@@ -89,7 +99,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// One phone, for as long as its connection lasts.
-async fn serve(stream: TcpStream, phone: Phone) -> Result<(), Box<dyn std::error::Error>> {
+async fn serve(
+    stream: TcpStream,
+    phone: Phone,
+    registry: Registry,
+) -> Result<(), Box<dyn std::error::Error>> {
     let websocket = tokio_tungstenite::accept_async(stream).await?;
     let (mut sink, mut incoming) = websocket.split();
 
@@ -113,6 +127,9 @@ async fn serve(stream: TcpStream, phone: Phone) -> Result<(), Box<dyn std::error
     // own strings echoed back to it.
     let mut opened_bridge = String::new();
     let mut opened_session = String::new();
+    // The handle this connection claimed, if it has one. Kept so that the connection going away can
+    // take the phone out of the table — a page that closes its tab announces nothing on the way out.
+    let mut claimed: Option<String> = None;
 
     loop {
         // A bounded wait rather than a plain `next()`, because two things can end a phone and only
@@ -162,6 +179,53 @@ async fn serve(stream: TcpStream, phone: Phone) -> Result<(), Box<dyn std::error
             }
         };
 
+        // Presence first, and outside the bridge match: a phone is in the table whether or not it
+        // ever places a call, and both of these are legal on a connection that holds no bridge.
+        match &message {
+            FromBrowser::Announce {
+                presence_id,
+                handle,
+                label,
+            } => {
+                if claimed.is_some() {
+                    tracing::warn!("a second handle on a channel that already claimed one; refused");
+                    let _ = say.send(ToBrowser::FailPresence {
+                        presence_id: presence_id.clone(),
+                        cause: PresenceCause::Refused,
+                    });
+                    continue;
+                }
+                match registry.announce(handle, label, say.clone()) {
+                    Claimed::Refused => {
+                        let _ = say.send(ToBrowser::FailPresence {
+                            presence_id: presence_id.clone(),
+                            cause: PresenceCause::Refused,
+                        });
+                    }
+                    Claimed::Accepted(others) => {
+                        claimed = Some(handle.clone());
+                        let _ = say.send(ToBrowser::ConfirmPresence {
+                            presence_id: presence_id.clone(),
+                        });
+                        // The set this phone is joining, one command each. Sent after the
+                        // confirmation, because a roster is only meaningful to a page whose own
+                        // presence the model has already moved to `Present`.
+                        for (handle, label) in others {
+                            let _ = say.send(ToBrowser::NotePresent { handle, label });
+                        }
+                    }
+                }
+                continue;
+            }
+            FromBrowser::Withdraw { .. } => {
+                if let Some(handle) = claimed.take() {
+                    registry.depart(&handle);
+                }
+                continue;
+            }
+            _ => {}
+        }
+
         match (&message, live.as_mut()) {
             (
                 FromBrowser::OpenBridge {
@@ -207,6 +271,13 @@ async fn serve(stream: TcpStream, phone: Phone) -> Result<(), Box<dyn std::error
         }
     }
 
+    // The connection is going, so the phone is going with it. `depart` is idempotent, which is
+    // what makes a page that withdrew *and then* closed produce one departure rather than two — and
+    // a second `NoteGone` would be a `wrong-state` at every other page, for something they all did
+    // correctly.
+    if let Some(handle) = claimed.take() {
+        registry.depart(&handle);
+    }
     if let Some(task) = relaying {
         task.abort();
     }

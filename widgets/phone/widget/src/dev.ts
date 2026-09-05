@@ -9,6 +9,7 @@ import PhonePanel from "./PhonePanel.vue";
 
 const parameters = new URLSearchParams(window.location.search);
 const to = parameters.get("to") ?? "";
+const handle = parameters.get("handle") ?? "";
 
 // `?dial` places the call as soon as the panel is ready, with no click.
 //
@@ -19,7 +20,11 @@ const to = parameters.get("to") ?? "";
 // It waits on the panel's own `ready` rather than on a delay. A delay was wrong in both
 // directions: too short and the call is placed before the module is open, which fails by doing
 // nothing; too long and every check pays for it.
-const panel = ref<{ dial: () => Promise<void>; ready: Promise<void> } | null>(null);
+const panel = ref<{
+  dial: () => Promise<void>;
+  announce: () => Promise<void>;
+  ready: Promise<void>;
+} | null>(null);
 const automatic = parameters.has("dial") && to !== "";
 
 createApp({
@@ -30,12 +35,17 @@ createApp({
       endpoint: parameters.get("endpoint") ?? "ws://127.0.0.1:8780",
       label: parameters.get("label") ?? "Harness",
       destination: to,
+      handle,
     }),
   mounted() {
-    if (!automatic) return;
+    if (!handle && !automatic) return;
     void (async () => {
       await panel.value?.ready;
-      await panel.value?.dial();
+      // `?handle=` claims it on load, so two browsers can be pointed at one server and see each
+      // other with nothing clicked. Presence needs no capture device, so unlike `?dial` this is
+      // decidable in a headless browser end to end.
+      if (handle) await panel.value?.announce();
+      if (automatic) await panel.value?.dial();
     })();
   },
 }).mount("#phone");

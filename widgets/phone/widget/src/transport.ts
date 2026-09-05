@@ -6,7 +6,13 @@
 // whose spellings are serde's: the variant tag is `leg`, kebab-cased, and the fields keep the
 // specification's own snake_case.
 
-/** Browser → server. One offer and one destination, then the four things a page can decide. */
+/**
+ * Browser → server.
+ *
+ * One offer and one destination, then the four things a page can decide about a call — and, before
+ * any of them, the handle this phone is claiming. Presence is not a property of a call and outlives
+ * every one of them, which is why it is on this wire and not inside `open-bridge`.
+ */
 export type Leg =
   | {
       leg: "open-bridge";
@@ -16,6 +22,8 @@ export type Leg =
       destination: string;
       offer: string;
     }
+  | { leg: "announce"; presence_id: string; handle: string; label: string }
+  | { leg: "withdraw"; presence_id: string }
   | { leg: "hangup"; call_id: string }
   | { leg: "digits"; call_id: string; digits: string }
   | { leg: "mute"; call_id: string; muted: boolean }

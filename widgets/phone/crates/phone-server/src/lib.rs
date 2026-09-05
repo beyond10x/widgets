@@ -6,7 +6,10 @@
 //! `architecture-decision-record:browser-holds-no-sip-stack` is the decision; this crate is its
 //! server half.
 //!
-//! **It runs no ESS system and holds no phone state.** The browser holds the phone's state, and
+//! **It runs no ESS system and holds no phone state.** It does hold a routing table —
+//! [`presence`], which is which handles are connected and how to reach each — and
+//! `architecture-decision-record:server-holds-a-routing-table` draws the line: what a socket
+//! answers is this process's, what a call is doing is the page's. The browser holds the phone's state, and
 //! this process is a device: it reports facts about legs, and each fact leaves as one command the
 //! specification already grants to a kernel actor — `softphone.bridge.ConfirmBridge`,
 //! `softphone.control.RingCall`, `ConfirmAnswer`, `FailCall`, `softphone.bridge.FailBridge`.
@@ -46,6 +49,7 @@
 
 pub mod bridge;
 pub mod browser;
+pub mod presence;
 pub mod session;
 pub mod sip;
 pub mod wire;

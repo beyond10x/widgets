@@ -64,6 +64,7 @@ export class Phone {
   #screen: Screen;
   #endpoint: string;
   #endpointId: string | null = null;
+  #presenceId: string | null = null;
   #holding: Holding | null = null;
 
   constructor(kernel: Kernel, endpoint: string, screen: Screen) {
@@ -97,6 +98,43 @@ export class Phone {
     this.#endpointId =
       published(observation, "softphone.control.EndpointConfigured", "endpoint_id") ?? null;
     this.#screen.observed(observation);
+  }
+
+  /**
+   * Claims a handle, so other phones can be told this one is here.
+   *
+   * The channel is opened for this rather than for a call: a phone is in the server's table from
+   * the moment it announces until its connection goes, whether or not it ever dials. Whether the
+   * handle was accepted is not known when this resolves — the server answers with
+   * `softphone.presence.ConfirmPresence` or `FailPresence`, and until one arrives the model holds
+   * this phone in `Announcing`, reachable by nobody.
+   *
+   * @throws when there is no server to announce to.
+   */
+  async announce(handle: string, label: string): Promise<void> {
+    if (this.#presenceId) throw new Error("this phone has already claimed a handle");
+    const link = await this.#connect();
+    const announcing = this.#kernel.run("softphone.presence.AnnouncePresence", { handle, label });
+    const presence_id = published(
+      announcing,
+      "softphone.presence.PresenceAnnounced",
+      "presence_id",
+    );
+    this.#screen.observed(announcing);
+    if (!presence_id) throw new Error("the module refused the announcement; the log says why");
+    this.#presenceId = presence_id;
+    link.send({ leg: "announce", presence_id, handle, label });
+  }
+
+  /** Gives the handle back, keeping the channel. */
+  withdraw(): void {
+    const presence_id = this.#presenceId;
+    if (!presence_id) return;
+    this.#presenceId = null;
+    this.#screen.observed(
+      this.#kernel.run("softphone.presence.WithdrawPresence", { presence_id }),
+    );
+    this.#link?.send({ leg: "withdraw", presence_id });
   }
 
   /**
@@ -263,6 +301,9 @@ export class Phone {
       return;
     }
 
+    // Everything else goes in verbatim, which includes all four of `softphone.presence`'s: a
+    // roster is a projection of facts about other phones, and none of them needs a peer connection,
+    // a track or a socket of its own.
     this.#screen.observed(this.#kernel.run(inbound.command, inbound.input));
 
     if (!holding) return;

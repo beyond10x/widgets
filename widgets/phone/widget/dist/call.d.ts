@@ -28,6 +28,20 @@ export declare class Phone {
      */
     configure(label: string): void;
     /**
+     * Claims a handle, so other phones can be told this one is here.
+     *
+     * The channel is opened for this rather than for a call: a phone is in the server's table from
+     * the moment it announces until its connection goes, whether or not it ever dials. Whether the
+     * handle was accepted is not known when this resolves — the server answers with
+     * `softphone.presence.ConfirmPresence` or `FailPresence`, and until one arrives the model holds
+     * this phone in `Announcing`, reachable by nobody.
+     *
+     * @throws when there is no server to announce to.
+     */
+    announce(handle: string, label: string): Promise<void>;
+    /** Gives the handle back, keeping the channel. */
+    withdraw(): void;
+    /**
      * Places one call.
      *
      * The offer exists before anything is told about it, and it is checked against the server's own

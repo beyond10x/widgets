@@ -33,12 +33,15 @@ const props = withDefaults(
     configuration?: RTCConfiguration;
     /** What the dial field starts with. A host that knows where this phone calls sets it. */
     destination?: string;
+    /** The handle this phone claims, so other phones can be told it is here. */
+    handle?: string;
   }>(),
   {
     endpoint: "ws://127.0.0.1:8780",
     label: "Devcenter",
     configuration: () => ({}),
     destination: "",
+    handle: "",
   },
 );
 
@@ -48,6 +51,7 @@ const said = ref<string>("");
 const destination = ref<string>(props.destination);
 const entry = ref<string>("");
 const failed = ref<string>("");
+const handle = ref<string>(props.handle);
 
 // Resolved once the module is open and the endpoint configured, or once that has failed.
 //
@@ -74,6 +78,11 @@ const live = computed(() => call.value !== undefined);
 const muted = computed(() => call.value?.["muted"] === true);
 const held = computed(() => call.value?.["held"] === true);
 const history = computed(() => rows("softphone.history.RecentCalls"));
+// `MyPresence` filters `state == Present`, so a row here means the server accepted the handle. A
+// phone still in `Announcing` — or refused — has none, which is exactly the distinction a person
+// needs: until it is there, nobody can call this phone.
+const mine = computed(() => rows("softphone.presence.MyPresence")[0]);
+const roster = computed(() => rows("softphone.presence.PresentPhones"));
 const log = computed(() => (observation.value?.log ?? []).slice(-8).reverse());
 
 onMounted(async () => {
@@ -109,13 +118,20 @@ async function attempt(what: () => void | Promise<void>): Promise<void> {
   }
 }
 
+const announce = () =>
+  attempt(async () => {
+    const asking = handle.value.trim();
+    if (!asking) throw new Error("nothing to announce");
+    await phone.value?.announce(asking, props.label);
+  });
+
 const dial = () =>
   attempt(async () => {
     const to = destination.value.trim() || entry.value.trim();
     if (!to) throw new Error("nothing to dial");
     await phone.value?.dial(to, props.configuration);
   });
-defineExpose({ dial, ready });
+defineExpose({ dial, announce, ready });
 
 const press = (key: string) => {
   entry.value += key;
@@ -170,6 +186,27 @@ const press = (key: string) => {
       </div>
 
       <div class="phone-beside">
+        <h3>here</h3>
+        <div v-if="!mine" class="phone-announce">
+          <input v-model="handle" type="text" placeholder="you@phone.dev.test" @keyup.enter="announce" />
+          <button type="button" :disabled="!phone" @click="announce">announce</button>
+        </div>
+        <p v-else class="phone-mono">
+          {{ mine.handle }}
+          <button type="button" @click="attempt(() => phone?.withdraw())">withdraw</button>
+        </p>
+
+        <h3>other phones</h3>
+        <p v-if="!roster.length" class="phone-idle">nobody else is here</p>
+        <ul v-else class="phone-roster">
+          <li v-for="other of roster" :key="String(other.handle)">
+            <button type="button" @click="destination = String(other.handle)">
+              {{ other.label }}
+            </button>
+            <span class="phone-mono">{{ other.handle }}</span>
+          </li>
+        </ul>
+
         <h3>calls</h3>
         <p v-if="!history.length" class="phone-idle">nothing recorded yet</p>
         <table v-else>
@@ -312,5 +349,41 @@ const press = (key: string) => {
 .phone-log {
   margin: 0;
   padding-left: 1.1rem;
+}
+.phone-announce {
+  display: flex;
+  gap: 4px;
+}
+.phone-announce input {
+  font: inherit;
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+}
+.phone-announce button,
+.phone-roster button,
+.phone-beside p button {
+  font: inherit;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.phone-roster {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.phone-roster li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
 }
 </style>

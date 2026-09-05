@@ -17,7 +17,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::process::Command;
 
-use phone_server::wire::{BridgeCause, EndCause, FromBrowser, TerminationReason, ToBrowser};
+use phone_server::wire::{
+    BridgeCause, EndCause, FromBrowser, PresenceCause, TerminationReason, ToBrowser,
+};
 use serde_json::{json, Value};
 
 /// The commands this server sends the page.
@@ -27,6 +29,10 @@ const SENT: &[&str] = &[
     "softphone.control.ConfirmAnswer",
     "softphone.control.FailCall",
     "softphone.control.RingCall",
+    "softphone.presence.ConfirmPresence",
+    "softphone.presence.FailPresence",
+    "softphone.presence.NoteGone",
+    "softphone.presence.NotePresent",
 ];
 
 /// Every other command the model grants a kernel, and why this server is not the one issuing it.
@@ -110,6 +116,20 @@ fn every_message() -> Vec<ToBrowser> {
             cause: BridgeCause::Transport,
             reason: TerminationReason::TransportLost,
         },
+        ToBrowser::ConfirmPresence {
+            presence_id: "p".to_owned(),
+        },
+        ToBrowser::FailPresence {
+            presence_id: "p".to_owned(),
+            cause: PresenceCause::Refused,
+        },
+        ToBrowser::NotePresent {
+            handle: "grace@phone.dev.test".to_owned(),
+            label: "Grace".to_owned(),
+        },
+        ToBrowser::NoteGone {
+            handle: "grace@phone.dev.test".to_owned(),
+        },
     ];
     let named: BTreeSet<&str> = samples
         .iter()
@@ -119,6 +139,10 @@ fn every_message() -> Vec<ToBrowser> {
             ToBrowser::ConfirmAnswer { .. } => "ConfirmAnswer",
             ToBrowser::FailCall { .. } => "FailCall",
             ToBrowser::FailBridge { .. } => "FailBridge",
+            ToBrowser::ConfirmPresence { .. } => "ConfirmPresence",
+            ToBrowser::FailPresence { .. } => "FailPresence",
+            ToBrowser::NotePresent { .. } => "NotePresent",
+            ToBrowser::NoteGone { .. } => "NoteGone",
         })
         .collect();
     assert_eq!(

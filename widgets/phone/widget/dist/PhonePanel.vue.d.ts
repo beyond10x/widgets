@@ -9,14 +9,18 @@ type __VLS_Props = {
     configuration?: RTCConfiguration;
     /** What the dial field starts with. A host that knows where this phone calls sets it. */
     destination?: string;
+    /** The handle this phone claims, so other phones can be told it is here. */
+    handle?: string;
 };
 declare const __VLS_export: import("vue").DefineComponent<__VLS_Props, {
     dial: () => Promise<void>;
+    announce: () => Promise<void>;
     ready: Promise<void>;
 }, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{}>, {
     label: string;
-    endpoint: string;
+    handle: string;
     destination: string;
+    endpoint: string;
     configuration: RTCConfiguration;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 declare const _default: typeof __VLS_export;

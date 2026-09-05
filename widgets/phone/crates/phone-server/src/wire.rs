@@ -61,6 +61,20 @@ pub enum BridgeCause {
     Refused,
 }
 
+/// `softphone.presence.PresenceCause` — why a presence ended, in three classes.
+///
+/// None of them is "the phone hung up": a call ending says nothing about whether the phone is still
+/// there, which is the whole reason presence is a domain of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PresenceCause {
+    /// The page gave the handle back.
+    Local,
+    /// The connection went away.
+    Transport,
+    /// Another phone already holds the handle.
+    Refused,
+}
+
 /// `softphone.media.TerminationReason` — all eight variants, unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TerminationReason {
@@ -115,6 +129,24 @@ pub enum FromBrowser {
         /// The keys, in order.
         digits: String,
     },
+    /// Claim a handle, so other phones can be told this one is here.
+    ///
+    /// The page has already run `softphone.presence.AnnouncePresence`, so the identifier is one it
+    /// minted and this server echoes — the same arrangement every other identifier on this channel
+    /// has.
+    Announce {
+        /// The `softphone.presence.Presence` the page created.
+        presence_id: Id,
+        /// The handle it is asking for. Another phone may already hold it.
+        handle: String,
+        /// What a person sees instead of the handle.
+        label: String,
+    },
+    /// Give the handle back while keeping the connection.
+    Withdraw {
+        /// Which presence.
+        presence_id: Id,
+    },
     /// Gate this side's outbound audio. Local to the browser leg; the far end is told nothing.
     Mute {
         /// Which call.
@@ -161,6 +193,31 @@ pub enum ToBrowser {
         /// Which of the six classes.
         cause: EndCause,
     },
+    /// The handle was accepted; this phone is reachable.
+    ConfirmPresence {
+        /// Which presence.
+        presence_id: Id,
+    },
+    /// The handle was not accepted, or it has been taken away.
+    FailPresence {
+        /// Which presence.
+        presence_id: Id,
+        /// Which of the three classes.
+        cause: PresenceCause,
+    },
+    /// Another phone is here. Sent for each one already present when this phone announces, and to
+    /// every other phone when one arrives.
+    NotePresent {
+        /// The other phone's handle.
+        handle: String,
+        /// The other phone's display name.
+        label: String,
+    },
+    /// Another phone is gone.
+    NoteGone {
+        /// The other phone's handle.
+        handle: String,
+    },
     /// The bridge itself is gone.
     FailBridge {
         /// Which bridge.
@@ -184,6 +241,10 @@ impl ToBrowser {
             Self::ConfirmAnswer { .. } => "softphone.control.ConfirmAnswer",
             Self::FailCall { .. } => "softphone.control.FailCall",
             Self::FailBridge { .. } => "softphone.bridge.FailBridge",
+            Self::ConfirmPresence { .. } => "softphone.presence.ConfirmPresence",
+            Self::FailPresence { .. } => "softphone.presence.FailPresence",
+            Self::NotePresent { .. } => "softphone.presence.NotePresent",
+            Self::NoteGone { .. } => "softphone.presence.NoteGone",
         }
     }
 
@@ -210,6 +271,20 @@ impl ToBrowser {
             Self::FailCall { call_id, cause } => json!({
                 "call_id": call_id,
                 "cause": cause,
+            }),
+            Self::ConfirmPresence { presence_id } => json!({
+                "presence_id": presence_id,
+            }),
+            Self::FailPresence { presence_id, cause } => json!({
+                "presence_id": presence_id,
+                "cause": cause,
+            }),
+            Self::NotePresent { handle, label } => json!({
+                "handle": handle,
+                "label": label,
+            }),
+            Self::NoteGone { handle } => json!({
+                "handle": handle,
             }),
             Self::FailBridge {
                 bridge_id,

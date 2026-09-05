@@ -284,6 +284,10 @@ pub async fn apply(message: &FromBrowser, live: &mut Live) {
         FromBrowser::OpenBridge { .. } => {
             tracing::warn!("a second offer on a channel that already holds a bridge; ignored");
         }
+        // Presence is not a property of a bridge and outlives every one of them: a phone is in the
+        // table from the moment it announces until its connection goes, whether or not it ever
+        // places a call. `main.rs` handles both before this function is reached.
+        FromBrowser::Announce { .. } | FromBrowser::Withdraw { .. } => {}
         FromBrowser::Hangup { .. } => {
             if let Err(error) = live.call.hang_up().await {
                 tracing::warn!(%error, "the BYE did not go cleanly; the leg is gone either way");
