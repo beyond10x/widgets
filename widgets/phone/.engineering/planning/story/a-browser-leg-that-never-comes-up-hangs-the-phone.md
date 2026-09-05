@@ -8,7 +8,7 @@ relations:
 - decomposes: epic:browser-softphone
 - informed_by: story:phone-server
 - blocks: story:browser-media-adapter
-revision: 1
+revision: 2
 ---
 # A browser leg that never comes up hangs the phone, and nobody is told
 
@@ -79,3 +79,55 @@ whichever of the two causes it is, and it is what makes the cause observable.
 A browser leg that does not come up produces both commands at the page within a stated bound, the
 media sockets are released, and a case drives it — a peer that completes ICE and never finishes
 DTLS is one `tests/` can write, since the browser leg's far side is a socket.
+
+## Measured 2026-09-05, and what it settled
+
+**The first step is done.** `crates/phone-server` bounds the whole browser bring-up at
+`browser::BRING_UP` (15 s, above sipx's own 10 s `HANDSHAKE_TIMEOUT`) and reports
+`OpenFailed::BringUpTimedOut` as `FailBridge` (`Transport`/`TransportLost`) plus `FailCall`
+(`Media`). The hang is now a stated failure and the media socket is released:
+
+```
+answering a browser offer local_candidates=1 local_port=56536 offered_candidates=1
+… 15s …
+the bridge did not come up failure=the browser leg did not come up within 15s
+```
+
+and the page records `control.CallFailed`, `bridge.BridgeFailed`, `media.SessionTerminated`,
+`history.CallRecorded` where it previously recorded nothing.
+
+### Which of the two causes it is: neither, yet
+
+The story offered `NoNominatedPair` or `DtlsTimeout`. **sipx produces neither** — it returns nothing
+at all, which is why a bound in this crate was needed. The unbounded await is
+`sipx_media::browser::prepare`'s: it passes the caller's budget into `prepare_inner` and then awaits
+the supervisor task with no timeout of its own (`crates/sipx-media/src/browser.rs:769`). That is the
+upstream half, and it is unchanged between 1.0.1 and the unreleased 1.1.0 tree.
+
+### The 1.1.0 experiment, and its answer
+
+Tried, because three merges had landed on `browser.rs` and `session.rs` since the `=1.0.1` tag —
+M-134, M-135, M-137, including "Require ICE consent freshness before media". **It changes nothing
+here.** The `browser_audio.rs` diff between the two is RTCP feedback and `BrowserAudioFeedback`, not
+ICE. The pin stays published; `Cargo.toml` carries the measurement.
+
+### An mDNS candidate refuses the whole description
+
+A separate blocker, found on the way and worth its own line. `Candidate::parse` answers `None` for a
+`.local` hostname, and `profile_candidates` collects into `Option<Vec<_>>`, so **a browser that
+hides its local IPs cannot be answered at all** — the refusal is `IceRequired` and it names no
+candidate. Chrome and Brave do this by default. Disabling it
+(`--disable-features=WebRtcHideLocalIpsWithMdns`) is what moved the same offer from refused to
+`BridgeConfirmed`. This is the same defect shape as
+`story:the-profile-refuses-an-offer-carrying-an-ice-tcp-candidate` — one unparseable candidate
+failing the set — and one `filter_map` upstream fixes both.
+
+## What is still open
+
+Whether ICE completes at all between a browser on this machine and this server. It does not under
+Playwright's chromium: one host candidate on each side, both `192.168.68.50`, routed over `lo`, and
+the browser's `RTCPeerConnection` reaches `failed`. Its candidate carries `network-cost 999`, which
+is Chrome's marker for an interface it will not prefer, so a headless sandboxless chromium may not
+be a fair test of ICE at all. **The next observation needed is a real browser session with the
+microphone actually granted and mDNS off** — and that is a person's to run, not a suite's.
+
