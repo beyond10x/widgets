@@ -122,6 +122,29 @@ components:
         - softphone.bridge.BridgeClosed
     reached_by: in_process
 
+  - component: phone-presence
+    summary: Owns who else is there, as one roster this page holds and the server only reports.
+    owns:
+      domains:
+        - softphone.presence
+    accepts:
+      commands:
+        - softphone.presence.AnnouncePresence
+        - softphone.presence.ConfirmPresence
+        - softphone.presence.FailPresence
+        - softphone.presence.WithdrawPresence
+        - softphone.presence.NotePresent
+        - softphone.presence.NoteGone
+    publishes:
+      events:
+        - softphone.presence.PresenceAnnounced
+        - softphone.presence.PresenceConfirmed
+        - softphone.presence.PresenceFailed
+        - softphone.presence.PresenceWithdrawn
+        - softphone.presence.PeerPresent
+        - softphone.presence.PeerGone
+    reached_by: in_process
+
   - component: local-binding
     summary: Owns the local-audio binding, the second carrier the media layer is proved against.
     owns:

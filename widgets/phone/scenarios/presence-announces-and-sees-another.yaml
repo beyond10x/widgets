@@ -1,0 +1,93 @@
+# A phone says who it is, is accepted, and learns of two others — one of which leaves.
+#
+# Nothing here names a transport. The server is the only thing that can see a second phone, so
+# `NotePresent` and `NoteGone` are the kernel's; what this scenario proves is that the roster a page
+# holds is a projection of those facts and of nothing it asserted itself.
+#
+# The handle is a `PeerPhone`'s identity rather than a field, which is what makes `NoteGone` possible
+# at all: the server names the phone that left, and a page that had minted its own id for it would
+# have nothing to look the row up by.
+type: ess-scenario/1
+domain: softphone.presence
+scenario: presence-announces-and-sees-another
+summary: A phone announces itself, is confirmed, sees two other phones, and one of them departs.
+
+arrange:
+  - instance: me
+    entity: softphone.presence.Presence
+
+timeline:
+  - at: 2026-09-08T09:00:00Z
+    command: softphone.presence.AnnouncePresence
+    actor: softphone.presence.PresenceHost
+    input:
+      handle: 'ada@phone.dev.test'
+      label: 'Ada'
+    outcome: announcing
+    events:
+      - event: softphone.presence.PresenceAnnounced
+        payload:
+          handle: 'ada@phone.dev.test'
+          label: 'Ada'
+    capture: {instance: me, event: softphone.presence.PresenceAnnounced, field: presence_id}
+
+  # Only the kernel may say the handle was accepted. Until this, nobody can reach this phone.
+  - at: 2026-09-08T09:00:01Z
+    command: softphone.presence.ConfirmPresence
+    actor: softphone.presence.Kernel
+    input:
+      presence_id: {$instance: me}
+    outcome: confirmed
+
+  - at: 2026-09-08T09:00:02Z
+    command: softphone.presence.NotePresent
+    actor: softphone.presence.Kernel
+    input:
+      handle: 'grace@phone.dev.test'
+      label: 'Grace'
+    outcome: noted
+    events:
+      - event: softphone.presence.PeerPresent
+        payload:
+          handle: 'grace@phone.dev.test'
+          label: 'Grace'
+
+  - at: 2026-09-08T09:00:03Z
+    command: softphone.presence.NotePresent
+    actor: softphone.presence.Kernel
+    input:
+      handle: 'alan@phone.dev.test'
+      label: 'Alan'
+    outcome: noted
+
+  - at: 2026-09-08T09:00:19Z
+    command: softphone.presence.NoteGone
+    actor: softphone.presence.Kernel
+    input:
+      handle: 'alan@phone.dev.test'
+    outcome: noted
+    events:
+      - event: softphone.presence.PeerGone
+        payload:
+          handle: 'alan@phone.dev.test'
+
+assert:
+  # The roster is one phone, not two and not none: a departure removes a phone from it without
+  # removing the row, which is what `Gone` is for.
+  - view: softphone.presence.PresentPhones
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.presence.PresentPhones
+    contains: {handle: 'grace@phone.dev.test', label: 'Grace', state: Present}
+  - view: softphone.presence.PresentPhones
+    excludes: {handle: 'alan@phone.dev.test'}
+  - view: softphone.presence.PhoneByHandle
+    params: {handle: 'alan@phone.dev.test'}
+    contains: {state: Gone, label: 'Alan'}
+  # And this phone's own standing is separate from the roster: it is present, and it is not in its
+  # own list of other phones.
+  - view: softphone.presence.MyPresence
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.presence.MyPresence
+    contains: {handle: 'ada@phone.dev.test', state: Present}
+  - view: softphone.presence.PresentPhones
+    excludes: {handle: 'ada@phone.dev.test'}

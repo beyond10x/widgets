@@ -1,0 +1,313 @@
+domain: softphone.presence
+
+# Who else is there, as this phone knows it.
+#
+# The server is the only thing that can see a second phone, so every fact in this domain arrives
+# from it — but the *authority* stays here, one roster per page.
+# `architecture-decision-record:browser-holds-no-sip-stack` is why: the server reports and holds no
+# phone state, so there is no second event log to reconcile. A page that reconnects is told the
+# roster again and rebuilds its own.
+#
+# Two entities, because two different things are being tracked and merging them would make the
+# lifecycle lie. `Presence` is *this* phone's standing with the server — announced, confirmed, and
+# withdrawn. `PeerPhone` is somebody else, and this page never announces or withdraws one; it is
+# only ever told.
+#
+# A handle is the identity of a `PeerPhone` rather than a field beside a minted id. The alternative
+# does not work: the server says "this phone went away" and names the phone, and a page that had
+# minted its own id for it would have nothing to look the row up by.
+summary: >-
+  This phone's standing with the server it announced itself to, and the other phones it has been
+  told about. One roster per page, told rather than shared.
+
+naming:
+  wire: presence
+  display: Presence
+
+types:
+  - name: softphone.presence.PresenceId
+    kind: newtype
+    of: Uuid
+
+  # How one phone addresses another. Opaque, and deliberately not a URI: what a deployment lets a
+  # phone call itself is a deployment fact, and parsing one here would put a naming rule in a domain
+  # that has none.
+  - name: softphone.presence.PhoneHandle
+    kind: newtype
+    of: String
+
+  # What a person sees in the roster instead of the handle.
+  - name: softphone.presence.DisplayName
+    kind: newtype
+    of: String
+
+  # Why a presence ended. Three classes, and none of them is "the phone hung up" — a call ending
+  # says nothing about whether the phone is still there.
+  - name: softphone.presence.PresenceCause
+    kind: enum
+    variants: [Local, Transport, Refused]
+
+  - name: softphone.presence.PresenceRow
+    kind: struct
+    fields:
+      - name: presence_id
+        type: softphone.presence.PresenceId
+      - name: handle
+        type: softphone.presence.PhoneHandle
+      - name: label
+        type: softphone.presence.DisplayName
+      - name: cause
+        type: Optional<softphone.presence.PresenceCause>
+      - name: state
+        type: softphone.presence.Presence.State
+
+  - name: softphone.presence.PeerPhoneRow
+    kind: struct
+    fields:
+      - name: handle
+        type: softphone.presence.PhoneHandle
+      - name: label
+        type: softphone.presence.DisplayName
+      - name: state
+        type: softphone.presence.PeerPhone.State
+
+entities:
+  # This phone's own standing. `Announcing` exists because a phone that has said who it is has not
+  # yet been accepted: a handle another phone already holds is refused, and until the server says
+  # otherwise nobody can reach this one.
+  - name: softphone.presence.Presence
+    identity:
+      name: presence_id
+      type: softphone.presence.PresenceId
+    fields:
+      - name: handle
+        type: softphone.presence.PhoneHandle
+      - name: label
+        type: softphone.presence.DisplayName
+      - name: cause
+        type: Optional<softphone.presence.PresenceCause>
+    # The shape `softphone.bridge.BridgeSession` uses: a presence that ended says why.
+    invariants:
+      - any:
+          - not: state == Withdrawn
+          - defined(cause)
+    lifecycle:
+      initial: Announcing
+      states: [Announcing, Present, Withdrawn]
+      terminal: [Withdrawn]
+      transitions:
+        - name: confirm
+          from: [Announcing]
+          to: Present
+        - name: withdraw
+          from: [Announcing, Present]
+          to: Withdrawn
+
+  # Somebody else. It has no `Announcing`: this page learns of another phone only once the server
+  # has already accepted it, so there is no state here for "being accepted elsewhere".
+  - name: softphone.presence.PeerPhone
+    identity:
+      name: handle
+      type: softphone.presence.PhoneHandle
+    fields:
+      - name: label
+        type: softphone.presence.DisplayName
+    lifecycle:
+      initial: Present
+      states: [Present, Gone]
+      terminal: [Gone]
+      transitions:
+        - name: depart
+          from: [Present]
+          to: Gone
+
+actors:
+  # The page. It may say who this phone is and take that back; it may not assert that the server
+  # accepted it, and it may not put another phone in its own roster.
+  - name: softphone.presence.PresenceHost
+    may:
+      - softphone.presence.AnnouncePresence
+      - softphone.presence.WithdrawPresence
+    naming:
+      display: Presence host
+
+  # Every fact about the far side, and the same split `softphone.bridge.Kernel` draws: acceptance,
+  # failure, and the two about somebody else are things observed over the connection.
+  - name: softphone.presence.Kernel
+    may:
+      - softphone.presence.ConfirmPresence
+      - softphone.presence.FailPresence
+      - softphone.presence.NotePresent
+      - softphone.presence.NoteGone
+    naming:
+      display: Signalling kernel
+
+errors:
+  - name: softphone.presence.PresenceStateConflict
+    summary: The presence is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.presence.Presence.State
+
+  - name: softphone.presence.PeerPhoneStateConflict
+    summary: The phone is not in a state from which the requested change is allowed.
+    fields:
+      - name: state
+        type: softphone.presence.PeerPhone.State
+
+commands:
+  - name: softphone.presence.AnnouncePresence
+    input:
+      - { name: handle, type: softphone.presence.PhoneHandle }
+      - { name: label, type: softphone.presence.DisplayName }
+    outcomes:
+      - name: announcing
+        creates: softphone.presence.Presence
+        instance: presence_id
+        emits: [softphone.presence.PresenceAnnounced]
+        sets:
+          handle: input.handle
+          label: input.label
+        payload:
+          softphone.presence.PresenceAnnounced:
+            handle: input.handle
+            label: input.label
+        summary: >-
+          The only outcome that creates a `Presence`. The handle is asked for rather than assigned:
+          the server accepts it or refuses it, and until then this phone is reachable by nobody.
+    naming: { wire: announce-presence, display: Announce presence }
+
+  - name: softphone.presence.ConfirmPresence
+    input:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+    outcomes:
+      - name: confirmed
+        moves: softphone.presence.Presence.confirm
+        instance: presence_id
+        emits: [softphone.presence.PresenceConfirmed]
+        payload:
+          softphone.presence.PresenceConfirmed:
+            presence_id: input.presence_id
+      - { name: wrong-state, wrong_state: true, error: softphone.presence.PresenceStateConflict }
+    naming: { wire: confirm-presence, display: Confirm presence }
+
+  - name: softphone.presence.FailPresence
+    input:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+      - { name: cause, type: softphone.presence.PresenceCause }
+    outcomes:
+      - name: failed
+        moves: softphone.presence.Presence.withdraw
+        instance: presence_id
+        emits: [softphone.presence.PresenceFailed]
+        sets:
+          cause: input.cause
+        payload:
+          softphone.presence.PresenceFailed:
+            presence_id: input.presence_id
+            cause: input.cause
+        summary: >-
+          A handle somebody else holds and a connection that died are the same move with a different
+          cause. Both leave this phone unreachable, which is the only thing the roster can act on.
+      - { name: wrong-state, wrong_state: true, error: softphone.presence.PresenceStateConflict }
+    naming: { wire: fail-presence, display: Fail presence }
+
+  - name: softphone.presence.WithdrawPresence
+    input:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+    outcomes:
+      - name: withdrawn
+        moves: softphone.presence.Presence.withdraw
+        instance: presence_id
+        emits: [softphone.presence.PresenceWithdrawn]
+        sets:
+          cause: Local
+        payload:
+          softphone.presence.PresenceWithdrawn:
+            presence_id: input.presence_id
+        summary: >-
+          The cause is not an input. This command is the local decision, so `Local` is the only
+          class it could carry, and asking the caller for it would let a page report its own
+          withdrawal as a transport failure.
+      - { name: wrong-state, wrong_state: true, error: softphone.presence.PresenceStateConflict }
+    naming: { wire: withdraw-presence, display: Withdraw presence }
+
+  - name: softphone.presence.NotePresent
+    input:
+      - { name: handle, type: softphone.presence.PhoneHandle }
+      - { name: label, type: softphone.presence.DisplayName }
+    outcomes:
+      - name: noted
+        creates: softphone.presence.PeerPhone
+        instance: handle
+        emits: [softphone.presence.PeerPresent]
+        sets:
+          label: input.label
+        payload:
+          softphone.presence.PeerPresent:
+            handle: input.handle
+            label: input.label
+    naming: { wire: note-present, display: Note present }
+
+  - name: softphone.presence.NoteGone
+    input:
+      - { name: handle, type: softphone.presence.PhoneHandle }
+    outcomes:
+      - name: noted
+        moves: softphone.presence.PeerPhone.depart
+        instance: handle
+        emits: [softphone.presence.PeerGone]
+        payload:
+          softphone.presence.PeerGone:
+            handle: input.handle
+      - { name: wrong-state, wrong_state: true, error: softphone.presence.PeerPhoneStateConflict }
+    naming: { wire: note-gone, display: Note gone }
+
+events:
+  - name: softphone.presence.PresenceAnnounced
+    fields:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+      - { name: handle, type: softphone.presence.PhoneHandle }
+      - { name: label, type: softphone.presence.DisplayName }
+  - name: softphone.presence.PresenceConfirmed
+    fields:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+  - name: softphone.presence.PresenceFailed
+    fields:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+      - { name: cause, type: softphone.presence.PresenceCause }
+  - name: softphone.presence.PresenceWithdrawn
+    fields:
+      - { name: presence_id, type: softphone.presence.PresenceId }
+  - name: softphone.presence.PeerPresent
+    fields:
+      - { name: handle, type: softphone.presence.PhoneHandle }
+      - { name: label, type: softphone.presence.DisplayName }
+  - name: softphone.presence.PeerGone
+    fields:
+      - { name: handle, type: softphone.presence.PhoneHandle }
+
+views:
+  - name: softphone.presence.MyPresence
+    source: softphone.presence.Presence
+    shape: softphone.presence.PresenceRow
+    filter: state == Present
+    consistency: read_your_writes
+    naming: { wire: my-presence, display: My presence }
+
+  - name: softphone.presence.PresentPhones
+    source: softphone.presence.PeerPhone
+    shape: softphone.presence.PeerPhoneRow
+    filter: state == Present
+    consistency: read_your_writes
+    naming: { wire: present-phones, display: Present phones }
+
+  - name: softphone.presence.PhoneByHandle
+    source: softphone.presence.PeerPhone
+    shape: softphone.presence.PeerPhoneRow
+    params:
+      - name: handle
+        type: softphone.presence.PhoneHandle
+    filter: handle == param.handle
+    consistency: read_your_writes
+    naming: { wire: phone-by-handle, display: Phone by handle }

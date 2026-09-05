@@ -54,6 +54,14 @@ topology:
         - browser: secure-websocket
         - browser: rtc-peer-connection
 
+    # It rides the bridge's connection rather than opening one of its own: presence is the first
+    # thing said on the control channel and the last, so the facility it needs is the same socket.
+    phone-presence:
+      replicas: { min: 1 }
+      stateless: false
+      requires:
+        - browser: secure-websocket
+
     local-binding:
       replicas: { min: 1 }
       stateless: false

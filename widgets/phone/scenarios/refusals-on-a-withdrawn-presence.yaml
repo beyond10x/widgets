@@ -1,0 +1,91 @@
+# What a phone that has already left refuses, and that a refusal writes nothing.
+#
+# Two branches, one per entity in this domain, because each has its own error and they must not be
+# reachable from each other: a withdrawn `Presence` refusing acceptance, and a `PeerPhone` that
+# cannot depart twice.
+#
+# The `assert:` block is the load-bearing half. That a refusal reported `wrong-state` is one claim;
+# that it left the store exactly as it was is the claim the state itself can settle, and it is the
+# one a mutant that wrote anyway would fail.
+type: ess-scenario/1
+domain: softphone.presence
+scenario: refusals-on-a-withdrawn-presence
+summary: A withdrawn presence cannot be confirmed and a departed phone cannot depart again.
+
+arrange:
+  - instance: me
+    entity: softphone.presence.Presence
+
+timeline:
+  - at: 2026-09-08T10:00:00Z
+    command: softphone.presence.AnnouncePresence
+    actor: softphone.presence.PresenceHost
+    input:
+      handle: 'ada@phone.dev.test'
+      label: 'Ada'
+    outcome: announcing
+    capture: {instance: me, event: softphone.presence.PresenceAnnounced, field: presence_id}
+
+  # Withdrawn before it was ever confirmed, which `withdraw` permits from both states: a phone that
+  # closes its page while the server is still deciding has left, whatever the server was going to say.
+  - at: 2026-09-08T10:00:01Z
+    command: softphone.presence.WithdrawPresence
+    actor: softphone.presence.PresenceHost
+    input:
+      presence_id: {$instance: me}
+    outcome: withdrawn
+    events:
+      - event: softphone.presence.PresenceWithdrawn
+
+  - at: 2026-09-08T10:00:02Z
+    command: softphone.presence.ConfirmPresence
+    actor: softphone.presence.Kernel
+    input:
+      presence_id: {$instance: me}
+    outcome: wrong-state
+    error:
+      name: softphone.presence.PresenceStateConflict
+      fields: { state: Withdrawn }
+    no_events: [softphone.presence.PresenceConfirmed]
+
+  - at: 2026-09-08T10:00:03Z
+    command: softphone.presence.NotePresent
+    actor: softphone.presence.Kernel
+    input:
+      handle: 'grace@phone.dev.test'
+      label: 'Grace'
+    outcome: noted
+
+  - at: 2026-09-08T10:00:04Z
+    command: softphone.presence.NoteGone
+    actor: softphone.presence.Kernel
+    input:
+      handle: 'grace@phone.dev.test'
+    outcome: noted
+
+  # The same fact twice is not two departures. A server that reconnects and replays its roster must
+  # not be able to move a phone out of a terminal state.
+  - at: 2026-09-08T10:00:05Z
+    command: softphone.presence.NoteGone
+    actor: softphone.presence.Kernel
+    input:
+      handle: 'grace@phone.dev.test'
+    outcome: wrong-state
+    error:
+      name: softphone.presence.PeerPhoneStateConflict
+      fields: { state: Gone }
+    no_events: [softphone.presence.PeerGone]
+
+assert:
+  # A withdrawal that was refused acceptance is still withdrawn, and it carries the local cause
+  # `WithdrawPresence` set rather than one a caller supplied.
+  - view: softphone.presence.MyPresence
+    counts: {at_most: 0}
+  - view: softphone.presence.PresentPhones
+    counts: {at_most: 0}
+  - view: softphone.presence.PhoneByHandle
+    params: {handle: 'grace@phone.dev.test'}
+    counts: {at_least: 1, at_most: 1}
+  - view: softphone.presence.PhoneByHandle
+    params: {handle: 'grace@phone.dev.test'}
+    contains: {state: Gone, label: 'Grace'}

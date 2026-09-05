@@ -1285,6 +1285,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "phone-presence"
+version = "1.0.0"
+dependencies = [
+ "softphone-types",
+]
+
+[[package]]
 name = "phone-server"
 version = "0.1.0"
 dependencies = [
@@ -2089,6 +2096,7 @@ dependencies = [
  "phone-console",
  "phone-control",
  "phone-directory",
+ "phone-presence",
  "sip-binding",
  "softphone-system",
  "softphone-types",
@@ -2113,6 +2121,7 @@ dependencies = [
  "phone-console",
  "phone-control",
  "phone-directory",
+ "phone-presence",
  "sip-binding",
  "softphone-types",
 ]
@@ -2132,6 +2141,7 @@ dependencies = [
  "phone-console",
  "phone-control",
  "phone-directory",
+ "phone-presence",
  "sip-binding",
  "softphone-system",
  "softphone-types",

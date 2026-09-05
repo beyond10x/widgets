@@ -1,14 +1,14 @@
 <!--
   generated from softphone v1
-  model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
-  contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
+  model digest 522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e
+  contract digest a716fbbbe26b7fdd24cf69b5441a8a7a57b304f349ef2e63e6705b0c329ffd20
   do not edit: regenerate with `ess synthesize`
 -->
 # Synthesis plan — softphone v1
 
 Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synthesize`.
 
-344 capabilities: **248 generated**, **75 obligations**, **21 refused**. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.
+384 capabilities: **276 generated**, **84 obligations**, **24 refused**. An obligation is yours to implement against its contract; a refusal is a fact about this synthesis scope, not about the specification.
 
 ## Generated
 
@@ -57,6 +57,14 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | domain type | `softphone.media.SampleFormat` |
 | domain type | `softphone.media.SessionRef` |
 | domain type | `softphone.media.TerminationReason` |
+| domain type | `softphone.presence.DisplayName` |
+| domain type | `softphone.presence.PeerPhone.State` |
+| domain type | `softphone.presence.PeerPhoneRow` |
+| domain type | `softphone.presence.PhoneHandle` |
+| domain type | `softphone.presence.Presence.State` |
+| domain type | `softphone.presence.PresenceCause` |
+| domain type | `softphone.presence.PresenceId` |
+| domain type | `softphone.presence.PresenceRow` |
 | domain type | `softphone.presentation.CallTile.State` |
 | domain type | `softphone.presentation.CallTileId` |
 | domain type | `softphone.presentation.CallTileRow` |
@@ -86,6 +94,8 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | entity lifecycle | `softphone.history.CallRecord` |
 | entity lifecycle | `softphone.local.LoopbackDevice` |
 | entity lifecycle | `softphone.media.MediaSession` |
+| entity lifecycle | `softphone.presence.PeerPhone` |
+| entity lifecycle | `softphone.presence.Presence` |
 | entity lifecycle | `softphone.presentation.CallTile` |
 | entity lifecycle | `softphone.presentation.Console` |
 | entity lifecycle | `softphone.presentation.Keypad` |
@@ -125,6 +135,12 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | command contract | `softphone.media.ReceiveSignal` |
 | command contract | `softphone.media.SendSignal` |
 | command contract | `softphone.media.TerminateSession` |
+| command contract | `softphone.presence.AnnouncePresence` |
+| command contract | `softphone.presence.ConfirmPresence` |
+| command contract | `softphone.presence.FailPresence` |
+| command contract | `softphone.presence.NoteGone` |
+| command contract | `softphone.presence.NotePresent` |
+| command contract | `softphone.presence.WithdrawPresence` |
 | command contract | `softphone.presentation.AttributeTile` |
 | command contract | `softphone.presentation.ClearEntry` |
 | command contract | `softphone.presentation.DismissCall` |
@@ -182,6 +198,12 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | event type | `softphone.media.SessionTerminated` |
 | event type | `softphone.media.SignalReceived` |
 | event type | `softphone.media.SignalSent` |
+| event type | `softphone.presence.PeerGone` |
+| event type | `softphone.presence.PeerPresent` |
+| event type | `softphone.presence.PresenceAnnounced` |
+| event type | `softphone.presence.PresenceConfirmed` |
+| event type | `softphone.presence.PresenceFailed` |
+| event type | `softphone.presence.PresenceWithdrawn` |
 | event type | `softphone.presentation.CallDismissed` |
 | event type | `softphone.presentation.CallShown` |
 | event type | `softphone.presentation.ConsoleDialing` |
@@ -212,6 +234,8 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | error type | `softphone.history.CallRecordStateConflict` |
 | error type | `softphone.local.LoopbackDeviceStateConflict` |
 | error type | `softphone.media.MediaSessionStateConflict` |
+| error type | `softphone.presence.PeerPhoneStateConflict` |
+| error type | `softphone.presence.PresenceStateConflict` |
 | error type | `softphone.presentation.CallTileStateConflict` |
 | error type | `softphone.presentation.ConsoleStateConflict` |
 | error type | `softphone.sip.RegistrationStateConflict` |
@@ -229,6 +253,9 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | view type | `softphone.local.LoopbackDeviceById` |
 | view type | `softphone.media.LiveSessions` |
 | view type | `softphone.media.MediaSessionById` |
+| view type | `softphone.presence.MyPresence` |
+| view type | `softphone.presence.PhoneByHandle` |
+| view type | `softphone.presence.PresentPhones` |
 | view type | `softphone.presentation.CallTiles` |
 | view type | `softphone.presentation.ConsoleById` |
 | view type | `softphone.presentation.KeypadById` |
@@ -261,6 +288,7 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | component port | `phone-console` |
 | component port | `phone-control` |
 | component port | `phone-directory` |
+| component port | `phone-presence` |
 | component port | `sip-binding` |
 
 ## Obligations — yours to implement
@@ -301,6 +329,12 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | command behaviour | `softphone.media.ReceiveSignal` | the contract is declared; the algorithm is not | given `softphone.media.ReceiveSignal` input, decide and enact exactly one outcome — `received` otherwise, emits `softphone.media.SignalReceived` |
 | command behaviour | `softphone.media.SendSignal` | the contract is declared; the algorithm is not | given `softphone.media.SendSignal` input, decide and enact exactly one outcome — `sent` otherwise, emits `softphone.media.SignalSent` |
 | command behaviour | `softphone.media.TerminateSession` | the contract is declared; the algorithm is not | given `softphone.media.TerminateSession` input, decide and enact exactly one outcome — `terminated` otherwise, takes `terminate` of `softphone.media.MediaSession`, emits `softphone.media.SessionTerminated`; `wrong-state` from a state no declared move starts in, error `softphone.media.MediaSessionStateConflict` |
+| command behaviour | `softphone.presence.AnnouncePresence` | the contract is declared; the algorithm is not | given `softphone.presence.AnnouncePresence` input, decide and enact exactly one outcome — `announcing` otherwise, creates `softphone.presence.Presence`, emits `softphone.presence.PresenceAnnounced` |
+| command behaviour | `softphone.presence.ConfirmPresence` | the contract is declared; the algorithm is not | given `softphone.presence.ConfirmPresence` input, decide and enact exactly one outcome — `confirmed` otherwise, takes `confirm` of `softphone.presence.Presence`, emits `softphone.presence.PresenceConfirmed`; `wrong-state` from a state no declared move starts in, error `softphone.presence.PresenceStateConflict` |
+| command behaviour | `softphone.presence.FailPresence` | the contract is declared; the algorithm is not | given `softphone.presence.FailPresence` input, decide and enact exactly one outcome — `failed` otherwise, takes `withdraw` of `softphone.presence.Presence`, emits `softphone.presence.PresenceFailed`; `wrong-state` from a state no declared move starts in, error `softphone.presence.PresenceStateConflict` |
+| command behaviour | `softphone.presence.NoteGone` | the contract is declared; the algorithm is not | given `softphone.presence.NoteGone` input, decide and enact exactly one outcome — `noted` otherwise, takes `depart` of `softphone.presence.PeerPhone`, emits `softphone.presence.PeerGone`; `wrong-state` from a state no declared move starts in, error `softphone.presence.PeerPhoneStateConflict` |
+| command behaviour | `softphone.presence.NotePresent` | the contract is declared; the algorithm is not | given `softphone.presence.NotePresent` input, decide and enact exactly one outcome — `noted` otherwise, creates `softphone.presence.PeerPhone`, emits `softphone.presence.PeerPresent` |
+| command behaviour | `softphone.presence.WithdrawPresence` | the contract is declared; the algorithm is not | given `softphone.presence.WithdrawPresence` input, decide and enact exactly one outcome — `withdrawn` otherwise, takes `withdraw` of `softphone.presence.Presence`, emits `softphone.presence.PresenceWithdrawn`; `wrong-state` from a state no declared move starts in, error `softphone.presence.PresenceStateConflict` |
 | command behaviour | `softphone.presentation.AttributeTile` | the contract is declared; the algorithm is not | given `softphone.presentation.AttributeTile` input, decide and enact exactly one outcome — `attributed` otherwise, updates `softphone.presentation.CallTile`, emits `softphone.presentation.TileAttributed` |
 | command behaviour | `softphone.presentation.ClearEntry` | the contract is declared; the algorithm is not | given `softphone.presentation.ClearEntry` input, decide and enact exactly one outcome — `cleared` otherwise, updates `softphone.presentation.Keypad`, emits `softphone.presentation.EntryCleared` |
 | command behaviour | `softphone.presentation.DismissCall` | the contract is declared; the algorithm is not | given `softphone.presentation.DismissCall` input, decide and enact exactly one outcome — `dismissed` otherwise, takes `dismiss` of `softphone.presentation.CallTile`, emits `softphone.presentation.CallDismissed`; `wrong-state` from a state no declared move starts in, error `softphone.presentation.CallTileStateConflict` |
@@ -337,6 +371,9 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | view query | `softphone.local.LoopbackDeviceById` | how the projection is kept current is a storage decision | a query answering `softphone.local.LoopbackDeviceById` with rows projected from `softphone.local.LoopbackDevice` at `read_your_writes` consistency, containing instances where `device_id == param.device_id` |
 | view query | `softphone.media.LiveSessions` | how the projection is kept current is a storage decision | a query answering `softphone.media.LiveSessions` with rows projected from `softphone.media.MediaSession` at `read_your_writes` consistency, containing instances where `state == Live` |
 | view query | `softphone.media.MediaSessionById` | how the projection is kept current is a storage decision | a query answering `softphone.media.MediaSessionById` with rows projected from `softphone.media.MediaSession` at `read_your_writes` consistency, containing instances where `session_id == param.session_id` |
+| view query | `softphone.presence.MyPresence` | how the projection is kept current is a storage decision | a query answering `softphone.presence.MyPresence` with rows projected from `softphone.presence.Presence` at `read_your_writes` consistency, containing instances where `state == Present` |
+| view query | `softphone.presence.PhoneByHandle` | how the projection is kept current is a storage decision | a query answering `softphone.presence.PhoneByHandle` with rows projected from `softphone.presence.PeerPhone` at `read_your_writes` consistency, containing instances where `handle == param.handle` |
+| view query | `softphone.presence.PresentPhones` | how the projection is kept current is a storage decision | a query answering `softphone.presence.PresentPhones` with rows projected from `softphone.presence.PeerPhone` at `read_your_writes` consistency, containing instances where `state == Present` |
 | view query | `softphone.presentation.CallTiles` | how the projection is kept current is a storage decision | a query answering `softphone.presentation.CallTiles` with rows projected from `softphone.presentation.CallTile` at `read_your_writes` consistency, containing instances where `state == Shown` |
 | view query | `softphone.presentation.ConsoleById` | how the projection is kept current is a storage decision | a query answering `softphone.presentation.ConsoleById` with rows projected from `softphone.presentation.Console` at `read_your_writes` consistency, containing instances where `console_id == param.console_id` |
 | view query | `softphone.presentation.KeypadById` | how the projection is kept current is a storage decision | a query answering `softphone.presentation.KeypadById` with rows projected from `softphone.presentation.Keypad` at `read_your_writes` consistency, containing instances where `keypad_id == param.keypad_id` |
@@ -357,6 +394,8 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | actor grants | `softphone.history.Human` | planning | may invoke `softphone.history.AttributeRecord`, `softphone.history.DeleteRecord`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.local.LocalHost` | planning | may invoke `softphone.local.AttachLoopback`, `softphone.local.DetachLoopback`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.media.SessionHost` | planning | may invoke `softphone.media.ActivateSession`, `softphone.media.InterruptOutput`, `softphone.media.OpenSession`, `softphone.media.ReceiveSignal`, `softphone.media.SendSignal`, `softphone.media.TerminateSession`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| actor grants | `softphone.presence.Kernel` | planning | may invoke `softphone.presence.ConfirmPresence`, `softphone.presence.FailPresence`, `softphone.presence.NoteGone`, `softphone.presence.NotePresent`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
+| actor grants | `softphone.presence.PresenceHost` | planning | may invoke `softphone.presence.AnnouncePresence`, `softphone.presence.WithdrawPresence`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.presentation.Human` | planning | may invoke `softphone.presentation.AttributeTile`, `softphone.presentation.ClearEntry`, `softphone.presentation.DismissCall`, `softphone.presentation.EnterCall`, `softphone.presentation.EnterDialing`, `softphone.presentation.EnterIncoming`, `softphone.presentation.LeaveCall`, `softphone.presentation.OpenConsole`, `softphone.presentation.OpenKeypad`, `softphone.presentation.PressKey`, `softphone.presentation.ShowCall`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.sip.Kernel` | planning | may invoke `softphone.sip.ApplyRemoteMedia`, `softphone.sip.CloseDialog`, `softphone.sip.ConfirmRegistration`, `softphone.sip.FailRegistration`, `softphone.sip.RequestLocalMedia`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
 | actor grants | `softphone.sip.SipHost` | planning | may invoke `softphone.sip.CloseDialog`, `softphone.sip.FailLocalMedia`, `softphone.sip.OfferLocalMedia`, `softphone.sip.OpenDialog`, `softphone.sip.RefreshRegistration`, `softphone.sip.Register`, `softphone.sip.RetryRegistration`, `softphone.sip.Unregister`; a grant is checked against a caller identity, which types do not carry, and enforcement belongs to the layer that knows who is calling |
@@ -367,4 +406,5 @@ Scope: `component-skeletons`, planned by `ess-synth`. Regenerate with `ess synth
 | workload | `phone-console` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
 | workload | `phone-control` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
 | workload | `phone-directory` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
+| workload | `phone-presence` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |
 | workload | `sip-binding` | planning | requires at least 1 replica(s); topology synthesis is deferred with its design |

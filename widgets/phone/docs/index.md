@@ -1,7 +1,7 @@
 <!--
 generated from softphone v1
-model digest 3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6
-contract digest b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a
+model digest 522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e
+contract digest a716fbbbe26b7fdd24cf69b5441a8a7a57b304f349ef2e63e6705b0c329ffd20
 do not edit: regenerate with `ess generate`
 -->
 
@@ -24,9 +24,11 @@ flowchart TB
         who7["softphone.history.Human"]
         who8["softphone.local.LocalHost"]
         who9["softphone.media.SessionHost"]
-        who10["softphone.presentation.Human"]
-        who11["softphone.sip.Kernel"]
-        who12["softphone.sip.SipHost"]
+        who10["softphone.presence.Kernel"]
+        who11["softphone.presence.PresenceHost"]
+        who12["softphone.presentation.Human"]
+        who13["softphone.sip.Kernel"]
+        who14["softphone.sip.SipHost"]
     end
     subgraph unit0["bridge-binding"]
         cmd0["softphone.bridge.CloseBridge"]
@@ -67,18 +69,18 @@ flowchart TB
         evt33["softphone.media.SignalSent"]
     end
     subgraph unit4["phone-console"]
-        cmd34["softphone.presentation.AttributeTile"]
-        cmd35["softphone.presentation.ClearEntry"]
-        cmd36["softphone.presentation.DismissCall"]
-        cmd42["softphone.presentation.OpenKeypad"]
-        cmd43["softphone.presentation.PressKey"]
-        cmd44["softphone.presentation.ShowCall"]
-        evt34["softphone.presentation.CallDismissed"]
-        evt35["softphone.presentation.CallShown"]
-        evt41["softphone.presentation.EntryCleared"]
-        evt42["softphone.presentation.KeyPressed"]
-        evt43["softphone.presentation.KeypadOpened"]
-        evt44["softphone.presentation.TileAttributed"]
+        cmd40["softphone.presentation.AttributeTile"]
+        cmd41["softphone.presentation.ClearEntry"]
+        cmd42["softphone.presentation.DismissCall"]
+        cmd48["softphone.presentation.OpenKeypad"]
+        cmd49["softphone.presentation.PressKey"]
+        cmd50["softphone.presentation.ShowCall"]
+        evt40["softphone.presentation.CallDismissed"]
+        evt41["softphone.presentation.CallShown"]
+        evt47["softphone.presentation.EntryCleared"]
+        evt48["softphone.presentation.KeyPressed"]
+        evt49["softphone.presentation.KeypadOpened"]
+        evt50["softphone.presentation.TileAttributed"]
     end
     subgraph unit5["phone-control"]
         cmd4["softphone.control.Answer"]
@@ -122,43 +124,57 @@ flowchart TB
         evt21["softphone.directory.ContactDeleted"]
         evt22["softphone.directory.ContactRenamed"]
     end
-    subgraph unit7["sip-binding"]
-        cmd45["softphone.sip.ApplyRemoteMedia"]
-        cmd46["softphone.sip.CloseDialog"]
-        cmd47["softphone.sip.ConfirmRegistration"]
-        cmd48["softphone.sip.FailLocalMedia"]
-        cmd49["softphone.sip.FailRegistration"]
-        cmd50["softphone.sip.OfferLocalMedia"]
-        cmd51["softphone.sip.OpenDialog"]
-        cmd52["softphone.sip.RefreshRegistration"]
-        cmd53["softphone.sip.Register"]
-        cmd54["softphone.sip.RequestLocalMedia"]
-        cmd55["softphone.sip.RetryRegistration"]
-        cmd56["softphone.sip.Unregister"]
-        evt45["softphone.sip.LocalMediaFailed"]
-        evt46["softphone.sip.LocalMediaOffered"]
-        evt47["softphone.sip.LocalMediaRequested"]
-        evt48["softphone.sip.RegistrationConfirmed"]
-        evt49["softphone.sip.RegistrationEnded"]
-        evt50["softphone.sip.RegistrationFailed"]
-        evt51["softphone.sip.RegistrationRefreshed"]
-        evt52["softphone.sip.RegistrationRequested"]
-        evt53["softphone.sip.RegistrationRetried"]
-        evt54["softphone.sip.RemoteMediaApplied"]
-        evt55["softphone.sip.SipDialogClosed"]
-        evt56["softphone.sip.SipDialogOpened"]
+    subgraph unit7["phone-presence"]
+        cmd34["softphone.presence.AnnouncePresence"]
+        cmd35["softphone.presence.ConfirmPresence"]
+        cmd36["softphone.presence.FailPresence"]
+        cmd37["softphone.presence.NoteGone"]
+        cmd38["softphone.presence.NotePresent"]
+        cmd39["softphone.presence.WithdrawPresence"]
+        evt34["softphone.presence.PeerGone"]
+        evt35["softphone.presence.PeerPresent"]
+        evt36["softphone.presence.PresenceAnnounced"]
+        evt37["softphone.presence.PresenceConfirmed"]
+        evt38["softphone.presence.PresenceFailed"]
+        evt39["softphone.presence.PresenceWithdrawn"]
+    end
+    subgraph unit8["sip-binding"]
+        cmd51["softphone.sip.ApplyRemoteMedia"]
+        cmd52["softphone.sip.CloseDialog"]
+        cmd53["softphone.sip.ConfirmRegistration"]
+        cmd54["softphone.sip.FailLocalMedia"]
+        cmd55["softphone.sip.FailRegistration"]
+        cmd56["softphone.sip.OfferLocalMedia"]
+        cmd57["softphone.sip.OpenDialog"]
+        cmd58["softphone.sip.RefreshRegistration"]
+        cmd59["softphone.sip.Register"]
+        cmd60["softphone.sip.RequestLocalMedia"]
+        cmd61["softphone.sip.RetryRegistration"]
+        cmd62["softphone.sip.Unregister"]
+        evt51["softphone.sip.LocalMediaFailed"]
+        evt52["softphone.sip.LocalMediaOffered"]
+        evt53["softphone.sip.LocalMediaRequested"]
+        evt54["softphone.sip.RegistrationConfirmed"]
+        evt55["softphone.sip.RegistrationEnded"]
+        evt56["softphone.sip.RegistrationFailed"]
+        evt57["softphone.sip.RegistrationRefreshed"]
+        evt58["softphone.sip.RegistrationRequested"]
+        evt59["softphone.sip.RegistrationRetried"]
+        evt60["softphone.sip.RemoteMediaApplied"]
+        evt61["softphone.sip.SipDialogClosed"]
+        evt62["softphone.sip.SipDialogOpened"]
     end
     subgraph unowned["owned by no component"]
-        cmd37["softphone.presentation.EnterCall"]
-        cmd38["softphone.presentation.EnterDialing"]
-        cmd39["softphone.presentation.EnterIncoming"]
-        cmd40["softphone.presentation.LeaveCall"]
-        cmd41["softphone.presentation.OpenConsole"]
-        evt36["softphone.presentation.ConsoleDialing"]
-        evt37["softphone.presentation.ConsoleEngaged"]
-        evt38["softphone.presentation.ConsoleIncoming"]
-        evt39["softphone.presentation.ConsoleOpened"]
-        evt40["softphone.presentation.ConsoleReleased"]
+        cmd43["softphone.presentation.EnterCall"]
+        cmd44["softphone.presentation.EnterDialing"]
+        cmd45["softphone.presentation.EnterIncoming"]
+        cmd46["softphone.presentation.LeaveCall"]
+        cmd47["softphone.presentation.OpenConsole"]
+        evt42["softphone.presentation.ConsoleDialing"]
+        evt43["softphone.presentation.ConsoleEngaged"]
+        evt44["softphone.presentation.ConsoleIncoming"]
+        evt45["softphone.presentation.ConsoleOpened"]
+        evt46["softphone.presentation.ConsoleReleased"]
     end
     who0 -->|"may invoke"| cmd0
     who0 -->|"may invoke"| cmd2
@@ -202,30 +218,36 @@ flowchart TB
     who9 -->|"may invoke"| cmd31
     who9 -->|"may invoke"| cmd32
     who9 -->|"may invoke"| cmd33
-    who10 -->|"may invoke"| cmd34
     who10 -->|"may invoke"| cmd35
     who10 -->|"may invoke"| cmd36
     who10 -->|"may invoke"| cmd37
     who10 -->|"may invoke"| cmd38
-    who10 -->|"may invoke"| cmd39
-    who10 -->|"may invoke"| cmd40
-    who10 -->|"may invoke"| cmd41
-    who10 -->|"may invoke"| cmd42
-    who10 -->|"may invoke"| cmd43
-    who10 -->|"may invoke"| cmd44
-    who11 -->|"may invoke"| cmd45
-    who11 -->|"may invoke"| cmd46
-    who11 -->|"may invoke"| cmd47
-    who11 -->|"may invoke"| cmd49
-    who11 -->|"may invoke"| cmd54
+    who11 -->|"may invoke"| cmd34
+    who11 -->|"may invoke"| cmd39
+    who12 -->|"may invoke"| cmd40
+    who12 -->|"may invoke"| cmd41
+    who12 -->|"may invoke"| cmd42
+    who12 -->|"may invoke"| cmd43
+    who12 -->|"may invoke"| cmd44
+    who12 -->|"may invoke"| cmd45
     who12 -->|"may invoke"| cmd46
+    who12 -->|"may invoke"| cmd47
     who12 -->|"may invoke"| cmd48
+    who12 -->|"may invoke"| cmd49
     who12 -->|"may invoke"| cmd50
-    who12 -->|"may invoke"| cmd51
-    who12 -->|"may invoke"| cmd52
-    who12 -->|"may invoke"| cmd53
-    who12 -->|"may invoke"| cmd55
-    who12 -->|"may invoke"| cmd56
+    who13 -->|"may invoke"| cmd51
+    who13 -->|"may invoke"| cmd52
+    who13 -->|"may invoke"| cmd53
+    who13 -->|"may invoke"| cmd55
+    who13 -->|"may invoke"| cmd60
+    who14 -->|"may invoke"| cmd52
+    who14 -->|"may invoke"| cmd54
+    who14 -->|"may invoke"| cmd56
+    who14 -->|"may invoke"| cmd57
+    who14 -->|"may invoke"| cmd58
+    who14 -->|"may invoke"| cmd59
+    who14 -->|"may invoke"| cmd61
+    who14 -->|"may invoke"| cmd62
     cmd0 -->|"closed"| evt0
     cmd1 -->|"confirmed"| evt1
     cmd2 -->|"connecting"| evt2
@@ -260,39 +282,45 @@ flowchart TB
     cmd31 -->|"received"| evt32
     cmd32 -->|"sent"| evt33
     cmd33 -->|"terminated"| evt31
-    cmd34 -->|"attributed"| evt44
-    cmd35 -->|"cleared"| evt41
-    cmd36 -->|"dismissed"| evt34
-    cmd37 -->|"engaged"| evt37
-    cmd38 -->|"dialing"| evt36
-    cmd39 -->|"incoming"| evt38
-    cmd40 -->|"released"| evt40
-    cmd41 -->|"opened"| evt39
-    cmd42 -->|"opened"| evt43
-    cmd43 -->|"pressed"| evt42
-    cmd44 -->|"shown"| evt35
-    cmd45 -->|"applied"| evt54
-    cmd46 -->|"closed"| evt55
-    cmd47 -->|"confirmed"| evt48
-    cmd48 -->|"failed"| evt45
-    cmd49 -->|"failed"| evt50
-    cmd50 -->|"offered"| evt46
-    cmd51 -->|"opened"| evt56
-    cmd52 -->|"refreshed"| evt51
-    cmd53 -->|"requested"| evt52
-    cmd54 -->|"requested"| evt47
-    cmd55 -->|"retried"| evt53
-    cmd56 -->|"ended"| evt49
+    cmd34 -->|"announcing"| evt36
+    cmd35 -->|"confirmed"| evt37
+    cmd36 -->|"failed"| evt38
+    cmd37 -->|"noted"| evt34
+    cmd38 -->|"noted"| evt35
+    cmd39 -->|"withdrawn"| evt39
+    cmd40 -->|"attributed"| evt50
+    cmd41 -->|"cleared"| evt47
+    cmd42 -->|"dismissed"| evt40
+    cmd43 -->|"engaged"| evt43
+    cmd44 -->|"dialing"| evt42
+    cmd45 -->|"incoming"| evt44
+    cmd46 -->|"released"| evt46
+    cmd47 -->|"opened"| evt45
+    cmd48 -->|"opened"| evt49
+    cmd49 -->|"pressed"| evt48
+    cmd50 -->|"shown"| evt41
+    cmd51 -->|"applied"| evt60
+    cmd52 -->|"closed"| evt61
+    cmd53 -->|"confirmed"| evt54
+    cmd54 -->|"failed"| evt51
+    cmd55 -->|"failed"| evt56
+    cmd56 -->|"offered"| evt52
+    cmd57 -->|"opened"| evt62
+    cmd58 -->|"refreshed"| evt57
+    cmd59 -->|"requested"| evt58
+    cmd60 -->|"requested"| evt53
+    cmd61 -->|"retried"| evt59
+    cmd62 -->|"ended"| evt55
     evt1 -.->|"activate-session-with-bridge"| cmd28
     evt0 -.->|"end-session-with-bridge"| cmd33
-    evt55 -.->|"end-session-with-dialog"| cmd33
+    evt61 -.->|"end-session-with-dialog"| cmd33
     evt3 -.->|"end-session-with-failed-bridge"| cmd33
     evt27 -.->|"end-session-with-loopback"| cmd33
     evt8 -.->|"record-failed-call"| cmd25
     evt9 -.->|"record-hung-up-call"| cmd25
     evt11 -.->|"record-rejected-call"| cmd25
-    evt10 -.->|"show-incoming-call"| cmd44
-    evt6 -.->|"show-outbound-call"| cmd44
+    evt10 -.->|"show-incoming-call"| cmd50
+    evt6 -.->|"show-outbound-call"| cmd50
 ```
 
 A command is accepted by the component that owns its context, emits the events one of its outcomes declares, and a dashed edge is a binding carrying an event into the next command. Design §9 begins one step earlier, at the actor who invokes the first command, and so does this graph: a solid edge out of an actor is a grant, and an actor drawn with no edge at all may invoke nothing — which is something the model says, not an arrow somebody forgot.
@@ -305,6 +333,7 @@ A command is accepted by the component that owns its context, emits the events o
 - **[Call history](domains/softphone-history.md)** (`softphone.history`) — One durable record per finished call, in the neutral termination vocabulary, optionally attributed to a contact. Deleted one record at a time; there is no bulk erase. Two types, one entity, two views, three commands, three events, one error and two actors.
 - **[Local binding](domains/softphone-local.md)** (`softphone.local`) — A media session carried by local audio devices. No network, no signalling, no registration — the binding whose existence is the evidence that the media layer is not the SIP layer. Three types, one entity, one view, two commands, two events, one error and one actor.
 - **[Media session](domains/softphone-media.md)** (`softphone.media`) — One admitted media session, its neutral audio profile, the signals crossing it and the one reason it ended. Agnostic to SIP, RTVBP and WebRTC by construction: no relation and no field type here points at a binding domain. 11 types, one entity, two views, six commands, six events, one error and one actor.
+- **[Presence](domains/softphone-presence.md)** (`softphone.presence`) — This phone's standing with the server it announced itself to, and the other phones it has been told about. One roster per page, told rather than shared. Six types, two entities, three views, six commands, six events, two errors and two actors.
 - **[Phone console](domains/softphone-presentation.md)** (`softphone.presentation`) — A keypad holding a partially typed address, and one tile per call carrying the contact name to show. The only domain a page reads directly. Six types, three entities, three views, 11 commands, 11 events, two errors and one actor.
 - **[SIP binding](domains/softphone-sip.md)** (`softphone.sip`) — A SIP registration and the dialogs carrying media sessions over it. The only domain that names SIP, SDP, an address-of-record or a WebSocket. The offer/answer exchange lives here as four commands and the two descriptions a dialog carries. 10 types, two entities, two views, 12 commands, 12 events, two errors and two actors.
 
@@ -326,6 +355,8 @@ A component is a unit of ownership, not a deployment. How many of each runs, and
 
 **`phone-directory`** — Owns the phonebook. It owns [`softphone.directory`](domains/softphone-directory.md). It accepts `softphone.directory.AddAddress`, `softphone.directory.AddContact`, `softphone.directory.DeleteContact`, `softphone.directory.RemoveAddress` and `softphone.directory.RenameContact`. It publishes `softphone.directory.ContactAdded`, `softphone.directory.ContactAddressAdded`, `softphone.directory.ContactAddressRemoved`, `softphone.directory.ContactDeleted` and `softphone.directory.ContactRenamed`.
 
+**`phone-presence`** — Owns who else is there, as one roster this page holds and the server only reports. It owns [`softphone.presence`](domains/softphone-presence.md). It accepts `softphone.presence.AnnouncePresence`, `softphone.presence.ConfirmPresence`, `softphone.presence.FailPresence`, `softphone.presence.NoteGone`, `softphone.presence.NotePresent` and `softphone.presence.WithdrawPresence`. It publishes `softphone.presence.PeerGone`, `softphone.presence.PeerPresent`, `softphone.presence.PresenceAnnounced`, `softphone.presence.PresenceConfirmed`, `softphone.presence.PresenceFailed` and `softphone.presence.PresenceWithdrawn`.
+
 **`sip-binding`** — Owns the SIP registration and the dialogs carrying media sessions over it. It owns [`softphone.sip`](domains/softphone-sip.md). It accepts `softphone.sip.ApplyRemoteMedia`, `softphone.sip.CloseDialog`, `softphone.sip.ConfirmRegistration`, `softphone.sip.FailLocalMedia`, `softphone.sip.FailRegistration`, `softphone.sip.OfferLocalMedia`, `softphone.sip.OpenDialog`, `softphone.sip.RefreshRegistration`, `softphone.sip.Register`, `softphone.sip.RequestLocalMedia`, `softphone.sip.RetryRegistration` and `softphone.sip.Unregister`. It publishes `softphone.sip.LocalMediaFailed`, `softphone.sip.LocalMediaOffered`, `softphone.sip.LocalMediaRequested`, `softphone.sip.RegistrationConfirmed`, `softphone.sip.RegistrationEnded`, `softphone.sip.RegistrationFailed`, `softphone.sip.RegistrationRefreshed`, `softphone.sip.RegistrationRequested`, `softphone.sip.RegistrationRetried`, `softphone.sip.RemoteMediaApplied`, `softphone.sip.SipDialogClosed` and `softphone.sip.SipDialogOpened`.
 
 ## The other pages
@@ -338,6 +369,7 @@ A component is a unit of ownership, not a deployment. How many of each runs, and
 | [Call history](domains/softphone-history.md) | the `softphone.history` vocabulary: its types, entities, views, commands, events, errors and actors |
 | [Local binding](domains/softphone-local.md) | the `softphone.local` vocabulary: its types, entities, views, commands, events, errors and actors |
 | [Media session](domains/softphone-media.md) | the `softphone.media` vocabulary: its types, entities, views, commands, events, errors and actors |
+| [Presence](domains/softphone-presence.md) | the `softphone.presence` vocabulary: its types, entities, views, commands, events, errors and actors |
 | [Phone console](domains/softphone-presentation.md) | the `softphone.presentation` vocabulary: its types, entities, views, commands, events, errors and actors |
 | [SIP binding](domains/softphone-sip.md) | the `softphone.sip` vocabulary: its types, entities, views, commands, events, errors and actors |
 | [Interactions](interactions.md) | every binding, with what it guarantees and what happens when it fails |
@@ -347,4 +379,4 @@ A component is a unit of ownership, not a deployment. How many of each runs, and
 
 ---
 
-Generated from softphone v1 · model digest `3d66648c3a80c2b5ba8ed8e6e8d9bfcbe91e4312afd50f56a5fea9297e7297a6` · contract digest `b44b97c39f6c56280f3034e682da190a85a54d31c2b621422d55377b30a6864a`. Do not edit this file; change the specification and regenerate it with `ess generate`.
+Generated from softphone v1 · model digest `522f372d9f45cae05577d8379ac02cac26b458beceb66dea739471ba4f91e59e` · contract digest `a716fbbbe26b7fdd24cf69b5441a8a7a57b304f349ef2e63e6705b0c329ffd20`. Do not edit this file; change the specification and regenerate it with `ess generate`.

@@ -33,6 +33,7 @@ media-session = { path = ".build/rust/softphone/crates/media-session" }
 phone-console = { path = ".build/rust/softphone/crates/phone-console" }
 phone-control = { path = ".build/rust/softphone/crates/phone-control" }
 phone-directory = { path = ".build/rust/softphone/crates/phone-directory" }
+phone-presence = { path = ".build/rust/softphone/crates/phone-presence" }
 sip-binding = { path = ".build/rust/softphone/crates/sip-binding" }
 softphone-behaviour = { path = "crates/softphone-behaviour" }
 

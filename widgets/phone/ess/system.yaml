@@ -19,6 +19,7 @@ domains:
   - softphone.control
   - softphone.sip
   - softphone.bridge
+  - softphone.presence
   - softphone.local
   - softphone.directory
   - softphone.history

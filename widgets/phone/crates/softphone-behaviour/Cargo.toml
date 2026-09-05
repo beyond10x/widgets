@@ -16,4 +16,5 @@ media-session.workspace = true
 phone-console.workspace = true
 phone-control.workspace = true
 phone-directory.workspace = true
+phone-presence.workspace = true
 sip-binding.workspace = true

@@ -32,7 +32,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use softphone_types::primitives::{Timestamp, Uuid};
-use softphone_types::{bridge, control, directory, history, local, media, presentation, sip};
+use softphone_types::{
+    bridge, control, directory, history, local, media, presence, presentation, sip,
+};
 
 mod bridge_impl;
 mod control_impl;
@@ -40,6 +42,7 @@ mod directory_impl;
 mod history_impl;
 mod local_impl;
 mod media_impl;
+mod presence_impl;
 mod presentation_impl;
 mod sip_impl;
 
@@ -70,6 +73,10 @@ pub struct Store {
     pub contacts: Vec<directory::ContactSnapshot>,
     /// `softphone.directory.ContactAddress`.
     pub addresses: Vec<directory::ContactAddressSnapshot>,
+    /// `softphone.presence.Presence` — this phone's own standing with its server.
+    pub presences: Vec<presence::PresenceSnapshot>,
+    /// `softphone.presence.PeerPhone` — the roster, one row per phone this page was told of.
+    pub phones: Vec<presence::PeerPhoneSnapshot>,
     /// `softphone.presentation.CallTile`.
     pub tiles: Vec<presentation::CallTileSnapshot>,
     /// `softphone.presentation.Console`.
@@ -193,10 +200,11 @@ impl Behaviour {
 
 /// The `softphone` system, every obligation satisfied, sharing one store.
 ///
-/// The eight arguments are the eight components the specification declares; each gets a handle onto
-/// the same [`Store`], which is what makes them one phone rather than eight.
+/// The nine arguments are the nine components the specification declares; each gets a handle onto
+/// the same [`Store`], which is what makes them one phone rather than nine.
 #[must_use]
 pub fn system() -> softphone_system::System<
+    Behaviour,
     Behaviour,
     Behaviour,
     Behaviour,
@@ -215,6 +223,7 @@ pub fn system() -> softphone_system::System<
         phone_console::PhoneConsole::new(behaviour.clone()),
         phone_control::PhoneControl::new(behaviour.clone()),
         phone_directory::PhoneDirectory::new(behaviour.clone()),
+        phone_presence::PhonePresence::new(behaviour.clone()),
         sip_binding::SipBinding::new(behaviour),
     )
 }
