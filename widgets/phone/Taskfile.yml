@@ -345,6 +345,19 @@ tasks:
     cmds:
       - cargo build --release -p phone-server
 
+  widget-drift:
+    desc: Fail when the committed package is not what the sources determine.
+    # `widget/dist/` is committed — a consumer installing this package from git has no cargo or
+    # wasm toolchain to build it with — so it is a generated tree under version control, and the
+    # only thing that keeps one honest is a gate that rebuilds it and compares.
+    #
+    # It exists because it happened: `dist/softphone.wasm` sat one model behind for a whole release,
+    # so a consumer would have been served a module that answered `unknown-command` for every
+    # command in the ninth domain, while every gate here passed.
+    deps: [widget-build]
+    cmds:
+      - cmd: git -C ../.. diff --quiet -- widgets/phone/widget/dist || { echo "widget/dist is stale — commit what task widget-build produced"; exit 1; }
+
   # ── the gates ───────────────────────────────────────────────────────────────
   check:
     desc: The fast gate — specification, scenarios, and committed documentation.
@@ -355,6 +368,7 @@ tasks:
       - task: drift
       - task: test
       - task: widget-check
+      - task: widget-drift
       - task: lints
 
   build:
