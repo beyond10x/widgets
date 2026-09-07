@@ -61,3 +61,24 @@ that refusal is the answer rather than an obstacle.
 
 `b10x-bot[bot]`, through the Atlas `scripts/as-bot.sh` wrapper. Never raw `git commit` or
 `git push`, and never `--no-verify`. Semantic subjects, a body with detail, no attribution trailers.
+
+<!-- b10x-release-operations:start -->
+## Release completion
+
+An ordinary release completes after this repository's exact tag, required source checks,
+published release and required artifacts are verified. A pushed tag with unfinished checks or
+uploads is queued; report it as released only after those requirements succeed.
+
+Atlas reconciliation and public documentation publication run asynchronously. Do not wait for
+Atlas or Website, update Website source locks or bootstrap snapshots, promote consumer pins,
+release shared docs tooling, or redeploy documentation façades as part of an ordinary source
+release. Report documentation as pending unless its publication was actually verified. A background
+documentation failure does not invalidate a successful source release.
+
+Keep this repository's provenance, correctness, security, compatibility and artifact verification
+requirements. Shared rendering, routing or delivery-control changes still require their relevant
+integration gates. A release request does not authorize deployment or downstream releases.
+Repositories without a release unit retain their existing publication policy. This completion
+boundary supersedes older instructions that attach synchronous documentation ceremony to each
+source release.
+<!-- b10x-release-operations:end -->
