@@ -3,6 +3,18 @@
 Each directory under `widgets/` is one application, specified before it is built. It owns its ESS
 specification and its AEP planning store, and neither is edited by hand.
 
+## Serves
+
+The objectives named in Atlas's ROADMAP.md that this repository moves:
+
+- **O2 — decisions as data, with evidence.** Typed specifications, cross-domain relations and
+  executable scenarios make application behavior and its remaining obligations checkable.
+- **O4 — products built from the platform.** Small, independently deployable applications combine
+  reusable capabilities; the browser phone joins protocol-neutral media with SIP and local
+  bindings and gives human and agent callers the same control surface.
+
+The current application and its evidence are described in [README.md](README.md).
+
 ## Before changing a specification
 
 Read the `ess-schema` skill, and treat the installed `ess` binary as the authority — not a checkout
