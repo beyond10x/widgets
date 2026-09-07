@@ -243,6 +243,7 @@ tasks:
     # the built package carries exactly one copy of it and the export map points there.
     deps: [impl]
     cmds:
+      - mkdir -p widget/public
       - cp target/wasm32-unknown-unknown/release/softphone_shell.wasm widget/public/softphone.wasm
 
   widget-check:
