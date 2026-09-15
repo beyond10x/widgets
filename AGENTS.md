@@ -46,10 +46,20 @@ Useful assertions, all of which hold today and none of which `validate` would ha
 ## Documentation
 
 `docs/` is generated and carries a `do not edit` header on every file. Change the specification and
-run `task docs`; never edit the output. `b10x.docs.yaml` and
-`.github/workflows/b10x-docs-pages.yml` are **Atlas-owned** and are not in this tree yet: they are
-created by `atlas docs reconcile` once this repository is catalogued. Never hand-write them — an
-authored copy puts this repository out of step with the delivery plan that routes it.
+run `task docs`; never edit the output.
+
+`b10x.docs.yaml` **is in this tree.** It was hand-written on 2026-09-15 (commit `4d1040c`) for the
+catalog adoption, deliberately and as an exception, and its own lines 2-3 say so. It is
+**Atlas-owned from adoption on**: once this repository carries a row in `atlas/docs/catalog.md`,
+`atlas docs reconcile` regenerates the file and the delivery and routing fields stop being this
+repository's to choose. Until then, change only the source and presentation fields the manifest's
+header assigns to this repository, and do not restructure it — the generator's shape
+(`schema: b10x-docs/v4`) is what reconcile will rewrite against.
+
+`.github/workflows/b10x-docs-pages.yml` is **Atlas-owned and still not in this tree**; it is
+created by `atlas docs reconcile` at adoption. Never hand-write it — an authored copy puts this
+repository out of step with the delivery plan that routes it. (`.github/workflows/pages.yml` is a
+different, repository-owned workflow and is not the Atlas one.)
 
 ## Planning
 
