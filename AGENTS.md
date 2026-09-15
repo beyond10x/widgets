@@ -47,9 +47,9 @@ Useful assertions, all of which hold today and none of which `validate` would ha
 
 `docs/` is generated and carries a `do not edit` header on every file. Change the specification and
 run `task docs`; never edit the output. `b10x.docs.yaml` and
-`.github/workflows/b10x-docs-pages.yml` are **Atlas-owned** — they are produced by
-`atlas docs reconcile`, and editing them here puts this repository out of step with the delivery
-plan that routes it.
+`.github/workflows/b10x-docs-pages.yml` are **Atlas-owned** and are not in this tree yet: they are
+created by `atlas docs reconcile` once this repository is catalogued. Never hand-write them — an
+authored copy puts this repository out of step with the delivery plan that routes it.
 
 ## Planning
 
