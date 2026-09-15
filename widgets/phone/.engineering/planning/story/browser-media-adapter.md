@@ -25,7 +25,7 @@ scope:
   path: widget
 - confidence: cited
   path: widget/src
-revision: 18
+revision: 19
 ---
 # Adapt browser-native audio
 
@@ -118,9 +118,9 @@ converge on one idempotent teardown: stop source tracks, disconnect the graph, c
 `AudioContext`, clear queued playback, and ignore callbacks arriving from a superseded connection
 generation.
 
-Read from `~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` §5, which is the
-implemented version of this for RTVBP, and whose §7 records that jitter behaviour is bounded by a ring
-buffer policy rather than solved.
+Read from an internal repository's `projects/ai-agent-platform/docs/designs/browser-voice.md` §5,
+which is the implemented version of this for RTVBP, and whose §7 records that jitter behaviour is
+bounded by a ring buffer policy rather than solved.
 
 ## What landed 2026-09-05, and what is still unproven
 

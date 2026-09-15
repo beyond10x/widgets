@@ -15,10 +15,12 @@ There is one so far.
 
 A softphone that registers a SIP account over secure WebSocket and carries audio in a browser page,
 built on the [`codewandler/sipx`](https://github.com/codewandler/sipx) browser SDK. **The
-specification exists; the implementation does not.** What is here is the model, seven domains of it,
-and the evidence that it holds together.
+specification exists, and the phone behaviours are implemented.** What is here is the model, nine
+domains of it, the crates that fill every obligation its plan owes, and the evidence that it holds
+together; what is not here is storage or authorisation, which the specification deliberately leaves
+to a host.
 
-### Seven domains, one per concern
+### Nine domains, one per concern
 
 | Domain | Responsible for |
 |---|---|
@@ -29,11 +31,13 @@ and the evidence that it holds together.
 | `softphone.presentation` | the keypad, one tile per call, and which mode the screen is in |
 | `softphone.sip` | the SIP binding, including the offer/answer exchange |
 | `softphone.local` | a local-audio binding |
+| `softphone.bridge` | the media bridge to the server that holds the SIP leg: where it points, the offer it sent, the answer it got and why it closed |
+| `softphone.presence` | this phone's standing with that server, and the roster of other phones it has been told about |
 
 The seventh is the point of the first. With one binding, a neutral layer and its only carrier are
 indistinguishable and "protocol-agnostic" is an assertion; `softphone.local` is what makes the claim
 checkable, and the check is mechanical — search the compiled `domains."softphone.media"` for
-`softphone.sip.*` or `softphone.local.*` and it returns nothing.
+`softphone.sip.*`, `softphone.local.*` or `softphone.bridge.*` and it returns nothing.
 
 ### What joins them
 
@@ -47,27 +51,29 @@ on screen and why a finished call reaches the log without anybody asking for eit
 
 ### Counts
 
-`ess validate` reports `softphone v1 — 11 file(s), valid`. 57 commands, 57 events, 18 views, 13
-entities, 7 workloads. `ess generate synthesize --target rust` reports 344 capabilities: 248
-generated, 75 obligations, 21 refused — and the emitted crates build.
+`ess validate` reports `softphone v1 — 12 file(s), valid`. 63 commands, 63 events, 21 views, 15
+entities, 9 workloads. `ess generate synthesize --target rust` reports 384 capabilities: 276
+generated, 84 obligations, 24 refused — and the emitted crates build.
 
-**And the 75 are filled.** `crates/softphone-behaviour` implements every `*Behavior` and `*Query`
+**And the 84 are filled.** `crates/softphone-behaviour` implements every `*Behavior` and `*Query`
 trait the plan owes; `crates/softphone-shell` installs it into the generated web bridge through that
 bridge's own `install` seam, so the emitted page, wire and catalogue are untouched and the page says
-"a realization is installed". `task test` replays the eleven authored scenarios through the same
-three WebAssembly exports a browser uses — **11 scenarios, 181 steps, 0 failures** — which is the
-difference between a specification that is coherent and one that executes.
+"a realization is installed". `task test` replays the authored scenarios through the same three
+WebAssembly exports a browser uses, which is the difference between a specification that is coherent
+and one that executes. The 23 is the count `ess conform author` reports today; `task test` was not
+run when this paragraph was last edited, and the most recent recorded green run is 21 scenarios and
+411 of 411 steps (`.engineering/waves/2026-09-04-phone-usable.md:318`).
 
 ## What the specification deliberately does not decide
 
 **Storage.** Every view query is an obligation whose stated reason is "how the projection is kept
 current is a storage decision", so where the phonebook and the call log live is a host's answer.
 
-**Authorisation.** All eleven actor grants are refused by synthesis: a grant is checked against a
+**Authorisation.** All fifteen actor grants are refused by synthesis: a grant is checked against a
 caller identity, which types do not carry, and enforcement belongs to the layer that knows who is
 calling. The `Human`/`Agent` parity is a fact a reader and a checker can read, and a host obligation.
 
-Both are on the [obligations page](widgets/phone/docs/obligations.md), with all 68.
+Both are on the [obligations page](widgets/phone/docs/obligations.md), with all 84.
 
 ## Reading it
 
@@ -85,7 +91,7 @@ the specification determines.
 
 The same model is published as a browsable site at
 **[beyond10x.github.io/widgets/phone/](https://beyond10x.github.io/widgets/phone/)** — the domain
-pages with their lifecycle diagrams, the interaction graph, the topology, the type crossings, all 68
+pages with their lifecycle diagrams, the interaction graph, the topology, the type crossings, all 84
 obligations, and the [scenario player](https://beyond10x.github.io/widgets/phone/player/). `task
 pages` assembles it and `task pages-drift` refuses a stale one.
 

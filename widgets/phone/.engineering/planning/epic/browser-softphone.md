@@ -7,7 +7,7 @@ title: Browser softphone
 summary: Register over WSS and carry audio calls in a browser page, with media owned by RTCPeerConnection.
 relations:
 - derived_from: initiative:browser-softphone
-revision: 6
+revision: 8
 ---
 # Browser softphone
 
@@ -72,9 +72,9 @@ socket, timer and media track observed closed.
 This organisation has already shipped a browser phone, on a different protocol. It is worth reading
 before this one is built, and it is cited rather than copied.
 
-`~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` — status *Implemented*,
-backing stories F-07, E-09, F-83. Its phone speaks RTVBP over WebSocket/WebRTC, not SIP, so none of
-its protocol work transfers. Its shape does:
+An internal repository's `projects/ai-agent-platform/docs/designs/browser-voice.md` — status
+*Implemented*, backing stories F-07, E-09, F-83. Its phone speaks RTVBP over WebSocket/WebRTC, not
+SIP, so none of its protocol work transfers. Its shape does:
 
 | What it settled | Where | Bearing on this epic |
 |---|---|---|

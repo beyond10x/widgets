@@ -25,7 +25,7 @@ scope:
   path: player/skin.js
 - confidence: inferred
   path: scenarios
-revision: 7
+revision: 8
 ---
 # The softphone page
 
@@ -65,7 +65,7 @@ nothing. An agent drives the phone; it does not drive a screen.
 
 Registration may start on load; **media must not.** Placing or answering a call runs from an explicit
 user gesture in a secure context, because microphone permission and audio autoplay require both
-(`~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` §3, §7).
+(an internal repository's `projects/ai-agent-platform/docs/designs/browser-voice.md` §3, §7).
 
 ## Where the state lives, and what is not yet known
 

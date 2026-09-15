@@ -14,10 +14,10 @@ domain: softphone.sip
 # SIP path for it until that contract changes.
 #
 # The token does not ride an `Authorization` header: a browser cannot set one on a WebSocket
-# upgrade. It rides the negotiated subprotocol list, the way
-# `~/babelforce/projects/ai-agent-platform/docs/designs/browser-voice.md` §4 records for the
-# console's RTVBP phone. Whether the SIP provider wants that or a digest REGISTER instead is a
-# deployment fact this domain does not decide.
+# upgrade. It rides the negotiated subprotocol list, the way an internal repository's
+# `projects/ai-agent-platform/docs/designs/browser-voice.md` §4 records for the console's RTVBP
+# phone. Whether the SIP provider wants that or a digest REGISTER instead is a deployment fact this
+# domain does not decide.
 summary: >-
   A SIP registration and the dialogs carrying media sessions over it. The only domain that names
   SIP, SDP, an address-of-record or a WebSocket. The offer/answer exchange lives here as four
